@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["host", "methods"]
+members = ["host", "methods", "verifierWrapper"]
 
 [workspace.dependencies]
 # Intra-workspace dependencies

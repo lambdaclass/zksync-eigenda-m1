@@ -93,38 +93,65 @@ struct Args {
     rpc_url: Url,
 }
 
+/*
+BlobInfo { blob_header: Some(BlobHeader { commitment: Some(G1Commitment { 
+x: [12, 186, 9, 125, 109, 210, 169, 156, 194, 186, 128, 197, 149, 245, 1, 26, 152, 248, 20, 82, 96, 121, 119, 77, 6, 231, 87, 57, 109, 236, 229, 6], 
+y: [25, 112, 8, 182, 0, 220, 192, 72, 181, 0, 250, 41, 58, 57, 112, 13, 142, 117, 223, 8, 102, 64, 23, 218, 128, 78, 241, 214, 177, 112, 226, 254] }), 
+data_length: 110, 
+blob_quorum_params: [BlobQuorumParam 
+{ quorum_number: 0, adversary_threshold_percentage: 33, confirmation_threshold_percentage: 55, chunk_length: 1 }, 
+ BlobQuorumParam { quorum_number: 1, adversary_threshold_percentage: 33, confirmation_threshold_percentage: 55, chunk_length: 1 }] }), 
+ blob_verification_proof: Some(BlobVerificationProof { batch_id: 19, blob_index: 8, batch_metadata: 
+ Some(BatchMetadata { batch_header: Some(BatchHeader { 
+ batch_root: [20, 47, 92, 250, 77, 23, 62, 102, 216, 235, 221, 23, 88, 160, 217, 28, 129, 31, 42, 247, 48, 141, 144, 83, 1, 13, 169, 152, 100, 190, 210, 175],
+  quorum_numbers: [0, 1],
+   quorum_signed_percentages: [100, 100], 
+   reference_block_number: 891 }), 
+   signatory_record_hash: [41, 90, 143, 44, 252, 38, 61, 131, 25, 111, 95, 188, 197, 5, 222, 100, 76, 19, 218, 98, 158, 176, 27, 181, 104, 156, 198, 142, 254, 154, 93, 143], 
+   fee: [0], confirmation_block_number: 933, 
+   batch_header_hash: [91, 231, 237, 123, 189, 166, 123, 148, 163, 128, 38, 12, 247, 184, 14, 151, 243, 99, 170, 219, 28, 183, 238, 187, 129, 40, 147, 151, 56, 131, 88, 179] }), 
+   inclusion_proof: [165, 134, 96, 207, 173, 228, 119, 175, 205, 26, 7, 113, 84, 249, 87, 182, 3, 96, 46, 22, 176, 138, 50, 168, 68, 117, 242, 131, 71, 170, 54, 197, 29, 214, 247, 238, 40, 81, 192, 7, 46, 223, 94, 249, 182, 134, 129, 124, 169, 3, 192, 87, 1, 237, 46, 234, 237, 0, 211, 7, 132, 96, 25, 132, 35, 65, 216, 18, 241, 1, 236, 85, 5, 101, 219, 255, 56, 72, 32, 111, 73, 157, 183, 241, 51, 117, 16, 249, 220, 50, 72, 133, 254, 154, 107, 55, 128, 235, 55, 208, 115, 109, 149, 80, 235, 235, 208, 51, 224, 63, 148, 100, 161, 148, 201, 71, 57, 8, 58, 152, 64, 174, 85, 30, 151, 98, 154, 26, 49, 132, 28, 60, 104, 249, 74, 135, 188, 109, 5, 191, 181, 72, 111, 140, 103, 75, 138, 239, 153, 238, 248, 160, 197, 137, 53, 105, 45, 56, 60, 68], 
+   quorum_indexes: [0, 1] }) }
+ */
+
 #[tokio::main]
 async fn main() -> Result<()> {
 
     let CALL: IVerifyBlob::verifyBlobV1Call = IVerifyBlob::verifyBlobV1Call {
         blobHeader: BlobHeader {
             commitment: G1Point {
-                x: U256::from(0),
-                y: U256::from(0),
+                x: U256::from_be_bytes([12, 186, 9, 125, 109, 210, 169, 156, 194, 186, 128, 197, 149, 245, 1, 26, 152, 248, 20, 82, 96, 121, 119, 77, 6, 231, 87, 57, 109, 236, 229, 6]),
+                y: U256::from_be_bytes([25, 112, 8, 182, 0, 220, 192, 72, 181, 0, 250, 41, 58, 57, 112, 13, 142, 117, 223, 8, 102, 64, 23, 218, 128, 78, 241, 214, 177, 112, 226, 254]),
             },
-            dataLength: 0,
+            dataLength: 110,
             quorumBlobParams: vec![QuorumBlobParam {
                 quorumNumber: 0,
-                adversaryThresholdPercentage: 0,
-                confirmationThresholdPercentage: 0,
-                chunkLength: 0,
+                adversaryThresholdPercentage: 33,
+                confirmationThresholdPercentage: 55,
+                chunkLength: 1,
+            },
+            QuorumBlobParam {
+                quorumNumber: 1,
+                adversaryThresholdPercentage: 33,
+                confirmationThresholdPercentage: 55,
+                chunkLength: 1,
             }],
         },
         blobVerificationProof: BlobVerificationProof {
-            batchId: 0,
-            blobIndex: 0,
+            batchId: 19,
+            blobIndex: 8,
             batchMetadata: BatchMetadata {
                 batchHeader: BatchHeader {
-                    blobHeadersRoot: U256::from(0).into(),
-                    quorumNumbers: vec![0].into(),
-                    signedStakeForQuorums: vec![0].into(),
-                    referenceBlockNumber: 0,
+                    blobHeadersRoot: U256::from_be_bytes([20, 47, 92, 250, 77, 23, 62, 102, 216, 235, 221, 23, 88, 160, 217, 28, 129, 31, 42, 247, 48, 141, 144, 83, 1, 13, 169, 152, 100, 190, 210, 175]).into(),
+                    quorumNumbers: vec![0,1].into(),
+                    signedStakeForQuorums: vec![100,100].into(),
+                    referenceBlockNumber: 891,
                 },
-                signatoryRecordHash: U256::from(0).into(),
-                confirmationBlockNumber: 0,
+                signatoryRecordHash: U256::from_be_bytes([41, 90, 143, 44, 252, 38, 61, 131, 25, 111, 95, 188, 197, 5, 222, 100, 76, 19, 218, 98, 158, 176, 27, 181, 104, 156, 198, 142, 254, 154, 93, 143]).into(),
+                confirmationBlockNumber: 933,
             },
-            inclusionProof: vec![0].into(),
-            quorumIndices: vec![0].into(),
+            inclusionProof: vec![165, 134, 96, 207, 173, 228, 119, 175, 205, 26, 7, 113, 84, 249, 87, 182, 3, 96, 46, 22, 176, 138, 50, 168, 68, 117, 242, 131, 71, 170, 54, 197, 29, 214, 247, 238, 40, 81, 192, 7, 46, 223, 94, 249, 182, 134, 129, 124, 169, 3, 192, 87, 1, 237, 46, 234, 237, 0, 211, 7, 132, 96, 25, 132, 35, 65, 216, 18, 241, 1, 236, 85, 5, 101, 219, 255, 56, 72, 32, 111, 73, 157, 183, 241, 51, 117, 16, 249, 220, 50, 72, 133, 254, 154, 107, 55, 128, 235, 55, 208, 115, 109, 149, 80, 235, 235, 208, 51, 224, 63, 148, 100, 161, 148, 201, 71, 57, 8, 58, 152, 64, 174, 85, 30, 151, 98, 154, 26, 49, 132, 28, 60, 104, 249, 74, 135, 188, 109, 5, 191, 181, 72, 111, 140, 103, 75, 138, 239, 153, 238, 248, 160, 197, 137, 53, 105, 45, 56, 60, 68].into(),
+            quorumIndices: vec![0,1].into(),
         }
     };
 
