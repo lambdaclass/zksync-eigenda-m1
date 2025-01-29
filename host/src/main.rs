@@ -80,7 +80,7 @@ sol! {
 
 
 /// Address of the deployed contract to call the function on (USDT contract on Sepolia).
-const CONTRACT: Address = address!("00CfaC4fF61D52771eF27d07c5b6f1263C2994A1"); //TODO: Add the address of the deployed contract.
+const CONTRACT: Address = address!("c551b009C1CE0b6efD691E23998AEFd4103680D3"); //TODO: Add the address of the deployed contract.
 /// Address of the caller.
 const CALLER: Address = address!("f08A50178dfcDe18524640EA6618a1f965821715");
 

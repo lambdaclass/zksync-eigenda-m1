@@ -2,7 +2,9 @@
 pragma solidity ^0.8.0;
 
 import {Script} from "forge-std/Script.sol";
-import {VerifierWrapper} from "./VerifierWrapper.sol";
+import {VerifierWrapper} from "../src/VerifierWrapper.sol";
+import "forge-std/console.sol";
+
 
 contract Deployer is Script {
     // Environment variable name for the BlobVerifier address
@@ -17,6 +19,7 @@ contract Deployer is Script {
 
         // Broadcast deployment transaction
         vm.startBroadcast(deployerPrivateKey);
+        vm.txGasPrice( 0.000000002  gwei);
         
         // Deploy VerifierWrapper with the specified BlobVerifier address
         VerifierWrapper wrapper = new VerifierWrapper(blobVerifier);
