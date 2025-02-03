@@ -130,7 +130,7 @@ fn main() {
     // Converts the input into a `EvmEnv` for execution. The `with_chain_spec` method is used
     // to specify the chain configuration. It checks that the state matches the state root in the
     // header provided in the input.
-    let env = input.into_env();//.with_chain_spec(&ETH_SEPOLIA_CHAIN_SPEC);
+    let env = input.into_env();
     // Commit the block hash and number used when deriving `EvmEnv` to the journal.
     env::commit_slice(&env.commitment().abi_encode());
 

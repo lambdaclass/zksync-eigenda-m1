@@ -1,6 +1,6 @@
 # ZKSYNC-EIGENDA M1
 
-**An example that calls verifyBlobV1 from eigenda.**
+**A proof of concept where risc0-steel is used in order to generate a proof for the call of the VerifyBlobV1 function of EigenDA's BlobVerifier contract, which performs the necessary checks to make sure a given blob is present**
 
 ## Prerequisites
 
