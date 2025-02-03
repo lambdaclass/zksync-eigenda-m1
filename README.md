@@ -12,7 +12,13 @@ You'll also need access to an Ethereum Sepolia RPC endpoint. You can for example
 
 ## Run the example
 
-First you need to deploy the verifierWrapper:
+Compile the contracts:
+
+```bash
+make build_contracts
+```
+
+Deploy the verifierWrapper:
 
 ```bash
 PRIVATE_KEY=<your_private_key> BLOB_VERIFIER_ADDRESS=<your_blob_verifier_address> forge script verifierWrapper/deployer/script/Deployer.s.sol:Deployer --rpc-url <your_rpc_url> --broadcast -vvvv
