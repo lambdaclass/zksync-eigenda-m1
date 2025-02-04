@@ -21,7 +21,9 @@ make deps      # installs dependencies
 make install   # installs the project
 ```
 
-Go to [Avs-Devnet repo](https://github.com/Layr-Labs/avs-devnet/blob/main/examples/eigenda.yaml) and follow the steps to run the devnet.
+Go to [Avs-Devnet repo](https://github.com/Layr-Labs/avs-devnet/blob/main/examples/eigenda.yaml) and follow the steps to run the devnet, before running `avs-devnet start`, add the following line on `contracts/script/SetUpEigenDA.s.sol` on eigenda:
+
+Line 214: `vm.serializeAddress(output,"blobVerifier", address(eigenDABlobVerifier));`
 
 After runnning the devnet run
 
@@ -35,6 +37,19 @@ Save ports for `el-1-besu-lighthouse: rpc` and `disperser: grpc`
 Save addresses of `blobVerifier` and `eigenDAServiceManager`
 
 ### Run zksync-era:
+
+Install zkstack:
+
+```bash
+cd ./zkstack_cli/zkstackup
+./install --local
+```
+
+Reload your terminal, and run on zksync-era root:
+
+```bash
+zkstackup --local
+```
 
 Modify `etc/env/file_based/overrides/validium.yaml`:
 
