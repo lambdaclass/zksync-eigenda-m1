@@ -36,7 +36,7 @@ Save ports for `el-1-besu-lighthouse: rpc` and `disperser: grpc`
 
 Save addresses of `blobVerifier` and `eigenDAServiceManager`
 
-### Run zksync-era:
+### Run zksync-era (eigenda-m0 branch):
 
 Install zkstack:
 
@@ -56,9 +56,9 @@ Modify `etc/env/file_based/overrides/validium.yaml`:
 ```
 da_client:
   eigen:
-    disperser_rpc: <disperser: grpc>
+    disperser_rpc: http://<disperser: grpc>
     settlement_layer_confirmation_depth: 0
-    eigenda_eth_rpc: <el-1-besu-lighthouse: rpc>
+    eigenda_eth_rpc: http://<el-1-besu-lighthouse: rpc>
     eigenda_svc_manager_address: <eigenDAServiceManager>
     wait_for_finalization: false
     authenticated: false
@@ -136,6 +136,8 @@ PRIVATE_KEY=0x3eb15da85647edd9a1159a4a13b9e7c56877c4eb33f614546d4db06a51868b1c B
 Update the CONTRACT address on ```host/src/main.rs``` and ```methods/guest/src/main.rs``` for the one just deployed if needed.
 
 The address on CALLER is a known address from zksync, it should be changed to the needed one in the real use case.
+
+Update the CALL struct with the blobInfo printed on zksync-era, both on `host/src/main.rs` and `methods/guest/src/main.rs`
 
 To run the example execute the following command:
 
