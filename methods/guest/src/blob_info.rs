@@ -1,8 +1,8 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Internal of BlobInfo
 /// Contains the KZG Commitment
-#[derive(Debug, PartialEq, Clone, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct G1Commitment {
     pub x: Vec<u8>,
     pub y: Vec<u8>,
@@ -10,7 +10,7 @@ pub struct G1Commitment {
 
 /// Internal of BlobInfo
 /// Contains data related to the blob quorums  
-#[derive(Debug, PartialEq, Clone, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct BlobQuorumParam {
     /// The ID of the quorum.
     pub quorum_number: u32,
@@ -24,7 +24,7 @@ pub struct BlobQuorumParam {
 
 /// Internal of BlobInfo
 /// Contains the blob header data
-#[derive(Debug, PartialEq, Clone, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct BlobHeader {
     pub commitment: G1Commitment,
     pub data_length: u32,
@@ -32,7 +32,7 @@ pub struct BlobHeader {
 }
 
 /// Internal of BlobInfo
-#[derive(Debug, PartialEq, Clone, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct BatchHeader {
     pub batch_root: Vec<u8>,
     pub quorum_numbers: Vec<u8>,
@@ -41,7 +41,7 @@ pub struct BatchHeader {
 }
 
 /// Internal of BlobInfo
-#[derive(Debug, PartialEq, Clone, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct BatchMetadata {
     pub batch_header: BatchHeader,
     pub signatory_record_hash: Vec<u8>,
@@ -51,7 +51,7 @@ pub struct BatchMetadata {
 }
 
 /// Internal of BlobInfo
-#[derive(Debug, PartialEq, Clone, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct BlobVerificationProof {
     pub batch_id: u32,
     pub blob_index: u32,
@@ -61,7 +61,7 @@ pub struct BlobVerificationProof {
 }
 
 /// Data returned by the disperser when a blob is dispersed
-#[derive(Debug, PartialEq, Clone, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct BlobInfo {
     pub blob_header: BlobHeader,
     pub blob_verification_proof: BlobVerificationProof,

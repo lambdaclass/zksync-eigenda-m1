@@ -19,7 +19,7 @@ use clap::Parser;
 use erc20_methods::ERC20_GUEST_ELF;
 use host::verify_blob::{decode_blob_info, IVerifyBlob};
 use risc0_steel::{ethereum::EthEvmEnv, Commitment, Contract};
-use risc0_zkvm::{default_executor, ExecutorEnv};
+use risc0_zkvm::{default_executor, default_prover, ExecutorEnv, ProverOpts, VerifierContext};
 use tokio_postgres::NoTls;
 use tracing_subscriber::EnvFilter;
 use url::Url;
@@ -90,28 +90,28 @@ async fn main() -> Result<()> {
 
         // Finally, construct the input from the environment.
         let input = env.into_input().await?;
-
+        
         let blob_info = host::blob_info::BlobInfo {
             blob_header: blob_header.into(),
             blob_verification_proof: blob_verification_proof.into(),
         };
 
         println!("Running the guest with the constructed input...");
-        let session_info = {
+        let session_info = tokio::task::spawn_blocking(move || {
             let env = ExecutorEnv::builder()
                 .write(&input)
                 .unwrap()
                 .write(&blob_info)
                 .unwrap()
                 .build()
-                .context("failed to build executor env")?;
-            let exec = default_executor();
-            exec.execute(env, ERC20_GUEST_ELF)
-                .context("failed to run executor")?
-        };
+                .unwrap();
+            let exec = default_prover();
+            exec.prove_with_ctx(env,&VerifierContext::default(), ERC20_GUEST_ELF,&ProverOpts::succinct())
+                .context("failed to run executor")
+        }).await??;
 
         // The journal should be the ABI encoded commitment.
-        let commitment = Commitment::abi_decode(session_info.journal.as_ref(), true)
+        let commitment = Commitment::abi_decode(session_info.receipt.journal.as_ref(), true)
             .context("failed to decode journal")?;
         println!("{:?}", commitment);
     }
