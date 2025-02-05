@@ -1,3 +1,6 @@
 .DS_Store
 target/
 /verifierWrapper/deployer/broadcast/Deployer.s.sol/9
+/broadcast
+/cache
+/out
