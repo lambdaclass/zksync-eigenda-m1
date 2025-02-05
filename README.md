@@ -14,7 +14,7 @@ Next, you will also need to have the `cargo-risczero` tool installed.
 
 Install devnet: 
 
-Clone [avs-devnet](https://github.com/Layr-Labs/avs-devnet) repository and run
+Clone [avs-devnet](https://github.com/Layr-Labs/avs-devnet) repository and install the `avs-devnet` tool by running
 
 ```bash
 make deps      # installs dependencies
