@@ -106,7 +106,7 @@ zkstack ecosystem init \
 
 This will init zksync, you then need to start the server, which will disperse a blob after some time, you need the specific information of that blob for this poc example to work, the best way would be to modify the following in zksync-era to print that blob:
 
-On `core/Cargo.toml` line 225 change the branch for `print-blob-info` and delete `core/Cargo.lock`.
+On `core/Cargo.toml` change the branch of `eigenda-client-rs` for `print-blob-info` and delete `core/Cargo.lock`.
 
 Then run
 ```
