@@ -36,7 +36,7 @@ Save ports for `el-1-besu-lighthouse: rpc` and `disperser: grpc`
 
 Save addresses of `blobVerifier` and `eigenDAServiceManager`
 
-### Run zksync-era (eigenda-m0 branch):
+### Run zksync-era (eigenda-m0 branch on lambdaclass fork):
 
 Install zkstack:
 
