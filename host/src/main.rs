@@ -55,6 +55,11 @@ async fn main() -> Result<()> {
         .query("SELECT inclusion_data FROM data_availability", &[])
         .await?;
 
+    // Initialize tracing. In order to view logs, run `RUST_LOG=info cargo run`
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
+
     for row in rows {
         let inclusion_data: Vec<u8> = row.get(0);
         let (blob_header, blob_verification_proof) = decode_blob_info(inclusion_data)?;
@@ -64,10 +69,6 @@ async fn main() -> Result<()> {
             blobVerificationProof: blob_verification_proof.clone(),
         };
 
-        // Initialize tracing. In order to view logs, run `RUST_LOG=info cargo run`
-        tracing_subscriber::fmt()
-            .with_env_filter(EnvFilter::from_default_env())
-            .init();
         // Parse the command line arguments.
         let args = Args::parse();
 
