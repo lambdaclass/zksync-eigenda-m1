@@ -15,8 +15,9 @@
 #![allow(unused_doc_comments)]
 #![no_main]
 
-use alloy_primitives::{address, Address, U256};
+use alloy_primitives::{address, Address, Bytes, FixedBytes, U256};
 use alloy_sol_types::sol;
+use erc20_guest::blob_info::{BlobInfo, BlobQuorumParam};
 use risc0_steel::{
     ethereum::{EthEvmInput},
     Contract,
@@ -84,48 +85,84 @@ const CONTRACT: Address = address!("c551b009C1CE0b6efD691E23998AEFd4103680D3");
 /// Address of the caller. If not provided, the caller will be the [CONTRACT].
 const CALLER: Address = address!("e706e60ab5Dc512C36A4646D719b889F398cbBcB");
 
-fn main() {
-
-
-    let CALL: IVerifyBlob::verifyBlobV1Call = IVerifyBlob::verifyBlobV1Call {
-        blobHeader: BlobHeader {
-            commitment: G1Point {
-                x: U256::from_be_bytes([24, 169, 164, 102, 107, 160, 232, 179, 235, 137, 210, 187, 41, 80, 125, 253, 139, 173, 199, 13, 1, 202, 187, 76, 194, 248, 111, 119, 72, 11, 18, 57]),
-                y: U256::from_be_bytes([36, 23, 31, 142, 207, 119, 161, 176, 17, 168, 92, 30, 153, 172, 247, 0, 49, 158, 53, 162, 100, 199, 15, 59, 191, 73, 208, 167, 100, 195, 235, 100]),
-            },
-            dataLength: 172,
-            quorumBlobParams: vec![QuorumBlobParam {
-                quorumNumber: 0,
-                adversaryThresholdPercentage: 33,
-                confirmationThresholdPercentage: 55,
-                chunkLength: 1,
-            },
-            QuorumBlobParam {
-                quorumNumber: 1,
-                adversaryThresholdPercentage: 33,
-                confirmationThresholdPercentage: 55,
-                chunkLength: 1,
-            }],
-        },
-        blobVerificationProof: BlobVerificationProof {
-            batchId: 7,
-            blobIndex: 2,
-            batchMetadata: BatchMetadata {
-                batchHeader: BatchHeader {
-                    blobHeadersRoot: U256::from_be_bytes([196, 174, 24, 254, 20, 180, 213, 225, 117, 122, 48, 201, 24, 133, 138, 147, 63, 121, 141, 0, 219, 225, 211, 235, 234, 106, 246, 117, 125, 12, 248, 228]).into(),
-                    quorumNumbers: vec![0,1].into(),
-                    signedStakeForQuorums: vec![100,100].into(),
-                    referenceBlockNumber: 411,
-                },
-                signatoryRecordHash: U256::from_be_bytes([254, 21, 202, 76, 140, 76, 68, 247, 165, 151, 115, 92, 149, 210, 175, 251, 11, 113, 131, 122, 72, 171, 7, 17, 212, 145, 50, 88, 64, 246, 246, 190]).into(),
-                confirmationBlockNumber: 452,
-            },
-            inclusionProof: vec![147, 50, 188, 194, 143, 168, 26, 54, 9, 187, 208, 22, 1, 40, 156, 176, 116, 204, 136, 143, 155, 94, 59, 6, 16, 121, 87, 4, 172, 198, 181, 117, 29, 210, 56, 81, 44, 108, 216, 99, 54, 8, 148, 87, 5, 252, 149, 13, 39, 229, 222, 241, 152, 102, 210, 68, 104, 102, 95, 9, 162, 100, 57, 123, 141, 39, 81, 14, 44, 37, 89, 111, 181, 30, 5, 86, 0, 198, 228, 1, 253, 156, 136, 44, 200, 63, 159, 180, 144, 142, 158, 230, 134, 157, 109, 22, 70, 170, 188, 137, 243, 129, 174, 254, 159, 239, 140, 38, 186, 120, 145, 254, 206, 186, 32, 84, 130, 160, 25, 86, 8, 129, 81, 33, 36, 91, 123, 122, 137, 249, 0, 148, 175, 28, 22, 175, 153, 149, 72, 14, 224, 165, 247, 100, 2, 134, 114, 81, 104, 141, 47, 114, 42, 205, 219, 24, 57, 11, 248, 149].into(),
-            quorumIndices: vec![0,1].into(),
+impl From<BlobQuorumParam> for QuorumBlobParam {
+    fn from(param: BlobQuorumParam) -> Self {
+        QuorumBlobParam {
+            quorumNumber: param.quorum_number as u8,
+            adversaryThresholdPercentage: param.adversary_threshold_percentage as u8,
+            confirmationThresholdPercentage: param.confirmation_threshold_percentage as u8,
+            chunkLength: param.chunk_length,
         }
-    };
+    }
+}
+
+impl From<erc20_guest::blob_info::BlobHeader> for BlobHeader {
+    fn from(blob_header: erc20_guest::blob_info::BlobHeader) -> Self {
+        let x: [u8;32] = blob_header.commitment.x.try_into().expect("slice with incorrect length");
+        let y: [u8;32]  = blob_header.commitment.y.try_into().expect("slice with incorrect length");
+        BlobHeader {
+            commitment: G1Point {
+                x: U256::from_be_bytes(x),
+                y: U256::from_be_bytes(y),
+            },
+            dataLength: blob_header.data_length,
+            quorumBlobParams: blob_header.blob_quorum_params.iter().map(|param| QuorumBlobParam::from(param.clone())).collect(),
+        }
+    }
+}
+
+impl From<erc20_guest::blob_info::G1Commitment > for G1Point {
+    fn from(commitment: erc20_guest::blob_info::G1Commitment) -> Self {
+        let x: [u8;32] = commitment.x.try_into().expect("slice with incorrect length");
+        let y: [u8;32]  = commitment.y.try_into().expect("slice with incorrect length");
+        G1Point {
+            x: U256::from_be_bytes(x),
+            y: U256::from_be_bytes(y),
+        }
+    }
+}
+
+impl From<erc20_guest::blob_info::BatchHeader> for BatchHeader {
+    fn from(batch_header: erc20_guest::blob_info::BatchHeader) -> Self {
+        let root: [u8;32] = batch_header.batch_root.try_into().expect("slice with incorrect length");
+        BatchHeader {
+            blobHeadersRoot: FixedBytes::from(root),
+            quorumNumbers: Bytes::from(batch_header.quorum_numbers),
+            signedStakeForQuorums: Bytes::from(batch_header.quorum_signed_percentages),
+            referenceBlockNumber: batch_header.reference_block_number,
+        }
+    }
+}
+
+impl From<erc20_guest::blob_info::BatchMetadata> for BatchMetadata {
+    fn from(batch_metadata: erc20_guest::blob_info::BatchMetadata) -> Self {
+        let header: BatchHeader = BatchHeader::from(batch_metadata.batch_header);
+        let signatory_record_hash: [u8;32] = batch_metadata.signatory_record_hash.try_into().expect("slice with incorrect length");
+        BatchMetadata {
+            batchHeader: header,
+            signatoryRecordHash: FixedBytes::from(signatory_record_hash),
+            confirmationBlockNumber: batch_metadata.confirmation_block_number,
+        }
+    }
+}
+
+impl From<erc20_guest::blob_info::BlobVerificationProof> for BlobVerificationProof {
+    fn from(blob_verification_proof: erc20_guest::blob_info::BlobVerificationProof) -> Self {
+        let metadata: BatchMetadata = BatchMetadata::from(blob_verification_proof.batch_medatada);
+        BlobVerificationProof {
+            batchId: blob_verification_proof.batch_id,
+            blobIndex: blob_verification_proof.blob_index,
+            batchMetadata: metadata,
+            inclusionProof: Bytes::from(blob_verification_proof.inclusion_proof),
+            quorumIndices: Bytes::from(blob_verification_proof.quorum_indexes),
+        }
+    }
+}
+
+fn main() {
     // Read the input from the guest environment.
     let input: EthEvmInput = env::read();
+    let blob_info: BlobInfo = env::read();
 
     // Converts the input into a `EvmEnv` for execution. The `with_chain_spec` method is used
     // to specify the chain configuration. It checks that the state matches the state root in the
@@ -136,6 +173,7 @@ fn main() {
 
     // Execute the view call; it returns the result in the type generated by the `sol!` macro.
     let contract = Contract::new(CONTRACT, &env);
-    let returns = contract.call_builder(&CALL).from(CALLER).call();
+    let call = IVerifyBlob::verifyBlobV1Call{blobHeader: blob_info.blob_header.into(), blobVerificationProof: blob_info.blob_verification_proof.into()};
+    let returns = contract.call_builder(&call).from(CALLER).call();
     println!("View call result: {}", returns._0);
 }
