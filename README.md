@@ -125,12 +125,12 @@ make build_contracts
 Deploy the verifierWrapper:
 
 ```bash
-PRIVATE_KEY=<your_private_key> BLOB_VERIFIER_ADDRESS=<your_blob_verifier_address> forge script verifierWrapper/deployer/script/Deployer.s.sol:Deployer --rpc-url <your_rpc_url> --broadcast -vvvv
+PRIVATE_KEY=<your_private_key> BLOB_VERIFIER_ADDRESS=<your_blob_verifier_address> forge script contracts/script/Deployer.s.sol:Deployer --rpc-url <your_rpc_url> --broadcast -vvvv
 ```
 
 For testing purpouses on devnet you can use:
 ```bash
-PRIVATE_KEY=0x3eb15da85647edd9a1159a4a13b9e7c56877c4eb33f614546d4db06a51868b1c BLOB_VERIFIER_ADDRESS=0x00CfaC4fF61D52771eF27d07c5b6f1263C2994A1 forge script verifierWrapper/deployer/script/Deployer.s.sol:Deployer --rpc-url http://127.0.0.1:<your_port> --broadcast -vvvv
+PRIVATE_KEY=0x3eb15da85647edd9a1159a4a13b9e7c56877c4eb33f614546d4db06a51868b1c BLOB_VERIFIER_ADDRESS=0x00CfaC4fF61D52771eF27d07c5b6f1263C2994A1 forge script contracts/script/Deployer.s.sol:Deployer --rpc-url http://127.0.0.1:<your_port> --broadcast -vvvv
 ```
 
 Update the CONTRACT address on ```host/src/main.rs``` and ```methods/guest/src/main.rs``` for the one just deployed if needed.

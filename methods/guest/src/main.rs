@@ -25,7 +25,7 @@ risc0_zkvm::guest::entry!(main);
 /// Address of the deployed contract to call the function on (USDT contract on Sepolia).
 const CONTRACT: Address = address!("c551b009C1CE0b6efD691E23998AEFd4103680D3");
 /// Address of the caller. If not provided, the caller will be the [CONTRACT].
-const CALLER: Address = address!("e706e60ab5Dc512C36A4646D719b889F398cbBcB");
+const CALLER: Address = address!("E90E12261CCb0F3F7976Ae611A29e84a6A85f424");
 
 fn main() {
     // Read the input from the guest environment.

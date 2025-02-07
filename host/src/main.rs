@@ -19,7 +19,7 @@ use clap::Parser;
 use erc20_methods::ERC20_GUEST_ELF;
 use host::verify_blob::{decode_blob_info, IVerifyBlob};
 use risc0_steel::{ethereum::EthEvmEnv, Commitment, Contract};
-use risc0_zkvm::{default_executor, default_prover, ExecutorEnv, ProverOpts, VerifierContext};
+use risc0_zkvm::{compute_image_id, default_executor, default_prover, ExecutorEnv, ProverOpts, VerifierContext};
 use tokio_postgres::NoTls;
 use tracing_subscriber::EnvFilter;
 use url::Url;
@@ -40,6 +40,9 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+
+    let imageid = compute_image_id(ERC20_GUEST_ELF)?;
+    println!("Image ID: {:?}", imageid);
     let (client, connection) = tokio_postgres::connect(
         "host=localhost user=postgres password=notsecurepassword dbname=zksync_server_localhost_eigenda", 
         NoTls,
