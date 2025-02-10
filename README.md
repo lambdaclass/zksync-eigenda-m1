@@ -136,7 +136,7 @@ The address on CALLER is a known address from zksync, it should be changed to th
 To run the example execute the following command:
 
 ```bash
-RPC_URL=<your_rpc> RUST_LOG=info cargo run --release
+RPC_URL=<your_rpc> PRIVATE_KEY=<your_private_key> RUST_LOG=info cargo run --release
 ```
 
 

@@ -35,6 +35,9 @@ struct Args {
     /// URL of the RPC endpoint
     #[arg(short, long, env = "RPC_URL")]
     rpc_url: Url,
+    /// Private key to verify the proof
+    #[arg(short, long, env = "PRIVATE_KEY")]
+    private_key: String // TODO: maybe make this a secret
 }
 
 #[tokio::main]
@@ -84,7 +87,7 @@ async fn main() -> Result<()> {
             let args = Args::parse();
 
             // Create an EVM environment from an RPC endpoint defaulting to the latest block.
-            let mut env = EthEvmEnv::builder().rpc(args.rpc_url).build().await?;
+            let mut env = EthEvmEnv::builder().rpc(args.rpc_url.clone()).build().await?;
 
             // Preflight the call to prepare the input that is required to execute the function in
             // the guest without RPC access. It also returns the result of the call.
@@ -137,9 +140,25 @@ async fn main() -> Result<()> {
                 .as_bytes()
                 .to_vec();
 
-            println!("journal digest {:x?}", journal_digest);
-            println!("image id digest {:x?}", image_id);
-            println!("block proof {:x?}", block_proof);
+            println!("journal digest {:?}", hex::encode(journal_digest));
+            println!("image id digest {:?}", hex::encode(image_id.clone()));
+            println!("block proof {:?}", hex::encode(block_proof));
+
+            let output = std::process::Command::new("forge")
+                .arg("script")
+                .arg("contracts/script/ProofVerifier.s.sol:ProofVerifier")
+                .arg("--rpc-url")
+                .arg(args.rpc_url.to_string())
+                .arg("--broadcast")
+                .arg("-vvvv")
+                .env("PRIVATE_KEY", args.private_key) // Set environment variable
+                .output()?; 
+
+            if output.status.success() {
+                println!("Proof verified successfully");
+            } else {
+                println!("Proof verification failed");
+            }
         }
     }
 }
