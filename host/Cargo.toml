@@ -18,3 +18,4 @@ tokio-postgres = { workspace = true }
 ethabi = { workspace = true }
 serde = { workspace = true }
 hex = {workspace = true}
+chrono = {workspace = true}

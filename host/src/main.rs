@@ -24,12 +24,11 @@ use tokio_postgres::NoTls;
 use tracing_subscriber::EnvFilter;
 use url::Url;
 
-/// Address of the deployed contract to call the function on (USDT contract on Sepolia).
-const CONTRACT: Address = address!("c551b009C1CE0b6efD691E23998AEFd4103680D3"); //TODO: Add the address of the deployed contract.
+/// Address of the deployed contract to call the function on.
+const CONTRACT: Address = address!("c551b009C1CE0b6efD691E23998AEFd4103680D3"); // If the contract address changes modify this.
 /// Address of the caller.
 const CALLER: Address = address!("E90E12261CCb0F3F7976Ae611A29e84a6A85f424");
 
-/// Simple program to show the use of Ethereum contract data inside the guest.
 #[derive(Parser, Debug)]
 #[command(about, long_about = None)]
 struct Args {
@@ -53,9 +52,16 @@ async fn main() -> Result<()> {
         }
     });
 
+    let timestamp = chrono::NaiveDateTime::parse_from_str("1970-01-01 00:00:00", "%Y-%m-%d %H:%M:%S")?;
+
+    println!("Timestamp: {:?}", timestamp.to_string());
+
     let rows = client
-        .query("SELECT inclusion_data FROM data_availability", &[])
+        .query("SELECT inclusion_data, sent_at FROM data_availability WHERE sent_at > $1 ORDER BY sent_at", &[&timestamp.to_string()])
         .await?;
+
+    let timestamp: chrono::NaiveDateTime = rows.last().ok_or(anyhow::anyhow!("Not enough rows"))?.get(1);
+    println!("Timestamp: {:?}", timestamp);
 
     // Initialize tracing. In order to view logs, run `RUST_LOG=info cargo run`
     tracing_subscriber::fmt()
@@ -76,7 +82,6 @@ async fn main() -> Result<()> {
 
         // Create an EVM environment from an RPC endpoint defaulting to the latest block.
         let mut env = EthEvmEnv::builder().rpc(args.rpc_url).build().await?;
-        //  The `with_chain_spec` method is used to specify the chain configuration.
 
         // Preflight the call to prepare the input that is required to execute the function in
         // the guest without RPC access. It also returns the result of the call.
@@ -88,7 +93,7 @@ async fn main() -> Result<()> {
             CALLER,
             CONTRACT,
             returns._0
-        );
+        ); 
 
         // Finally, construct the input from the environment.
         let input = env.into_input().await?;
@@ -99,14 +104,11 @@ async fn main() -> Result<()> {
         };
 
         println!("Running the guest with the constructed input...");
-        let session_info = tokio::task::spawn_blocking(move || {
+        let session_info = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
             let env = ExecutorEnv::builder()
-                .write(&input)
-                .unwrap()
-                .write(&blob_info)
-                .unwrap()
-                .build()
-                .unwrap();
+                .write(&input)?
+                .write(&blob_info)?
+                .build()?;
             let exec = default_prover();
             exec.prove_with_ctx(env,&VerifierContext::default(), ERC20_GUEST_ELF,&ProverOpts::groth16())
                 .context("failed to run executor")
@@ -119,12 +121,11 @@ async fn main() -> Result<()> {
                     inner
                         .verifier_parameters
                         .as_bytes()
-                        .get(..4)
-                        .unwrap(),
+                        .get(..4).ok_or(anyhow::anyhow!("verifier parameters too short"))?,
                 );
                 let seal = hex::encode(inner.clone().seal);
                 selector.push_str(&seal);
-                hex::decode(selector).unwrap()
+                hex::decode(selector)?
             }
             Err(_) => vec![0u8; 4],
         };
