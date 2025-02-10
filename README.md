@@ -25,6 +25,18 @@ Go to [Avs-Devnet repo](https://github.com/Layr-Labs/avs-devnet/blob/main/exampl
 
 Line 214: `vm.serializeAddress(output,"blobVerifier", address(eigenDABlobVerifier));`
 
+Also modify `devnet.yaml` adding 
+
+```
+- name: zksync_rich_1
+  address: "0xE90E12261CCb0F3F7976Ae611A29e84a6A85f424"
+- name: zksync_rich_2
+  address: "0xe706e60ab5Dc512C36A4646D719b889F398cbBcB"
+```
+
+To the keys section.
+
+
 After runnning the devnet run
 
 ```bash
@@ -77,6 +89,9 @@ da:
     private_key: <your_private_key>
 ```
 
+
+For this to work we need [`foundry-zksync`](https://github.com/matter-labs/foundry-zksync/releases/nightly-27360d4c8d12beddbb730dae07ad33a206b38f4b) version `0.0.2` 
+
 Run
 
 ```bash
@@ -119,6 +134,7 @@ zkstack server --chain eigenda
 Compile the contracts
 
 ```bash
+git submodule update --init --recursive
 make build_contracts
 ```
 
