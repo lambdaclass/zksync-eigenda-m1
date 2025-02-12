@@ -1,0 +1,10 @@
+[package]
+name = "proof-equivalence-test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+zksync_kzg = { git = "https://github.com/matter-labs/zksync-protocol.git", branch = "main"}
+boojum = "=0.31.0"
+rand = "0.4"
+rust-kzg-bn254-primitives = { git = "https://github.com/Layr-Labs/rust-kzg-bn254.git", branch = "master"}
