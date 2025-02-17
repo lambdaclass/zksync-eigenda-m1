@@ -8,3 +8,5 @@ rust-kzg-bn254-primitives = { git = "https://github.com/Layr-Labs/rust-kzg-bn254
 rust-kzg-bn254-prover = { git = "https://github.com/Layr-Labs/rust-kzg-bn254.git", branch = "master"}
 rust-kzg-bn254-verifier = { git = "https://github.com/Layr-Labs/rust-kzg-bn254.git", branch = "master"}
 ark-bn254 = "0.5"
+ark-ff = "0.5"
+num-bigint = "0.4.6"
