@@ -1,44 +1,40 @@
-use rand::Rand;
-use rust_kzg_bn254_primitives::helpers::to_fr_array;
-use zksync_kzg::{compute_commitment, compute_proof_poly, verify_proof_poly, KzgSettings};
-
-use boojum::pairing::{bls12_381::fr::{Fr, FrRepr}, ff::{Field, PrimeField}};
-
-const FIELD_ELEMENTS_PER_BLOB: usize = 4096;
-const SETUP_JSON: &str = "src/trusted_setup.json";
-
-fn u8_repr_to_fr(bytes: &[u8]) -> Fr {
-    assert_eq!(bytes.len(), 32);
-    let mut ret = [0u64; 4];
-
-    for (i, chunk) in bytes.chunks(8).enumerate() {
-        let mut repr = [0u8; 8];
-        repr.copy_from_slice(chunk);
-        ret[3 - i] = u64::from_be_bytes(repr);
-    }
-
-    Fr::from_repr(FrRepr(ret)).unwrap()
-}
+use ark_bn254::{Fq, G1Affine};
+use rust_kzg_bn254_primitives::blob::Blob;
+use rust_kzg_bn254_prover::{kzg::KZG, srs::SRS};
+use rust_kzg_bn254_verifier::verify::verify_blob_kzg_proof;
 
 fn main() {
-    let mut rng = rand::thread_rng();
+    let content = std::fs::read_to_string("sample_data.txt").unwrap(); 
 
-    let data: Vec<u8> = {
-        vec![0]
-    };
+    /// Blob data BEFORE padding
+    let data: Vec<u8> = content
+        .split(',')
+        .map(|s| s.trim()) // Remove any leading/trailing spaces
+        .filter(|s| !s.is_empty()) // Ignore empty strings
+        .map(|s| s.parse::<u8>().expect("Invalid number")) // Parse as u8
+        .collect();
 
-    let blob = to_fr_array(&data);
+    let blob = Blob::from_raw_data(&data);
 
-    // let mut blob = vec![];
-    // for a in data.chunks(32) {
-    //     let fr_r = u8_repr_to_fr(a);
-    //     blob.push(fr_r);
-    // }
+    let mut kzg = KZG::new();
+    kzg.calculate_and_store_roots_of_unity(blob.len().try_into().unwrap()).unwrap();
+    let srs = SRS::new("resources/g1.point", 268435456, 1024 * 1024 * 2 / 32).unwrap();
+    
+    /*let x: Vec<u8> = vec![20, 153, 170, 133, 150, 17, 219, 215, 90, 29, 61, 41, 183, 105, 4, 139, 14, 161, 160, 7, 49, 89, 23, 57, 49, 52, 16, 175, 112, 57, 19, 50];
+    let y: Vec<u8> =  vec![47, 50, 235, 25, 170, 240, 84, 149, 189, 33, 211, 171, 1, 250, 141, 124, 116, 49, 37, 211, 193, 146, 250, 255, 63, 16, 117, 92, 28, 237, 120, 166];
+    
+    let x_fq = Fq::from_be_bytes_mod_order(&x);
+    let y_fq =  Fq::from_be_bytes_mod_order(&y);
+    
+    let commitment = G1Affine::new(x_fq, y_fq);*/
+    
+    let commitment = kzg.commit_eval_form(&blob.to_polynomial_eval_form(), &srs).unwrap();
 
-    let settings = KzgSettings::new(SETUP_JSON);
+    let proof = kzg.compute_blob_proof(&blob, &commitment, &srs).unwrap();
 
-    let commitment = compute_commitment(&settings, &blob);
-    // let proof = compute_proof_poly(&settings, &blob, &commitment);
-    // assert!(verify_proof_poly(&settings, &blob, &commitment, &proof));
+    let verified = verify_blob_kzg_proof(&blob, &commitment, &proof).unwrap();
+
+    assert!(verified);
+
     println!(":)");
 }
