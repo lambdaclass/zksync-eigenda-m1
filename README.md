@@ -15,7 +15,6 @@ Install [cuda](https://github.com/lambdaclass/ethrex/blob/main/crates/l2/docs/pr
 Install [nvidia drivers](https://www.notion.so/lambdaclass/Setting-up-NVIDIA-s-GPU-Drivers-on-Debian-11-ce15f10c69284ef7a0d1f03825129f51)
 
 
-
 ## Run the example
 
 ### First run the eigenda devnet:
@@ -44,7 +43,7 @@ Save ports for `el-1-besu-lighthouse: rpc` and `disperser: grpc`
 
 Save addresses of `blobVerifier` and `eigenDAServiceManager`
 
-### Run zksync-era (eigenda-m0 branch on lambdaclass fork):
+### Run zksync-era (eigenda-m1 branch on lambdaclass fork):
 
 Install zkstack:
 
