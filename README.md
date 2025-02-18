@@ -6,7 +6,15 @@
 
 To get started, you need to have Rust installed.
 
-Next, you will also need to have the `cargo-risczero` tool installed.
+Next, you will also need to have the [`cargo-risczero`](https://dev.risczero.com/api/zkvm/install) tool installed.
+
+Next we need to install cuda 12.6
+
+Install [cuda](https://github.com/lambdaclass/ethrex/blob/main/crates/l2/docs/prover.md#gpu-mode), this link points to cuda 12.8, do the same steps but for 12.6
+
+Install [nvidia drivers](https://www.notion.so/lambdaclass/Setting-up-NVIDIA-s-GPU-Drivers-on-Debian-11-ce15f10c69284ef7a0d1f03825129f51)
+
+
 
 ## Run the example
 
