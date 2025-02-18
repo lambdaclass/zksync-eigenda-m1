@@ -58,6 +58,13 @@ Reload your terminal, and run on zksync-era root:
 zkstackup --local
 ```
 
+Install foundry-zksync 0.0.2:
+
+```
+curl -L https://raw.githubusercontent.com/matter-labs/foundry-zksync/main/install-foundry-zksync | bash
+foundryup-zksync --commit 27360d4c8d12beddbb730dae07ad33a206b38f4b
+```
+
 Modify `etc/env/file_based/overrides/validium.yaml`:
 
 ```
@@ -69,9 +76,7 @@ da_client:
     eigenda_svc_manager_address: <eigenDAServiceManager>
     wait_for_finalization: false
     authenticated: false
-    points_source: ./resources
-    g1_url: https://github.com/Layr-Labs/eigenda-proxy/raw/2fd70b99ef5bf137d7bbca3461cf9e1f2c899451/resources/g1.point
-    g2_url: https://github.com/Layr-Labs/eigenda-proxy/raw/2fd70b99ef5bf137d7bbca3461cf9e1f2c899451/resources/g2.point.powerOf2
+    path: ./resources
 ```
 
 Copy the resources folder inside eigenda to zksync-era root
