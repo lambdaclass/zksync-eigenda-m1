@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::process::Stdio;
+
 use alloy_primitives::{address, Address};
 use alloy_sol_types::{SolCall, SolType};
 use anyhow::{Context, Result};
@@ -156,6 +158,21 @@ async fn main() -> Result<()> {
                 .env("IMAGE_ID", format!("0x{}", hex::encode(&image_id))) // Convert image ID to hex string
                 .env("JOURNAL_DIGEST", format!("0x{}", hex::encode(&journal_digest))) // Convert journal digest to hex string
                 .output()?;
+
+            let stdout = std::str::from_utf8(&output.stdout).unwrap_or("");
+            let stderr = std::str::from_utf8(&output.stderr).unwrap_or("");
+        
+            // Combine stdout and stderr for parsing
+            let combined_output = format!("{}\n{}", stdout, stderr);
+        
+            // Extract the transaction hash (regex looks for 0x followed by 64 hex chars)
+            let tx_hash = combined_output
+                .lines()
+                .find(|line| line.contains("Transaction hash:") || line.contains("tx: 0x"))
+                .and_then(|line| line.split_whitespace().find(|s| s.starts_with("0x")))
+                .unwrap_or("Transaction hash not found");
+        
+            println!("Extracted TX Hash: {}", tx_hash);
 
             if output.status.success() {
                 println!("Proof verified successfully");

@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import "forge-std/Script.sol";
 
 interface IRiscZeroVerifier {
-    function verify(bytes calldata seal, bytes32 imageId, bytes32 journalDigest) external view;
+    function verify(bytes calldata seal, bytes32 imageId, bytes32 journalDigest) external;
 }
 
 contract ProofVerifier is Script {
@@ -13,7 +13,7 @@ contract ProofVerifier is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
         // Define RPC URL and contract address
-        address contractAddress = address(0xAC292cF957Dd5BA174cdA13b05C16aFC71700327);
+        address contractAddress = address(0x25b0F3F5434924821Ad73Eed8C7D81Db87DB0a15); //Our proof verifier wrapper deployed on Holesky
 
         // Start broadcasting (not needed for view functions but useful for txs)
         vm.startBroadcast(deployerPrivateKey);
@@ -26,8 +26,12 @@ contract ProofVerifier is Script {
         bytes32 imageId = vm.envBytes32("IMAGE_ID");
         bytes32 journalDigest = vm.envBytes32("JOURNAL_DIGEST"); 
 
+        bytes32 txId = vm.recordTransaction();
+
         // Call the verify function
         contractInstance.verify(seal, imageId, journalDigest);
+
+        console.log("Transaction ID:", vm.getRecordedTransaction(txId));
 
         vm.stopBroadcast();
     }
