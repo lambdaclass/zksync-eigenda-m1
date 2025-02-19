@@ -26,12 +26,8 @@ contract ProofVerifier is Script {
         bytes32 imageId = vm.envBytes32("IMAGE_ID");
         bytes32 journalDigest = vm.envBytes32("JOURNAL_DIGEST"); 
 
-        bytes32 txId = vm.recordTransaction();
-
         // Call the verify function
         contractInstance.verify(seal, imageId, journalDigest);
-
-        console.log("Transaction ID:", vm.getRecordedTransaction(txId));
 
         vm.stopBroadcast();
     }

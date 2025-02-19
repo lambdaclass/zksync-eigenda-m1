@@ -108,7 +108,7 @@ async fn main() -> Result<()> {
             
             let blob_info = host::blob_info::BlobInfo {
                 blob_header: blob_header.into(),
-                blob_verification_proof: blob_verification_proof.into(),
+                blob_verification_proof: blob_verification_proof.clone().into(),
             };
 
             println!("Running the guest with the constructed input...");
@@ -165,17 +165,14 @@ async fn main() -> Result<()> {
             // Combine stdout and stderr for parsing
             let combined_output = format!("{}\n{}", stdout, stderr);
         
-            // Extract the transaction hash (regex looks for 0x followed by 64 hex chars)
-            let tx_hash = combined_output
+            if output.status.success() {
+                // Extract the transaction hash (regex looks for 0x followed by 64 hex chars)
+                let tx_hash = combined_output
                 .lines()
-                .find(|line| line.contains("Transaction hash:") || line.contains("tx: 0x"))
+                .find(|line| line.contains("[Success] Hash: 0x"))
                 .and_then(|line| line.split_whitespace().find(|s| s.starts_with("0x")))
                 .unwrap_or("Transaction hash not found");
-        
-            println!("Extracted TX Hash: {}", tx_hash);
-
-            if output.status.success() {
-                println!("Proof verified successfully");
+                println!("Proof of data inclusion for blob {} verified on L1. Tx hash: {tx_hash}",blob_verification_proof.blobIndex);
             } else {
                 println!("Proof verification failed");
             }
