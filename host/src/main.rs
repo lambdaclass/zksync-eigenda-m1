@@ -140,19 +140,22 @@ async fn main() -> Result<()> {
                 .as_bytes()
                 .to_vec();
 
-            println!("journal digest {:?}", hex::encode(journal_digest));
+            println!("journal digest {:?}", hex::encode(journal_digest.clone()));
             println!("image id digest {:?}", hex::encode(image_id.clone()));
-            println!("block proof {:?}", hex::encode(block_proof));
+            println!("block proof {:?}", hex::encode(block_proof.clone()));
 
             let output = std::process::Command::new("forge")
                 .arg("script")
                 .arg("contracts/script/ProofVerifier.s.sol:ProofVerifier")
                 .arg("--rpc-url")
-                .arg(args.rpc_url.to_string())
+                .arg("https://ethereum-holesky-rpc.publicnode.com")
                 .arg("--broadcast")
                 .arg("-vvvv")
                 .env("PRIVATE_KEY", args.private_key) // Set environment variable
-                .output()?; 
+                .env("SEAL", format!("0x{}", hex::encode(&block_proof))) // Convert seal to hex string
+                .env("IMAGE_ID", format!("0x{}", hex::encode(&image_id))) // Convert image ID to hex string
+                .env("JOURNAL_DIGEST", format!("0x{}", hex::encode(&journal_digest))) // Convert journal digest to hex string
+                .output()?;
 
             if output.status.success() {
                 println!("Proof verified successfully");
