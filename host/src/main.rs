@@ -26,11 +26,6 @@ use tokio_postgres::{row, NoTls};
 use tracing_subscriber::EnvFilter;
 use url::Url;
 
-/// Address of the deployed contract to call the function on.
-const CONTRACT: Address = address!("c551b009C1CE0b6efD691E23998AEFd4103680D3"); // If the contract address changes modify this.
-/// Address of the caller.
-const CALLER: Address = address!("E90E12261CCb0F3F7976Ae611A29e84a6A85f424");
-
 #[derive(Parser, Debug)]
 #[command(about, long_about = None)]
 struct Args {
@@ -44,10 +39,6 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let image_id = compute_image_id(ERC20_GUEST_ELF)?;
-    let image_id: risc0_zkvm::sha::Digest = image_id.into();
-    let image_id = image_id.as_bytes().to_vec();
-    println!("Image id {:?}", image_id);
     let (client, connection) = tokio_postgres::connect(
         "host=localhost user=postgres password=notsecurepassword dbname=zksync_server_localhost_eigenda", 
         NoTls,
@@ -61,13 +52,14 @@ async fn main() -> Result<()> {
 
     let mut timestamp = chrono::NaiveDateTime::parse_from_str("1970-01-01 00:00:00", "%Y-%m-%d %H:%M:%S")?;
 
+    // Parse the command line arguments.
+    let args = Args::parse();
+
     loop {
         
         let rows = client
         .query("SELECT inclusion_data, sent_at FROM data_availability WHERE sent_at > $1 AND inclusion_data IS NOT NULL ORDER BY sent_at", &[&timestamp])
         .await?; // Maybe this approach doesn't work, since maybe row A with has a lower timestamp than row B, but row A has inclusion data NULL so it is not included yet and will never be.
-
-        println!("Rows len {}", rows.len());
 
         if rows.is_empty() {
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
@@ -79,104 +71,9 @@ async fn main() -> Result<()> {
         for row in rows {
             let inclusion_data: Vec<u8> = row.get(0);
             let (blob_header, blob_verification_proof) = decode_blob_info(inclusion_data)?;
+            let session_info = host::verify_blob::run_blob_verification_guest(blob_header, blob_verification_proof.clone(), args.rpc_url.clone()).await?;
 
-            let call = IVerifyBlob::verifyBlobV1Call {
-                blobHeader: blob_header.clone(),
-                blobVerificationProof: blob_verification_proof.clone(),
-            };
-
-            // Parse the command line arguments.
-            let args = Args::parse();
-
-            // Create an EVM environment from an RPC endpoint defaulting to the latest block.
-            let mut env = EthEvmEnv::builder().rpc(args.rpc_url.clone()).build().await?;
-
-            // Preflight the call to prepare the input that is required to execute the function in
-            // the guest without RPC access. It also returns the result of the call.
-            let mut contract = Contract::preflight(CONTRACT, &mut env);
-            let returns = contract.call_builder(&call).from(CALLER).call().await?;
-            println!(
-                "Call {} Function by {:#} on {:#} returns: {}",
-                IVerifyBlob::verifyBlobV1Call::SIGNATURE,
-                CALLER,
-                CONTRACT,
-                returns._0
-            ); 
-
-            // Finally, construct the input from the environment.
-            let input = env.into_input().await?;
-            
-            let blob_info = host::blob_info::BlobInfo {
-                blob_header: blob_header.into(),
-                blob_verification_proof: blob_verification_proof.clone().into(),
-            };
-
-            println!("Running the guest with the constructed input...");
-            let session_info = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
-                let env = ExecutorEnv::builder()
-                    .write(&input)?
-                    .write(&blob_info)?
-                    .build()?;
-                let exec = default_prover();
-                exec.prove_with_ctx(env,&VerifierContext::default(), ERC20_GUEST_ELF,&ProverOpts::groth16())
-                    .context("failed to run executor")
-            }).await??;
-
-            let block_proof = match session_info.receipt.inner.groth16() {
-                Ok(inner) => {
-                    // The SELECTOR is used to perform an extra check inside the groth16 verifier contract.
-                    let mut selector = hex::encode(
-                        inner
-                            .verifier_parameters
-                            .as_bytes()
-                            .get(..4).ok_or(anyhow::anyhow!("verifier parameters too short"))?,
-                    );
-                    let seal = hex::encode(inner.clone().seal);
-                    selector.push_str(&seal);
-                    hex::decode(selector)?
-                }
-                Err(_) => vec![0u8; 4],
-            };
-
-            let journal_digest = Digestible::digest(&session_info.receipt.journal)
-                .as_bytes()
-                .to_vec();
-
-            println!("journal digest {:?}", hex::encode(journal_digest.clone()));
-            println!("image id digest {:?}", hex::encode(image_id.clone()));
-            println!("block proof {:?}", hex::encode(block_proof.clone()));
-
-            let output = std::process::Command::new("forge")
-                .arg("script")
-                .arg("contracts/script/ProofVerifier.s.sol:ProofVerifier")
-                .arg("--rpc-url")
-                .arg("https://ethereum-holesky-rpc.publicnode.com")
-                .arg("--broadcast")
-                .arg("-vvvv")
-                .env("PRIVATE_KEY", args.private_key) // Set environment variable
-                .env("SEAL", format!("0x{}", hex::encode(&block_proof))) // Convert seal to hex string
-                .env("IMAGE_ID", format!("0x{}", hex::encode(&image_id))) // Convert image ID to hex string
-                .env("JOURNAL_DIGEST", format!("0x{}", hex::encode(&journal_digest))) // Convert journal digest to hex string
-                .output()?;
-        
-            if output.status.success() {
-                // Extract the transaction hash (regex looks for 0x followed by 64 hex chars)
-                let path = std::path::Path::new("/home/admin/eigenda_zksync/zksync-eigenda-m1/broadcast/ProofVerifier.s.sol/17000/run-latest.json"); // TODO: Unharcode this
-    
-                // Read the JSON file
-                let data = std::fs::read_to_string(path).expect("Failed to read JSON file");
-                
-                // Parse the JSON content
-                let json: serde_json::Value = serde_json::from_str(&data).expect("Failed to parse JSON");
-                
-                // Extract the transaction hash from "transactions" array
-                let transactions = json.get("transactions").and_then(|t| t.as_array()).ok_or(anyhow::anyhow!("Invalid JSON structure: 'transactions' not found or not an array")).unwrap();
-                let first_transaction = transactions.first().ok_or(anyhow::anyhow!("Invalid JSON structure: 'transactions' array is empty")).unwrap();
-                let tx_hash = first_transaction.get("hash").and_then(|h| h.as_str()).ok_or(anyhow::anyhow!("Invalid JSON structure: 'hash' not found or not a string")).unwrap();
-                println!("Proof of data inclusion for blob {} verified on L1. Tx hash: {tx_hash}",blob_verification_proof.blobIndex);
-            } else {
-                println!("Proof verification failed");
-            }
+            host::prove_risc0::prove_risc0_proof(session_info, args.private_key.clone(), blob_verification_proof.blobIndex)?;
         }
     }
 }

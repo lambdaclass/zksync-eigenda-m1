@@ -1,6 +1,16 @@
 use alloy_primitives::U256;
 use alloy_sol_types::sol;
 use ethabi::ParamType;
+use risc0_zkvm::ProveInfo;
+use risc0_steel::{ethereum::EthEvmEnv, Commitment, Contract};
+use risc0_zkvm::{compute_image_id, default_executor, default_prover, sha::Digestible, ExecutorEnv, ProverOpts, VerifierContext};
+use clap::Parser;
+use url::Url;
+use alloy_primitives::{address, Address};
+use erc20_methods::ERC20_GUEST_ELF; //TODO: Change name
+use alloy_sol_types::SolCall;
+use anyhow::Context;
+
 
 use crate::{
     blob_info::G1Commitment,
@@ -9,6 +19,11 @@ use crate::{
         extract_uint8,
     },
 };
+
+/// Address of the deployed contract to call the function on.
+const CONTRACT: Address = address!("1d965C3418CaDd496112CAb06960cD28590FF14F"); // If the contract address changes modify this.
+/// Address of the caller.
+const CALLER: Address = address!("E90E12261CCb0F3F7976Ae611A29e84a6A85f424");
 
 sol! {
     struct QuorumBlobParam {
@@ -238,4 +253,47 @@ pub fn decode_blob_info(
     };
 
     Ok((blob_header, blob_verification_proof))
+}
+
+pub async fn run_blob_verification_guest(blob_header: BlobHeader ,blob_verification_proof: BlobVerificationProof, rpc_url: Url) -> anyhow::Result<ProveInfo> {
+    let call = IVerifyBlob::verifyBlobV1Call {
+        blobHeader: blob_header.clone(),
+        blobVerificationProof: blob_verification_proof.clone(),
+    };
+
+    // Create an EVM environment from an RPC endpoint defaulting to the latest block.
+    let mut env = EthEvmEnv::builder().rpc(rpc_url.clone()).build().await?;
+
+    // Preflight the call to prepare the input that is required to execute the function in
+    // the guest without RPC access. It also returns the result of the call.
+    let mut contract = Contract::preflight(CONTRACT, &mut env);
+    let returns = contract.call_builder(&call).from(CALLER).call().await?;
+    println!(
+        "Call {} Function by {:#} on {:#} returns: {}",
+        IVerifyBlob::verifyBlobV1Call::SIGNATURE,
+        CALLER,
+        CONTRACT,
+        returns._0
+    ); 
+
+    // Finally, construct the input from the environment.
+    let input = env.into_input().await?;
+    
+    let blob_info = crate::blob_info::BlobInfo {
+        blob_header: blob_header.into(),
+        blob_verification_proof: blob_verification_proof.clone().into(),
+    };
+
+    println!("Running the guest with the constructed input...");
+    let session_info = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
+        let env = ExecutorEnv::builder()
+            .write(&input)?
+            .write(&blob_info)?
+            .build()?;
+        let exec = default_prover();
+        exec.prove_with_ctx(env,&VerifierContext::default(), ERC20_GUEST_ELF,&ProverOpts::groth16())
+            .context("failed to run executor")
+    }).await??;
+
+    Ok(session_info)
 }

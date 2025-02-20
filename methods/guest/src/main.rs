@@ -23,7 +23,7 @@ use risc0_zkvm::guest::env;
 risc0_zkvm::guest::entry!(main);
 
 /// Address of the deployed contract to call the function.
-const CONTRACT: Address = address!("c551b009C1CE0b6efD691E23998AEFd4103680D3"); // If the contract address changes modify this.
+const CONTRACT: Address = address!("1d965C3418CaDd496112CAb06960cD28590FF14F"); // If the contract address changes modify this.
 /// Address of the caller. If not provided, the caller will be the [CONTRACT].
 const CALLER: Address = address!("E90E12261CCb0F3F7976Ae611A29e84a6A85f424");
 
