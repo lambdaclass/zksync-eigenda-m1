@@ -161,7 +161,7 @@ async fn main() -> Result<()> {
         
             if output.status.success() {
                 // Extract the transaction hash (regex looks for 0x followed by 64 hex chars)
-                let path = std::path::Path::new("/home/admin/eigenda_zksync/zksync-eigenda-m1/broadcast/Deployer.s.sol/17000/run-latest.json"); // TODO: Unharcode this
+                let path = std::path::Path::new("/home/admin/eigenda_zksync/zksync-eigenda-m1/broadcast/ProofVerifier.s.sol/17000/run-latest.json"); // TODO: Unharcode this
     
                 // Read the JSON file
                 let data = std::fs::read_to_string(path).expect("Failed to read JSON file");
