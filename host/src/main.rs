@@ -158,20 +158,21 @@ async fn main() -> Result<()> {
                 .env("IMAGE_ID", format!("0x{}", hex::encode(&image_id))) // Convert image ID to hex string
                 .env("JOURNAL_DIGEST", format!("0x{}", hex::encode(&journal_digest))) // Convert journal digest to hex string
                 .output()?;
-
-            let stdout = std::str::from_utf8(&output.stdout).unwrap_or("");
-            let stderr = std::str::from_utf8(&output.stderr).unwrap_or("");
-        
-            // Combine stdout and stderr for parsing
-            let combined_output = format!("{}\n{}", stdout, stderr);
         
             if output.status.success() {
                 // Extract the transaction hash (regex looks for 0x followed by 64 hex chars)
-                let tx_hash = combined_output
-                .lines()
-                .find(|line| line.contains("[Success] Hash: 0x"))
-                .and_then(|line| line.split_whitespace().find(|s| s.starts_with("0x")))
-                .unwrap_or("Transaction hash not found");
+                let path = std::path::Path::new("/home/admin/eigenda_zksync/zksync-eigenda-m1/broadcast/Deployer.s.sol/17000/run-latest.json"); // TODO: Unharcode this
+    
+                // Read the JSON file
+                let data = std::fs::read_to_string(path).expect("Failed to read JSON file");
+                
+                // Parse the JSON content
+                let json: serde_json::Value = serde_json::from_str(&data).expect("Failed to parse JSON");
+                
+                // Extract the transaction hash from "transactions" array
+                let transactions = json.get("transactions").and_then(|t| t.as_array()).ok_or(anyhow::anyhow!("Invalid JSON structure: 'transactions' not found or not an array")).unwrap();
+                let first_transaction = transactions.first().ok_or(anyhow::anyhow!("Invalid JSON structure: 'transactions' array is empty")).unwrap();
+                let tx_hash = first_transaction.get("hash").and_then(|h| h.as_str()).ok_or(anyhow::anyhow!("Invalid JSON structure: 'hash' not found or not a string")).unwrap();
                 println!("Proof of data inclusion for blob {} verified on L1. Tx hash: {tx_hash}",blob_verification_proof.blobIndex);
             } else {
                 println!("Proof verification failed");
