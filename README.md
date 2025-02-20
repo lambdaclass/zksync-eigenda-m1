@@ -10,9 +10,13 @@ Next, you will also need to have the [`cargo-risczero`](https://dev.risczero.com
 
 Next we need to install cuda 12.6
 
-Install [cuda](https://github.com/lambdaclass/ethrex/blob/main/crates/l2/docs/prover.md#gpu-mode), this link points to cuda 12.8, do the same steps but for 12.6
+Install [cuda](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Debian&target_version=12&target_type=runfile_local).
+Use the runfile (local) option, use the wget shown to download the script and run it as:
 
-Install [nvidia drivers](https://www.notion.so/lambdaclass/Setting-up-NVIDIA-s-GPU-Drivers-on-Debian-11-ce15f10c69284ef7a0d1f03825129f51)
+```bash
+sudo ./<file>.run
+```
+
 
 
 ## Run the example
