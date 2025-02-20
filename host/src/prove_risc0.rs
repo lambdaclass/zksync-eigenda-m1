@@ -2,7 +2,7 @@ use risc0_zkvm::ProveInfo;
 use risc0_zkvm::{compute_image_id, default_executor, default_prover, sha::Digestible, ExecutorEnv, ProverOpts, VerifierContext};
 use erc20_methods::ERC20_GUEST_ELF;
 
-pub fn prove_risc0_proof(session_info: ProveInfo, private_key: String, blob_index: u32) -> anyhow::Result<()>{
+pub fn prove_risc0_proof(session_info: ProveInfo, private_key: String, blob_index: u32, chain_id: String) -> anyhow::Result<()>{
     let image_id = compute_image_id(ERC20_GUEST_ELF)?;
     let image_id: risc0_zkvm::sha::Digest = image_id.into();
     let image_id = image_id.as_bytes().to_vec();
@@ -42,7 +42,8 @@ pub fn prove_risc0_proof(session_info: ProveInfo, private_key: String, blob_inde
 
     if output.status.success() {
         // Extract the transaction hash
-        let path = std::path::Path::new("/root/m1/zksync-eigenda-m1/broadcast/ProofVerifier.s.sol/17000/run-latest.json"); // TODO: Unharcode this
+        let path = format!("./broadcast/ProofVerifier.s.sol/{}/run-latest.json",chain_id);
+        let path = std::path::Path::new(&path); 
 
         // Read the JSON file
         let data = std::fs::read_to_string(path)?;
