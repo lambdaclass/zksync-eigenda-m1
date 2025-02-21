@@ -23,26 +23,28 @@ use rust_kzg_bn254_primitives::blob::Blob;
 use rust_kzg_bn254_prover::{kzg::KZG, srs::SRS};
 use rust_kzg_bn254_verifier::verify::verify_blob_kzg_proof;
 use ark_ff::PrimeField;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+
 
 risc0_zkvm::guest::entry!(main);
 
 fn main() {
 
-    let content = std::fs::read_to_string("sample_data.txt").unwrap(); 
+    println!("starting guest");
 
-    /// Blob data BEFORE padding
-    let data: Vec<u8> = content
-        .split(',')
-        .map(|s| s.trim()) // Remove any leading/trailing spaces
-        .filter(|s| !s.is_empty()) // Ignore empty strings
-        .map(|s| s.parse::<u8>().expect("Invalid number")) // Parse as u8
-        .collect();
+    let g1s: Vec<Vec<u8>> = env::read();
+    let g1: Vec<G1Affine> = g1s.into_iter().map(|x| G1Affine::deserialize_compressed(&x[..]).unwrap()).collect();
+    let order: u32 = env::read();
+    let data: Vec<u8> = env::read();
+
+    let srs = SRS{g1,order};
+
+    println!("env gotten");
 
     let blob = Blob::from_raw_data(&data);
 
     let mut kzg = KZG::new();
     kzg.calculate_and_store_roots_of_unity(blob.len().try_into().unwrap()).unwrap();
-    let srs = SRS::new("resources/g1.point", 268435456, 1024 * 1024 * 2 / 32).unwrap();
     
     let x: Vec<u8> = vec![20, 153, 170, 133, 150, 17, 219, 215, 90, 29, 61, 41, 183, 105, 4, 139, 14, 161, 160, 7, 49, 89, 23, 57, 49, 52, 16, 175, 112, 57, 19, 50];
     let y: Vec<u8> =  vec![47, 50, 235, 25, 170, 240, 84, 149, 189, 33, 211, 171, 1, 250, 141, 124, 116, 49, 37, 211, 193, 146, 250, 255, 63, 16, 117, 92, 28, 237, 120, 166];

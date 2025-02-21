@@ -1509,6 +1509,7 @@ dependencies = [
  "alloy-sol-types",
  "ark-bn254 0.5.0",
  "ark-ff 0.5.0",
+ "ark-serialize 0.5.0",
  "num-bigint",
  "risc0-zkvm",
  "rust-kzg-bn254-primitives",
