@@ -17,6 +17,10 @@ use clap::Parser;
 use host::verify_blob::decode_blob_info;
 use tokio_postgres::NoTls;
 use url::Url;
+use proof_equivalence_methods::PROOF_EQUIVALENCE_GUEST_ELF;
+use risc0_steel::{ethereum::EthEvmEnv, Contract};
+use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
+
 
 #[derive(Parser, Debug)]
 #[command(about, long_about = None)]
@@ -37,7 +41,21 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let (client, connection) = tokio_postgres::connect(
+    let session_info = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
+        let env = ExecutorEnv::builder()
+            .build()?;
+        let exec = default_prover();
+        exec.prove_with_ctx(
+            env,
+            &VerifierContext::default(),
+            PROOF_EQUIVALENCE_GUEST_ELF,
+            &ProverOpts::groth16(),
+        )
+        .context("failed to run executor")
+    }).await??;
+    Ok(())
+
+    /*let (client, connection) = tokio_postgres::connect(
         "host=localhost user=postgres password=notsecurepassword dbname=zksync_server_localhost_eigenda", 
         NoTls,
     ).await?;
@@ -88,5 +106,5 @@ async fn main() -> Result<()> {
                 args.proof_verifier_rpc.clone(),
             )?;
         }
-    }
+    }*/
 }
