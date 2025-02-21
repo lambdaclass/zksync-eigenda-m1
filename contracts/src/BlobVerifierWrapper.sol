@@ -52,7 +52,7 @@ interface IBlobVerifier {
     ) external view;
 }
 
-contract VerifierWrapper {
+contract BlobVerifierWrapper {
     address public blobVerifier;
 
     constructor(address _blobVerifier) {

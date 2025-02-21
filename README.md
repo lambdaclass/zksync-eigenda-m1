@@ -149,10 +149,18 @@ Update the CONTRACT address on ```host/src/main.rs``` and ```methods/guest/src/m
 
 The address on CALLER is a known address from zksync, it should be changed to the needed one in the real use case.
 
+If necessary, deploy the `Risc0ProofVerifierWrapper`:
+
+```bash
+PRIVATE_KEY=<your_pk> RISC0_VERIFIER_ADDRESS=<your_address> forge script contracts/script/Risc0ProofVerifierWrapperDeployer.s.sol:Risc0ProofVerifierWrapperDeployer --rpc-url <your_rpc> --broadcast -vvvv
+```
+
+There is already one deployed in holesky: `0x25b0F3F5434924821Ad73Eed8C7D81Db87DB0a15`
+
 To run the example execute the following command:
 
 ```bash
-RPC_URL=<your_rpc> PRIVATE_KEY=<your_private_key> CHAIN_ID=<your_chain_id> RUST_LOG=info cargo run --release
+RPC_URL=<your_rpc> PRIVATE_KEY=<your_private_key> CHAIN_ID=<your_chain_id> PROOF_VERIFIER_RPC=<your_rpc> RUST_LOG=info cargo run --release
 ```
 
 

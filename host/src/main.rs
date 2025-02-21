@@ -21,7 +21,10 @@ use clap::Parser;
 use erc20_methods::ERC20_GUEST_ELF;
 use host::verify_blob::{decode_blob_info, IVerifyBlob};
 use risc0_steel::{ethereum::EthEvmEnv, Commitment, Contract};
-use risc0_zkvm::{compute_image_id, default_executor, default_prover, sha::Digestible, ExecutorEnv, ProverOpts, VerifierContext};
+use risc0_zkvm::{
+    compute_image_id, default_executor, default_prover, sha::Digestible, ExecutorEnv, ProverOpts,
+    VerifierContext,
+};
 use tokio_postgres::{row, NoTls};
 use tracing_subscriber::EnvFilter;
 use url::Url;
@@ -35,9 +38,12 @@ struct Args {
     /// Private key to verify the proof
     #[arg(short, long, env = "PRIVATE_KEY")]
     private_key: String, // TODO: maybe make this a secret
-    /// Chain id
+    /// Chain id were the proof should be verified
     #[arg(short, long, env = "CHAIN_ID")]
-    chain_id: String 
+    chain_id: String,
+    /// Rpc were the proof should be verified
+    #[arg(short, long, env = "PROOF_VERIFIER_RPC")]
+    proof_verifier_rpc: String,
 }
 
 #[tokio::main]
@@ -53,31 +59,45 @@ async fn main() -> Result<()> {
         }
     });
 
-    let mut timestamp = chrono::NaiveDateTime::parse_from_str("1970-01-01 00:00:00", "%Y-%m-%d %H:%M:%S")?;
+    let mut timestamp =
+        chrono::NaiveDateTime::parse_from_str("1970-01-01 00:00:00", "%Y-%m-%d %H:%M:%S")?;
 
     // Parse the command line arguments.
     let args = Args::parse();
 
     loop {
-        
         let rows = client
         .query("SELECT inclusion_data, sent_at FROM data_availability WHERE sent_at > $1 AND inclusion_data IS NOT NULL ORDER BY sent_at", &[&timestamp])
         .await?; // Maybe this approach doesn't work, since maybe row A with has a lower timestamp than row B, but row A has inclusion data NULL so it is not included yet and will never be.
-        // Maybe just look for batch number and go one by one.
+                 // Maybe just look for batch number and go one by one.
 
         if rows.is_empty() {
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
             continue;
         }
 
-        timestamp = rows.last().ok_or(anyhow::anyhow!("Not enough rows"))?.get(1);
+        timestamp = rows
+            .last()
+            .ok_or(anyhow::anyhow!("Not enough rows"))?
+            .get(1);
 
         for row in rows {
             let inclusion_data: Vec<u8> = row.get(0);
             let (blob_header, blob_verification_proof) = decode_blob_info(inclusion_data)?;
-            let session_info = host::verify_blob::run_blob_verification_guest(blob_header, blob_verification_proof.clone(), args.rpc_url.clone()).await?;
+            let session_info = host::verify_blob::run_blob_verification_guest(
+                blob_header,
+                blob_verification_proof.clone(),
+                args.rpc_url.clone(),
+            )
+            .await?;
 
-            host::prove_risc0::prove_risc0_proof(session_info, args.private_key.clone(), blob_verification_proof.blobIndex, args.chain_id.clone())?;
+            host::prove_risc0::prove_risc0_proof(
+                session_info,
+                args.private_key.clone(),
+                blob_verification_proof.blobIndex,
+                args.chain_id.clone(),
+                args.proof_verifier_rpc.clone(),
+            )?;
         }
     }
 }

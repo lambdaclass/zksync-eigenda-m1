@@ -5,7 +5,8 @@ interface IRiscZeroVerifier {
     function verify(bytes calldata seal, bytes32 imageId, bytes32 journalDigest) external view;
 }
 
-contract ProofVerifierWrapper {
+// Wraps the Risc0 groth16 verifier to make the function not view
+contract Risc0ProofVerifierWrapper {
     IRiscZeroVerifier public risc0verifier;
 
     event ProofVerified();

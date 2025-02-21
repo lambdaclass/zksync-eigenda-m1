@@ -7,7 +7,8 @@ interface IRiscZeroVerifier {
     function verify(bytes calldata seal, bytes32 imageId, bytes32 journalDigest) external;
 }
 
-contract ProofVerifier is Script {
+// This script calls the Risc0Verifier verify with the given arguments
+contract Risc0ProofVerifier is Script {
     function run() external {
         // Load the deployer's private key from env (make sure it's funded)
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");

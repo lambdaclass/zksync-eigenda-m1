@@ -1,16 +1,18 @@
 use alloy_primitives::U256;
-use alloy_sol_types::sol;
-use ethabi::ParamType;
-use risc0_zkvm::ProveInfo;
-use risc0_steel::{ethereum::EthEvmEnv, Commitment, Contract};
-use risc0_zkvm::{compute_image_id, default_executor, default_prover, sha::Digestible, ExecutorEnv, ProverOpts, VerifierContext};
-use clap::Parser;
-use url::Url;
 use alloy_primitives::{address, Address};
-use erc20_methods::ERC20_GUEST_ELF; //TODO: Change name
+use alloy_sol_types::sol;
 use alloy_sol_types::SolCall;
 use anyhow::Context;
-
+use clap::Parser;
+use erc20_methods::ERC20_GUEST_ELF; //TODO: Change name
+use ethabi::ParamType;
+use risc0_steel::{ethereum::EthEvmEnv, Commitment, Contract};
+use risc0_zkvm::ProveInfo;
+use risc0_zkvm::{
+    compute_image_id, default_executor, default_prover, sha::Digestible, ExecutorEnv, ProverOpts,
+    VerifierContext,
+};
+use url::Url;
 
 use crate::{
     blob_info::G1Commitment,
@@ -255,7 +257,11 @@ pub fn decode_blob_info(
     Ok((blob_header, blob_verification_proof))
 }
 
-pub async fn run_blob_verification_guest(blob_header: BlobHeader ,blob_verification_proof: BlobVerificationProof, rpc_url: Url) -> anyhow::Result<ProveInfo> {
+pub async fn run_blob_verification_guest(
+    blob_header: BlobHeader,
+    blob_verification_proof: BlobVerificationProof,
+    rpc_url: Url,
+) -> anyhow::Result<ProveInfo> {
     let call = IVerifyBlob::verifyBlobV1Call {
         blobHeader: blob_header.clone(),
         blobVerificationProof: blob_verification_proof.clone(),
@@ -274,11 +280,11 @@ pub async fn run_blob_verification_guest(blob_header: BlobHeader ,blob_verificat
         CALLER,
         CONTRACT,
         returns._0
-    ); 
+    );
 
     // Finally, construct the input from the environment.
     let input = env.into_input().await?;
-    
+
     let blob_info = crate::blob_info::BlobInfo {
         blob_header: blob_header.into(),
         blob_verification_proof: blob_verification_proof.clone().into(),
@@ -291,9 +297,15 @@ pub async fn run_blob_verification_guest(blob_header: BlobHeader ,blob_verificat
             .write(&blob_info)?
             .build()?;
         let exec = default_prover();
-        exec.prove_with_ctx(env,&VerifierContext::default(), ERC20_GUEST_ELF,&ProverOpts::groth16())
-            .context("failed to run executor")
-    }).await??;
+        exec.prove_with_ctx(
+            env,
+            &VerifierContext::default(),
+            ERC20_GUEST_ELF,
+            &ProverOpts::groth16(),
+        )
+        .context("failed to run executor")
+    })
+    .await??;
 
     Ok(session_info)
 }
