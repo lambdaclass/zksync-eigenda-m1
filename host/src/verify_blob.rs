@@ -3,15 +3,11 @@ use alloy_primitives::{address, Address};
 use alloy_sol_types::sol;
 use alloy_sol_types::SolCall;
 use anyhow::Context;
-use clap::Parser;
 use blob_verification_methods::BLOB_VERIFICATION_GUEST_ELF;
 use ethabi::ParamType;
-use risc0_steel::{ethereum::EthEvmEnv, Commitment, Contract};
+use risc0_steel::{ethereum::EthEvmEnv, Contract};
 use risc0_zkvm::ProveInfo;
-use risc0_zkvm::{
-    compute_image_id, default_executor, default_prover, sha::Digestible, ExecutorEnv, ProverOpts,
-    VerifierContext,
-};
+use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
 use url::Url;
 
 use crate::{
@@ -23,7 +19,7 @@ use crate::{
 };
 
 /// Address of the deployed contract to call the function on.
-const CONTRACT: Address = address!("1d965C3418CaDd496112CAb06960cD28590FF14F"); // If the contract address changes modify this.
+const CONTRACT: Address = address!("c551b009C1CE0b6efD691E23998AEFd4103680D3"); // If the contract address changes modify this.
 /// Address of the caller.
 const CALLER: Address = address!("E90E12261CCb0F3F7976Ae611A29e84a6A85f424");
 

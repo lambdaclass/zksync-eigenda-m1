@@ -1,9 +1,6 @@
 use blob_verification_methods::BLOB_VERIFICATION_GUEST_ELF;
 use risc0_zkvm::ProveInfo;
-use risc0_zkvm::{
-    compute_image_id, default_executor, default_prover, sha::Digestible, ExecutorEnv, ProverOpts,
-    VerifierContext,
-};
+use risc0_zkvm::{compute_image_id, sha::Digestible};
 
 pub fn prove_risc0_proof(
     session_info: ProveInfo,

@@ -12,21 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::process::Stdio;
-
-use alloy_primitives::{address, Address};
-use alloy_sol_types::{SolCall, SolType};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::Parser;
-use blob_verification_methods::BLOB_VERIFICATION_GUEST_ELF;
-use host::verify_blob::{decode_blob_info, IVerifyBlob};
-use risc0_steel::{ethereum::EthEvmEnv, Commitment, Contract};
-use risc0_zkvm::{
-    compute_image_id, default_executor, default_prover, sha::Digestible, ExecutorEnv, ProverOpts,
-    VerifierContext,
-};
-use tokio_postgres::{row, NoTls};
-use tracing_subscriber::EnvFilter;
+use host::verify_blob::decode_blob_info;
+use tokio_postgres::NoTls;
 use url::Url;
 
 #[derive(Parser, Debug)]
