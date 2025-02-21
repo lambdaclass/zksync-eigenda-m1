@@ -15,7 +15,7 @@ alloy-primitives = { version = "0.8" }
 alloy-sol-types = { version = "0.8" }
 anyhow = "1.0"
 clap = { version = "4.5", features = ["derive", "env"] }
-blob-verification-methods = { path = "methods" }
+blob-verification-methods = { path = "blob-verification-methods" }
 tokio = { version = "1.39", features = ["full"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 url = { version = "2.5" }
