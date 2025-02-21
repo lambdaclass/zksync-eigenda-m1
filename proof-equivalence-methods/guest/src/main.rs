@@ -16,8 +16,6 @@
 #![no_main]
 
 use alloy_primitives::{address, Address};
-use blob_verification_guest::{blob_info::BlobInfo, verify_blob::IVerifyBlob};
-use risc0_steel::{ethereum::EthEvmInput, Contract};
 use risc0_zkvm::guest::env;
 
 use ark_bn254::{Fq, G1Affine};
@@ -65,7 +63,7 @@ fn main() {
 
     assert!(verified);
 
-    env::commit_slice(verified);
+    env::commit(&verified);
 
     println!(":)");
 
