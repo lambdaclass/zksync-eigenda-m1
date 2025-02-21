@@ -1,5 +1,5 @@
 [package]
-name = "erc20-methods"
+name = "blob-verification-methods"
 version = "0.1.0"
 edition = "2021"
 

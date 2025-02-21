@@ -1,4 +1,4 @@
-use erc20_methods::ERC20_GUEST_ELF;
+use blob_verification_methods::BLOB_VERIFICATION_GUEST_ELF;
 use risc0_zkvm::ProveInfo;
 use risc0_zkvm::{
     compute_image_id, default_executor, default_prover, sha::Digestible, ExecutorEnv, ProverOpts,
@@ -12,7 +12,7 @@ pub fn prove_risc0_proof(
     chain_id: String,
     proof_verifier_rpc: String,
 ) -> anyhow::Result<()> {
-    let image_id = compute_image_id(ERC20_GUEST_ELF)?;
+    let image_id = compute_image_id(BLOB_VERIFICATION_GUEST_ELF)?;
     let image_id: risc0_zkvm::sha::Digest = image_id.into();
     let image_id = image_id.as_bytes().to_vec();
 

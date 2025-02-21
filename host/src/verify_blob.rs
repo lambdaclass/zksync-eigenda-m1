@@ -4,7 +4,7 @@ use alloy_sol_types::sol;
 use alloy_sol_types::SolCall;
 use anyhow::Context;
 use clap::Parser;
-use erc20_methods::ERC20_GUEST_ELF; //TODO: Change name
+use blob_verification_methods::BLOB_VERIFICATION_GUEST_ELF;
 use ethabi::ParamType;
 use risc0_steel::{ethereum::EthEvmEnv, Commitment, Contract};
 use risc0_zkvm::ProveInfo;
@@ -300,7 +300,7 @@ pub async fn run_blob_verification_guest(
         exec.prove_with_ctx(
             env,
             &VerifierContext::default(),
-            ERC20_GUEST_ELF,
+            BLOB_VERIFICATION_GUEST_ELF,
             &ProverOpts::groth16(),
         )
         .context("failed to run executor")

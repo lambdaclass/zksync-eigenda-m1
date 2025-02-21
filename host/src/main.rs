@@ -18,7 +18,7 @@ use alloy_primitives::{address, Address};
 use alloy_sol_types::{SolCall, SolType};
 use anyhow::{Context, Result};
 use clap::Parser;
-use erc20_methods::ERC20_GUEST_ELF;
+use blob_verification_methods::BLOB_VERIFICATION_GUEST_ELF;
 use host::verify_blob::{decode_blob_info, IVerifyBlob};
 use risc0_steel::{ethereum::EthEvmEnv, Commitment, Contract};
 use risc0_zkvm::{

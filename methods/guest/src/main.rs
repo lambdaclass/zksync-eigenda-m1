@@ -16,7 +16,7 @@
 #![no_main]
 
 use alloy_primitives::{address, Address};
-use erc20_guest::{blob_info::BlobInfo, verify_blob::IVerifyBlob};
+use blob_verification_guest::{blob_info::BlobInfo, verify_blob::IVerifyBlob};
 use risc0_steel::{ethereum::EthEvmInput, Contract};
 use risc0_zkvm::guest::env;
 
