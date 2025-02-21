@@ -21,6 +21,8 @@ use proof_equivalence_methods::PROOF_EQUIVALENCE_GUEST_ELF;
 use risc0_steel::{ethereum::EthEvmEnv, Contract};
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
 use anyhow::Context;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use rust_kzg_bn254_prover::srs::SRS;
 
 #[derive(Parser, Debug)]
 #[command(about, long_about = None)]
@@ -41,8 +43,32 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    println!("Starting run");
+
+    let srs = SRS::new("resources/g1.point", 268435456, 1024 * 1024 * 2 / 32).unwrap();
+
+    let g1s : Vec<Vec<u8>> = srs.g1.into_iter().map(|x| {
+        let mut bytes = Vec::new();
+        x.serialize_compressed(&mut bytes).unwrap();
+        bytes
+    }).collect();
+
+    println!("srs calculated");
+    let content = std::fs::read_to_string("sample_data.txt").unwrap(); 
+
+    /// Blob data BEFORE padding
+    let data: Vec<u8> = content
+        .split(',')
+        .map(|s| s.trim()) // Remove any leading/trailing spaces
+        .filter(|s| !s.is_empty()) // Ignore empty strings
+        .map(|s| s.parse::<u8>().expect("Invalid number")) // Parse as u8
+        .collect();
+
     let session_info = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
         let env = ExecutorEnv::builder()
+            .write(&g1s).unwrap()
+            .write(&srs.order).unwrap()
+            .write(&data).unwrap()
             .build()?;
         let exec = default_prover();
         exec.prove_with_ctx(
@@ -53,6 +79,7 @@ async fn main() -> Result<()> {
         )
         .context("failed to run executor")
     }).await??;
+    println!("Finished run");
     Ok(())
 
     /*let (client, connection) = tokio_postgres::connect(
