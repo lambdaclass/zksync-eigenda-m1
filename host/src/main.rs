@@ -20,7 +20,7 @@ use url::Url;
 use proof_equivalence_methods::PROOF_EQUIVALENCE_GUEST_ELF;
 use risc0_steel::{ethereum::EthEvmEnv, Contract};
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
-
+use anyhow::Context;
 
 #[derive(Parser, Debug)]
 #[command(about, long_about = None)]
