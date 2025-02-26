@@ -16,12 +16,14 @@ use anyhow::Result;
 use clap::Parser;
 use host::verify_blob::decode_blob_info;
 use tokio_postgres::NoTls;
+use ark_bn254::{Fq, G1Affine};
 use url::Url;
 use proof_equivalence_methods::PROOF_EQUIVALENCE_GUEST_ELF;
 use risc0_steel::{ethereum::EthEvmEnv, Contract};
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
 use anyhow::Context;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use serde::{Serialize, Serializer};
 use rust_kzg_bn254_prover::srs::SRS;
 
 #[derive(Parser, Debug)]
@@ -41,16 +43,32 @@ struct Args {
     proof_verifier_rpc: String,
 }
 
+pub struct SerializableG1 {
+    pub g1: G1Affine
+}
+
+impl Serialize for SerializableG1 {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut bytes: Vec<u8> = Vec::new();
+        self.g1.serialize_compressed(&mut bytes).map_err(serde::ser::Error::custom)?;
+        bytes.serialize(serializer)
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     println!("Starting run");
 
     let srs = SRS::new("resources/g1.point", 268435456, 1024 * 1024 * 2 / 32).unwrap();
 
-    let g1s : Vec<Vec<u8>> = srs.g1.into_iter().map(|x| {
-        let mut bytes = Vec::new();
+    let g1s : Vec<SerializableG1> = srs.g1.into_iter().map(|g1| {
+        /*let mut bytes = Vec::new();
         x.serialize_compressed(&mut bytes).unwrap();
-        bytes
+        bytes*/
+        SerializableG1{g1}
     }).collect();
 
     println!("srs calculated");
@@ -64,11 +82,14 @@ async fn main() -> Result<()> {
         .map(|s| s.parse::<u8>().expect("Invalid number")) // Parse as u8
         .collect();
 
+    println!("data len {}", data.len());
+    println!("srs len {}", g1s.len());
+
     let session_info = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
         let env = ExecutorEnv::builder()
+            .write(&data).unwrap()
             .write(&g1s).unwrap()
             .write(&srs.order).unwrap()
-            .write(&data).unwrap()
             .build()?;
         let exec = default_prover();
         exec.prove_with_ctx(

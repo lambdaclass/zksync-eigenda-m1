@@ -24,18 +24,44 @@ use rust_kzg_bn254_prover::{kzg::KZG, srs::SRS};
 use rust_kzg_bn254_verifier::verify::verify_blob_kzg_proof;
 use ark_ff::PrimeField;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-
+use serde::{Deserialize, Deserializer};
 
 risc0_zkvm::guest::entry!(main);
+
+pub struct SerializableG1 {
+    pub g1: G1Affine
+}
+
+impl<'de> Deserialize<'de> for SerializableG1 {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let bytes = <Vec<u8>>::deserialize(deserializer).map_err(|e| serde::de::Error::custom(format!("Failed to deserialize vec {:?}",e)))?;
+        let g1 = G1Affine::deserialize_compressed(&bytes[..]).map_err(|e| serde::de::Error::custom(format!("Failed to deserialize G1Affine: {:?}", e)))?;
+        Ok(SerializableG1{g1})
+    }
+}
 
 fn main() {
 
     println!("starting guest");
 
-    let g1s: Vec<Vec<u8>> = env::read();
-    let g1: Vec<G1Affine> = g1s.into_iter().map(|x| G1Affine::deserialize_compressed(&x[..]).unwrap()).collect();
-    let order: u32 = env::read();
     let data: Vec<u8> = env::read();
+    println!("data gotten");
+    let g1s: Vec<SerializableG1> = env::read();
+    println!("g1s gotten");
+    let mut g1: Vec<G1Affine> = vec![];
+    let mut i = 0;
+    for g in g1s {
+        println!("pushing {}",i);
+        g1.push(g.g1);
+        i += 1;
+    }
+    //let g1: Vec<G1Affine> = g1s.into_iter().map(|x| G1Affine::deserialize_compressed_unchecked(&x[..]).unwrap()).collect();
+    println!("g1s converted");
+    let order: u32 = env::read();
+    println!("order read");
 
     let srs = SRS{g1,order};
 
@@ -43,26 +69,39 @@ fn main() {
 
     let blob = Blob::from_raw_data(&data);
 
+    println!("blob done");
+
     let mut kzg = KZG::new();
+
+    println!("kzg done");
     kzg.calculate_and_store_roots_of_unity(blob.len().try_into().unwrap()).unwrap();
+    println!("roots");
     
     let x: Vec<u8> = vec![20, 153, 170, 133, 150, 17, 219, 215, 90, 29, 61, 41, 183, 105, 4, 139, 14, 161, 160, 7, 49, 89, 23, 57, 49, 52, 16, 175, 112, 57, 19, 50];
     let y: Vec<u8> =  vec![47, 50, 235, 25, 170, 240, 84, 149, 189, 33, 211, 171, 1, 250, 141, 124, 116, 49, 37, 211, 193, 146, 250, 255, 63, 16, 117, 92, 28, 237, 120, 166];
     
     let x_fq = Fq::from(num_bigint::BigUint::from_bytes_be(&x));
+    println!("x done");
     let y_fq =  Fq::from(num_bigint::BigUint::from_bytes_be(&y));
+    println!("y done");
     
     let commitment = G1Affine::new(x_fq, y_fq);
+    println!("com done");
     let real_commitment = kzg.commit_coeff_form(&blob.to_polynomial_coeff_form(), &srs).unwrap();
+    println!("real done");
     
     assert!(commitment == real_commitment);
 
     let eval_commitment = kzg.commit_eval_form(&blob.to_polynomial_eval_form(), &srs).unwrap();
 
+    println!("eval done");
+
     let proof = kzg.compute_blob_proof(&blob, &eval_commitment, &srs).unwrap();
+    println!("proof done");
 
     let verified = verify_blob_kzg_proof(&blob, &eval_commitment, &proof).unwrap();
-
+    
+    println!("verified done");
     assert!(verified);
 
     env::commit(&verified);
