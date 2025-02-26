@@ -220,7 +220,6 @@ dependencies = [
  "num-bigint",
  "num-integer",
  "num-traits",
- "rayon",
  "zeroize",
 ]
 
@@ -279,7 +278,6 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "paste",
- "rayon",
  "zeroize",
 ]
 
@@ -392,7 +390,6 @@ dependencies = [
  "educe",
  "fnv",
  "hashbrown 0.15.2",
- "rayon",
 ]
 
 [[package]]
@@ -440,7 +437,6 @@ dependencies = [
  "arrayvec",
  "digest 0.10.7",
  "num-bigint",
- "rayon",
 ]
 
 [[package]]
@@ -505,7 +501,6 @@ checksum = "246a225cc6131e9ee4f24619af0f19d67761fff15d7ccc22e42b80846e69449a"
 dependencies = [
  "num-traits",
  "rand",
- "rayon",
 ]
 
 [[package]]
@@ -1845,7 +1840,6 @@ checksum = "48fd7bd8a6377e15ad9d42a8ec25371b94ddc67abe7c8b9127bec79bebaaae18"
 [[package]]
 name = "rust-kzg-bn254-primitives"
 version = "0.1.1"
-source = "git+https://github.com/Layr-Labs/rust-kzg-bn254.git?branch=master#df1ac7ad835894a42dd9d384c92c59d647a4e334"
 dependencies = [
  "ark-bn254 0.5.0",
  "ark-ec 0.5.0",
@@ -1861,7 +1855,6 @@ dependencies = [
 [[package]]
 name = "rust-kzg-bn254-prover"
 version = "0.1.0"
-source = "git+https://github.com/Layr-Labs/rust-kzg-bn254.git?branch=master#df1ac7ad835894a42dd9d384c92c59d647a4e334"
 dependencies = [
  "ark-bn254 0.5.0",
  "ark-ec 0.5.0",
@@ -1878,7 +1871,6 @@ dependencies = [
 [[package]]
 name = "rust-kzg-bn254-verifier"
 version = "0.1.0"
-source = "git+https://github.com/Layr-Labs/rust-kzg-bn254.git?branch=master#df1ac7ad835894a42dd9d384c92c59d647a4e334"
 dependencies = [
  "ark-bn254 0.5.0",
  "ark-ec 0.5.0",
