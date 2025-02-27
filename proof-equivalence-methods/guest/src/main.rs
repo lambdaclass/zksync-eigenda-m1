@@ -25,6 +25,8 @@ use rust_kzg_bn254_verifier::verify::verify_blob_kzg_proof;
 use ark_ff::PrimeField;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use serde::{Deserialize, Deserializer};
+use ark_ff::{Fp, MontFp};
+use std::str::FromStr;
 
 risc0_zkvm::guest::entry!(main);
 
@@ -37,8 +39,8 @@ impl<'de> Deserialize<'de> for SerializableG1 {
     where
         D: Deserializer<'de>,
     {
-        let bytes = <Vec<u8>>::deserialize(deserializer).map_err(|e| serde::de::Error::custom(format!("Failed to deserialize vec {:?}",e)))?;
-        let g1 = G1Affine::deserialize_compressed(&bytes[..]).map_err(|e| serde::de::Error::custom(format!("Failed to deserialize G1Affine: {:?}", e)))?;
+        let (x, y): (String, String) = Deserialize::deserialize(deserializer)?;
+        let g1 = G1Affine::new_unchecked(Fp::from_str(&x).unwrap(), Fp::from_str(&y).unwrap());
         Ok(SerializableG1{g1})
     }
 }
