@@ -16,6 +16,8 @@ use anyhow::Result;
 use clap::Parser;
 use host::verify_blob::decode_blob_info;
 use tokio_postgres::NoTls;
+use std::io::{self, Write};
+
 use ark_bn254::{Fq, G1Affine};
 use url::Url;
 use proof_equivalence_methods::PROOF_EQUIVALENCE_GUEST_ELF;
@@ -25,6 +27,7 @@ use anyhow::Context;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use serde::{Serialize, Serializer};
 use rust_kzg_bn254_prover::srs::SRS;
+use serde::ser::SerializeTuple;
 
 #[derive(Parser, Debug)]
 #[command(about, long_about = None)]
@@ -52,9 +55,12 @@ impl Serialize for SerializableG1 {
     where
         S: Serializer,
     {
-        let mut bytes: Vec<u8> = Vec::new();
-        self.g1.serialize_compressed(&mut bytes).map_err(serde::ser::Error::custom)?;
-        bytes.serialize(serializer)
+        let x = format!("{:?}",self.g1.x);
+        let y = format!("{:?}",self.g1.y);
+        let mut tup = serializer.serialize_tuple(2)?;
+        tup.serialize_element(&x).unwrap();
+        tup.serialize_element(&y).unwrap();
+        tup.end()
     }
 }
 
