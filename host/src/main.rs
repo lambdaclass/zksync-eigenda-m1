@@ -16,6 +16,7 @@ use anyhow::Result;
 use clap::Parser;
 use host::verify_blob::decode_blob_info;
 use tokio_postgres::NoTls;
+use tracing_subscriber::EnvFilter;
 use std::io::{self, Write};
 
 use ark_bn254::{Fq, G1Affine};
@@ -67,6 +68,10 @@ impl Serialize for SerializableG1 {
 #[tokio::main]
 async fn main() -> Result<()> {
     println!("Starting run");
+
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
 
     let srs = SRS::new("resources/g1.point", 268435456, 1024 * 1024 * 2 / 32).unwrap();
 
