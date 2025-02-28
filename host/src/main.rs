@@ -27,7 +27,7 @@ struct Args {
     /// Private key to verify the proof
     #[arg(short, long, env = "PRIVATE_KEY")]
     private_key: String, // TODO: maybe make this a secret
-    /// Chain id were the proof should be verified
+    /// Chain id where the proof should be verified
     #[arg(short, long, env = "CHAIN_ID")]
     chain_id: String,
     /// Rpc were the proof should be verified
