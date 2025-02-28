@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["host", "methods"]
+members = ["host", "methods", "common"]
 
 [workspace.dependencies]
 # Intra-workspace dependencies
@@ -25,6 +25,7 @@ serde = "1.0"
 hex = "0.4"
 chrono = "0.4"
 serde_json = "1.0"
+common = {path = "common"}
 
 
 # Always optimize; building and running the guest takes much longer without optimization.

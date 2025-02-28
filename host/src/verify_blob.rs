@@ -9,9 +9,9 @@ use risc0_steel::{ethereum::EthEvmEnv, Contract};
 use risc0_zkvm::ProveInfo;
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
 use url::Url;
+use common::blob_info::G1Commitment;
 
 use crate::{
-    blob_info::G1Commitment,
     utils::{
         extract_array, extract_bytes, extract_fixed_bytes, extract_tuple, extract_uint32,
         extract_uint8,
@@ -84,9 +84,9 @@ impl From<G1Point> for G1Commitment {
     }
 }
 
-impl From<QuorumBlobParam> for crate::blob_info::BlobQuorumParam {
+impl From<QuorumBlobParam> for common::blob_info::BlobQuorumParam {
     fn from(param: QuorumBlobParam) -> Self {
-        crate::blob_info::BlobQuorumParam {
+        common::blob_info::BlobQuorumParam {
             quorum_number: param.quorumNumber as u32,
             adversary_threshold_percentage: param.adversaryThresholdPercentage as u32,
             confirmation_threshold_percentage: param.confirmationThresholdPercentage as u32,
@@ -95,23 +95,23 @@ impl From<QuorumBlobParam> for crate::blob_info::BlobQuorumParam {
     }
 }
 
-impl From<BlobHeader> for crate::blob_info::BlobHeader {
+impl From<BlobHeader> for common::blob_info::BlobHeader {
     fn from(header: BlobHeader) -> Self {
-        crate::blob_info::BlobHeader {
+        common::blob_info::BlobHeader {
             commitment: header.commitment.into(),
             data_length: header.dataLength,
             blob_quorum_params: header
                 .quorumBlobParams
                 .iter()
-                .map(|param| crate::blob_info::BlobQuorumParam::from(param.clone()))
+                .map(|param| common::blob_info::BlobQuorumParam::from(param.clone()))
                 .collect(),
         }
     }
 }
 
-impl From<BatchHeader> for crate::blob_info::BatchHeader {
+impl From<BatchHeader> for common::blob_info::BatchHeader {
     fn from(header: BatchHeader) -> Self {
-        crate::blob_info::BatchHeader {
+        common::blob_info::BatchHeader {
             batch_root: header.blobHeadersRoot.to_vec(),
             quorum_numbers: header.quorumNumbers.to_vec(),
             quorum_signed_percentages: header.signedStakeForQuorums.to_vec(),
@@ -120,10 +120,10 @@ impl From<BatchHeader> for crate::blob_info::BatchHeader {
     }
 }
 
-impl From<BatchMetadata> for crate::blob_info::BatchMetadata {
+impl From<BatchMetadata> for common::blob_info::BatchMetadata {
     fn from(metadata: BatchMetadata) -> Self {
-        crate::blob_info::BatchMetadata {
-            batch_header: crate::blob_info::BatchHeader::from(metadata.batchHeader),
+        common::blob_info::BatchMetadata {
+            batch_header: common::blob_info::BatchHeader::from(metadata.batchHeader),
             signatory_record_hash: metadata.signatoryRecordHash.to_vec(),
             confirmation_block_number: metadata.confirmationBlockNumber,
             fee: vec![],
@@ -132,12 +132,12 @@ impl From<BatchMetadata> for crate::blob_info::BatchMetadata {
     }
 }
 
-impl From<BlobVerificationProof> for crate::blob_info::BlobVerificationProof {
+impl From<BlobVerificationProof> for common::blob_info::BlobVerificationProof {
     fn from(proof: BlobVerificationProof) -> Self {
-        crate::blob_info::BlobVerificationProof {
+        common::blob_info::BlobVerificationProof {
             batch_id: proof.batchId,
             blob_index: proof.blobIndex,
-            batch_medatada: crate::blob_info::BatchMetadata::from(proof.batchMetadata),
+            batch_medatada: common::blob_info::BatchMetadata::from(proof.batchMetadata),
             inclusion_proof: proof.inclusionProof.to_vec(),
             quorum_indexes: proof.quorumIndices.to_vec(),
         }
@@ -281,7 +281,7 @@ pub async fn run_blob_verification_guest(
     // Finally, construct the input from the environment.
     let input = env.into_input().await?;
 
-    let blob_info = crate::blob_info::BlobInfo {
+    let blob_info = common::blob_info::BlobInfo {
         blob_header: blob_header.into(),
         blob_verification_proof: blob_verification_proof.clone().into(),
     };

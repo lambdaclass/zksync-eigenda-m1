@@ -10,7 +10,7 @@ alloy-primitives = { version = "0.8" }
 alloy-sol-types = { version = "0.8" }
 risc0-steel = { git = "https://github.com/risc0/risc0-ethereum", tag = "v1.2.0" }
 risc0-zkvm = { version = "1.2.0", default-features = false, features = ["std"] }
-serde = "1.0"
+common = {path = "../../common"}
 
 [patch.crates-io]
 # use optimized risc0 circuit

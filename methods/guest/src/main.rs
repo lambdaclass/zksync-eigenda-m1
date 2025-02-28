@@ -16,7 +16,8 @@
 #![no_main]
 
 use alloy_primitives::{address, Address};
-use blob_verification_guest::{blob_info::BlobInfo, verify_blob::IVerifyBlob};
+use common::blob_info::BlobInfo;
+use blob_verification_guest::verify_blob::IVerifyBlob;
 use risc0_steel::{ethereum::EthEvmInput, Contract};
 use risc0_zkvm::guest::env;
 
