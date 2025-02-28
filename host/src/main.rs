@@ -15,6 +15,7 @@
 use anyhow::Result;
 use clap::Parser;
 use host::verify_blob::decode_blob_info;
+use secrecy::Secret;
 use tokio_postgres::NoTls;
 use url::Url;
 
@@ -26,13 +27,13 @@ struct Args {
     rpc_url: Url,
     /// Private key to verify the proof
     #[arg(short, long, env = "PRIVATE_KEY")]
-    private_key: String, // TODO: maybe make this a secret
+    private_key: Secret<String>,
     /// Chain id where the proof should be verified
     #[arg(short, long, env = "CHAIN_ID")]
     chain_id: String,
     /// Rpc were the proof should be verified
     #[arg(short, long, env = "PROOF_VERIFIER_RPC")]
-    proof_verifier_rpc: String,
+    proof_verifier_rpc: Secret<String>,
 }
 
 #[tokio::main]

@@ -1,13 +1,14 @@
 use blob_verification_methods::BLOB_VERIFICATION_GUEST_ELF;
 use risc0_zkvm::ProveInfo;
 use risc0_zkvm::{compute_image_id, sha::Digestible};
+use secrecy::{ExposeSecret, Secret};
 
 pub fn prove_risc0_proof(
     session_info: ProveInfo,
-    private_key: String,
+    private_key: Secret<String>,
     blob_index: u32,
     chain_id: String,
-    proof_verifier_rpc: String,
+    proof_verifier_rpc: Secret<String>,
 ) -> anyhow::Result<()> {
     let image_id = compute_image_id(BLOB_VERIFICATION_GUEST_ELF)?;
     let image_id: risc0_zkvm::sha::Digest = image_id.into();
@@ -38,10 +39,10 @@ pub fn prove_risc0_proof(
         .arg("script")
         .arg("contracts/script/Risc0ProofVerifier.s.sol:Risc0ProofVerifier")
         .arg("--rpc-url")
-        .arg(proof_verifier_rpc)
+        .arg(proof_verifier_rpc.expose_secret())
         .arg("--broadcast")
         .arg("-vvvv")
-        .env("PRIVATE_KEY", private_key) // Set environment variable
+        .env("PRIVATE_KEY", private_key.expose_secret()) // Set environment variable
         .env("SEAL", format!("0x{}", hex::encode(&block_proof))) // Convert seal to hex string
         .env("IMAGE_ID", format!("0x{}", hex::encode(&image_id))) // Convert image ID to hex string
         .env(

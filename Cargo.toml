@@ -26,6 +26,7 @@ hex = "0.4"
 chrono = "0.4"
 serde_json = "1.0"
 common = {path = "common"}
+secrecy = "0.8.0"
 
 
 # Always optimize; building and running the guest takes much longer without optimization.

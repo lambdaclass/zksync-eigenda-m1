@@ -20,3 +20,4 @@ hex = {workspace = true}
 chrono = {workspace = true}
 serde_json = {workspace = true}
 common = {workspace = true}
+secrecy = {workspace = true}
