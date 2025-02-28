@@ -18,8 +18,8 @@ use crate::{
     },
 };
 
-/// Address of the deployed contract to call the function on.
-const CONTRACT: Address = address!("c551b009C1CE0b6efD691E23998AEFd4103680D3"); // If the contract address changes modify this.
+/// Address of the deployed blob verifier wrapper contract to call the function on.
+const BLOB_VERIFIER_WRAPPER_CONTRACT: Address = address!("c551b009C1CE0b6efD691E23998AEFd4103680D3"); // If the contract address changes modify this.
 /// Address of the caller.
 const CALLER: Address = address!("E90E12261CCb0F3F7976Ae611A29e84a6A85f424");
 
@@ -268,13 +268,13 @@ pub async fn run_blob_verification_guest(
 
     // Preflight the call to prepare the input that is required to execute the function in
     // the guest without RPC access. It also returns the result of the call.
-    let mut contract = Contract::preflight(CONTRACT, &mut env);
+    let mut contract = Contract::preflight(BLOB_VERIFIER_WRAPPER_CONTRACT, &mut env);
     let returns = contract.call_builder(&call).from(CALLER).call().await?;
     println!(
         "Call {} Function by {:#} on {:#} returns: {}",
         IVerifyBlob::verifyBlobV1Call::SIGNATURE,
         CALLER,
-        CONTRACT,
+        BLOB_VERIFIER_WRAPPER_CONTRACT,
         returns._0
     );
 
