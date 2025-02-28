@@ -54,11 +54,8 @@ fn main() {
     let g1s: Vec<SerializableG1> = env::read();
     println!("g1s gotten");
     let mut g1: Vec<G1Affine> = vec![];
-    let mut i = 0;
     for g in g1s {
-        println!("pushing {}",i);
         g1.push(g.g1);
-        i += 1;
     }
     //let g1: Vec<G1Affine> = g1s.into_iter().map(|x| G1Affine::deserialize_compressed_unchecked(&x[..]).unwrap()).collect();
     println!("g1s converted");
