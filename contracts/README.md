@@ -1,66 +1,27 @@
-## Foundry
+# Contracts
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+This directory contains the necessary contracts for the Blob Verification to be performed, this are:
 
-Foundry consists of:
+## BlobVerifierWrapper
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+It wrapps the `BlobVerifier` contract from eigenda, since we need for the `verifyBlobV1` function to return a value.
 
-## Documentation
+## Risc0ProofVerifierWrapper
 
-https://book.getfoundry.sh/
+This wrapps the Risc0 Groth16 verifier contract, this is in order to make the function `non-view`, so we can create a transaction when calling it.
 
-## Usage
+# Scripts
 
-### Build
+There are also scripts that are used to make use of the contracts easier.
 
-```shell
-$ forge build
-```
+## BlobVerifierWrapperDeployer
 
-### Test
+Deploys the `BlobVerifierWrapper`
 
-```shell
-$ forge test
-```
+## Risc0ProofVerifier
 
-### Format
+This is the script that does the call on the `Risc0ProofVerifierWrapper` and generates the transaction
 
-```shell
-$ forge fmt
-```
+## Risc0ProofVerifierWrapperDeployer
 
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+Deploys the `Risc0ProofVerifierWrapper`
