@@ -27,6 +27,8 @@ const CONTRACT: Address = address!("c551b009C1CE0b6efD691E23998AEFd4103680D3"); 
 /// Address of the caller. If not provided, the caller will be the [CONTRACT].
 const CALLER: Address = address!("E90E12261CCb0F3F7976Ae611A29e84a6A85f424");
 
+/// This guest uses the risc0 Steel library to prove an eth_call on the BlobVerifierWrapper. 
+/// It receives serialized blob_info from the host, which it uses as arguments to the eth_call.
 fn main() {
     // Read the input from the guest environment.
     let input: EthEvmInput = env::read();
