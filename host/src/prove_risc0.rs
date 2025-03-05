@@ -1,9 +1,30 @@
+use alloy::network::EthereumWallet;
+use alloy::providers::fillers::{JoinFill, RecommendedFillers};
+use alloy::providers::Identity;
+use alloy::transports::http::Client;
 use blob_verification_methods::BLOB_VERIFICATION_GUEST_ELF;
 use risc0_zkvm::ProveInfo;
 use risc0_zkvm::{compute_image_id, sha::Digestible};
 use secrecy::{ExposeSecret, Secret};
+use alloy::{
+    providers::{Provider, ProviderBuilder},
+    signers::local::PrivateKeySigner,
+    network::Ethereum,
+    rpc::types::eth::TransactionRequest,
+    primitives::{Address, Bytes, B256},
+    transports::http::{Http, reqwest::ClientBuilder},
+    contract::SolCallBuilder,
+    sol
+};
 
-pub fn prove_risc0_proof(
+sol!(
+    #[sol(rpc)]
+    interface IRiscZeroVerifier {
+        function verify(bytes calldata seal, bytes32 imageId, bytes32 journalDigest) external;
+    }
+);
+
+pub async fn prove_risc0_proof(
     session_info: ProveInfo,
     private_key: Secret<String>,
     blob_index: u32,
@@ -35,7 +56,32 @@ pub fn prove_risc0_proof(
         .as_bytes()
         .to_vec();
 
-    let output = std::process::Command::new("forge")
+    let signer: PrivateKeySigner = private_key.expose_secret().parse()?;
+    let wallet = EthereumWallet::from(signer);
+    let provider = ProviderBuilder::new().wallet(wallet).on_http(proof_verifier_rpc.expose_secret().parse()?);
+
+
+    let contract_address: Address = "0x25b0F3F5434924821Ad73Eed8C7D81Db87DB0a15"
+        .parse()
+        .expect("Invalid contract address");
+
+    let contract = IRiscZeroVerifier::new(contract_address, &provider);
+
+    let pending_tx = contract.verify(Bytes::from(block_proof), B256::from_slice(&image_id), B256::from_slice(&journal_digest))
+        .send()
+        .await?;
+
+    println!("Transaction submitted: {}", pending_tx.tx_hash());
+
+    let receipt = pending_tx.get_receipt().await?;
+
+    println!(
+        "Transaction confirmed in block: {:?}",
+        receipt.block_number
+    );
+
+    Ok(())
+    /*let output = std::process::Command::new("forge")
         .arg("script")
         .arg("contracts/script/Risc0ProofVerifier.s.sol:Risc0ProofVerifier")
         .arg("--rpc-url")
@@ -92,5 +138,5 @@ pub fn prove_risc0_proof(
             std::str::from_utf8(&output.stderr).unwrap()
         );
         return Err(anyhow::anyhow!("Proof Verification failed"));
-    }
+    }*/
 }

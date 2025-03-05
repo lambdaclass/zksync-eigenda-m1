@@ -87,7 +87,7 @@ async fn main() -> Result<()> {
                 blob_verification_proof.blobIndex,
                 args.chain_id.clone(),
                 args.proof_verifier_rpc.clone(),
-            )?;
+            ).await?;
         }
     }
 }
