@@ -18,10 +18,6 @@ There are also scripts that are used to make use of the contracts easier.
 
 Deploys the `BlobVerifierWrapper`
 
-## Risc0ProofVerifier
-
-This is the script that does the call on the `Risc0ProofVerifierWrapper` and generates the transaction
-
 ## Risc0ProofVerifierWrapperDeployer
 
 Deploys the `Risc0ProofVerifierWrapper`

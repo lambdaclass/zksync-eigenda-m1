@@ -28,9 +28,6 @@ struct Args {
     /// Private key to verify the proof
     #[arg(short, long, env = "PRIVATE_KEY")]
     private_key: Secret<String>,
-    /// Chain id where the proof should be verified
-    #[arg(short, long, env = "CHAIN_ID")]
-    chain_id: String,
     /// Rpc were the proof should be verified
     #[arg(short, long, env = "PROOF_VERIFIER_RPC")]
     proof_verifier_rpc: Secret<String>,
@@ -85,9 +82,9 @@ async fn main() -> Result<()> {
                 session_info,
                 args.private_key.clone(),
                 blob_verification_proof.blobIndex,
-                args.chain_id.clone(),
                 args.proof_verifier_rpc.clone(),
-            ).await?;
+            )
+            .await?;
         }
     }
 }

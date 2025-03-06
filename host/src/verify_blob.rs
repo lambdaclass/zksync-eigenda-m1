@@ -4,22 +4,20 @@ use alloy_sol_types::sol;
 use alloy_sol_types::SolCall;
 use anyhow::Context;
 use blob_verification_methods::BLOB_VERIFICATION_GUEST_ELF;
+use common::blob_info::G1Commitment;
 use ethabi::ParamType;
 use risc0_steel::{ethereum::EthEvmEnv, Contract};
 use risc0_zkvm::ProveInfo;
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
 use url::Url;
-use common::blob_info::G1Commitment;
 
-use crate::{
-    utils::{
-        extract_array, extract_bytes, extract_fixed_bytes, extract_tuple, extract_uint32,
-        extract_uint8,
-    },
+use crate::utils::{
+    extract_array, extract_bytes, extract_fixed_bytes, extract_tuple, extract_uint32, extract_uint8,
 };
 
 /// Address of the deployed blob verifier wrapper contract to call the function on.
-const BLOB_VERIFIER_WRAPPER_CONTRACT: Address = address!("c551b009C1CE0b6efD691E23998AEFd4103680D3"); // If the contract address changes modify this.
+const BLOB_VERIFIER_WRAPPER_CONTRACT: Address =
+    address!("c551b009C1CE0b6efD691E23998AEFd4103680D3"); // If the contract address changes modify this.
 /// Address of the caller.
 const CALLER: Address = address!("E90E12261CCb0F3F7976Ae611A29e84a6A85f424");
 

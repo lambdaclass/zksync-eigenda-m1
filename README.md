@@ -161,7 +161,7 @@ There is already one deployed in holesky: `0x25b0F3F5434924821Ad73Eed8C7D81Db87D
 To run the example execute the following command:
 
 ```bash
-RPC_URL=<your_rpc> PRIVATE_KEY=<your_private_key> CHAIN_ID=<your_chain_id> PROOF_VERIFIER_RPC=<your_rpc> RUST_LOG=info cargo run --release
+RPC_URL=<your_rpc> PRIVATE_KEY=<your_private_key> PROOF_VERIFIER_RPC=<your_rpc> RUST_LOG=info cargo run --release
 ```
 
 
