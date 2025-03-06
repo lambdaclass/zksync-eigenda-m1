@@ -131,7 +131,7 @@ zkstack server --chain eigenda
 Compile the contracts
 
 ```bash
-git submodule --update --init
+git submodule update --init
 make build_contracts
 ```
 
