@@ -24,3 +24,6 @@ serde_json = {workspace = true}
 rust-kzg-bn254-prover = { workspace = true }
 ark-serialize = {workspace = true}
 ark-bn254 = "0.5"
+num-bigint = "0.4.6"
+rust-kzg-bn254-primitives = { path = "../../rust-kzg-bn254/primitives" }
+
