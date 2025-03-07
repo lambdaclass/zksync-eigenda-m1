@@ -14,6 +14,7 @@
 
 use anyhow::Result;
 use clap::Parser;
+use host::proof_equivalence;
 use host::verify_blob::decode_blob_info;
 use tokio_postgres::NoTls;
 use tracing_subscriber::EnvFilter;
@@ -21,14 +22,16 @@ use std::io::{self, Write};
 
 use ark_bn254::{Fq, G1Affine};
 use url::Url;
+use blob_verification_methods::BLOB_VERIFICATION_GUEST_ELF;
 use proof_equivalence_methods::PROOF_EQUIVALENCE_GUEST_ELF;
 use risc0_steel::{ethereum::EthEvmEnv, Contract};
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
 use anyhow::Context;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use serde::{Serialize, Serializer};
-use rust_kzg_bn254_prover::srs::SRS;
 use serde::ser::SerializeTuple;
+use rust_kzg_bn254_primitives::blob::Blob;
+use rust_kzg_bn254_prover::{kzg::KZG, srs::SRS};
 
 #[derive(Parser, Debug)]
 #[command(about, long_about = None)]
@@ -67,7 +70,6 @@ impl Serialize for SerializableG1 {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    println!("Starting run");
 
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
@@ -75,46 +77,7 @@ async fn main() -> Result<()> {
 
     let srs = SRS::new("resources/g1.point", 268435456, 1024 * 1024 * 2 / 32).unwrap();
 
-    let g1s : Vec<SerializableG1> = srs.g1.into_iter().map(|g1| {
-        /*let mut bytes = Vec::new();
-        x.serialize_compressed(&mut bytes).unwrap();
-        bytes*/
-        SerializableG1{g1}
-    }).collect();
-
-    println!("srs calculated");
-    let content = std::fs::read_to_string("sample_data.txt").unwrap(); 
-
-    /// Blob data BEFORE padding
-    let data: Vec<u8> = content
-        .split(',')
-        .map(|s| s.trim()) // Remove any leading/trailing spaces
-        .filter(|s| !s.is_empty()) // Ignore empty strings
-        .map(|s| s.parse::<u8>().expect("Invalid number")) // Parse as u8
-        .collect();
-
-    println!("data len {}", data.len());
-    println!("srs len {}", g1s.len());
-
-    let session_info = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
-        let env = ExecutorEnv::builder()
-            .write(&data).unwrap()
-            .write(&g1s).unwrap()
-            .write(&srs.order).unwrap()
-            .build()?;
-        let exec = default_prover();
-        exec.prove_with_ctx(
-            env,
-            &VerifierContext::default(),
-            PROOF_EQUIVALENCE_GUEST_ELF,
-            &ProverOpts::groth16(),
-        )
-        .context("failed to run executor")
-    }).await??;
-    println!("Finished run");
-    Ok(())
-
-    /*let (client, connection) = tokio_postgres::connect(
+    let (client, connection) = tokio_postgres::connect(
         "host=localhost user=postgres password=notsecurepassword dbname=zksync_server_localhost_eigenda", 
         NoTls,
     ).await?;
@@ -150,7 +113,7 @@ async fn main() -> Result<()> {
         for row in rows {
             let inclusion_data: Vec<u8> = row.get(0);
             let (blob_header, blob_verification_proof) = decode_blob_info(inclusion_data)?;
-            let session_info = host::verify_blob::run_blob_verification_guest(
+            let blob_verification_result = host::verify_blob::run_blob_verification_guest(
                 blob_header,
                 blob_verification_proof.clone(),
                 args.rpc_url.clone(),
@@ -158,12 +121,26 @@ async fn main() -> Result<()> {
             .await?;
 
             host::prove_risc0::prove_risc0_proof(
-                session_info,
+                blob_verification_result,
+                BLOB_VERIFICATION_GUEST_ELF,
                 args.private_key.clone(),
                 blob_verification_proof.blobIndex,
                 args.chain_id.clone(),
                 args.proof_verifier_rpc.clone(),
             )?;
+
+            let proof_equivalence_result = proof_equivalence::run_proof_equivalence(&srs).await?;
+
+            host::prove_risc0::prove_risc0_proof(
+                proof_equivalence_result,
+                PROOF_EQUIVALENCE_GUEST_ELF,
+                args.private_key.clone(),
+                blob_verification_proof.blobIndex,
+                args.chain_id.clone(),
+                args.proof_verifier_rpc.clone(),
+            )?;
+
+
         }
-    }*/
+    }
 }

@@ -1,15 +1,16 @@
-use blob_verification_methods::BLOB_VERIFICATION_GUEST_ELF;
+
 use risc0_zkvm::ProveInfo;
 use risc0_zkvm::{compute_image_id, sha::Digestible};
 
 pub fn prove_risc0_proof(
     session_info: ProveInfo,
+    guest_elf: &[u8],
     private_key: String,
     blob_index: u32,
     chain_id: String,
     proof_verifier_rpc: String,
 ) -> anyhow::Result<()> {
-    let image_id = compute_image_id(BLOB_VERIFICATION_GUEST_ELF)?;
+    let image_id = compute_image_id(guest_elf)?;
     let image_id: risc0_zkvm::sha::Digest = image_id.into();
     let image_id = image_id.as_bytes().to_vec();
 
