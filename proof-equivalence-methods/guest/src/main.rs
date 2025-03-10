@@ -23,10 +23,20 @@ use common::serializable_g1::SerializableG1;
 
 risc0_zkvm::guest::entry!(main);
 
+use tiny_keccak::{Hasher, Keccak};
+
+fn keccak256(data: &[u8]) -> [u8; 32] {
+    let mut hasher = Keccak::v256();
+    let mut output = [0u8; 32];
+    hasher.update(data);
+    hasher.finalize(&mut output);
+    output
+}
+
 fn main() {
     let data: Vec<u8> = env::read();
 
-    let blob = Blob::from_raw_data(&data);
+    /*let blob = Blob::from_raw_data(&data);
 
     let eval_commitment: SerializableG1 = env::read();
 
@@ -34,7 +44,9 @@ fn main() {
 
     let verified = verify_blob_kzg_proof(&blob, &eval_commitment.g1, &proof.g1).unwrap();
     
-    assert!(verified);
+    assert!(verified);*/
 
-    env::commit(&verified);
+    let hash = keccak256(&data);
+
+    env::commit(&hash);
 }

@@ -2,7 +2,7 @@ use alloy_primitives::U256;
 use alloy_primitives::{address, Address};
 use alloy_sol_types::sol;
 use alloy_sol_types::SolCall;
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use blob_verification_methods::BLOB_VERIFICATION_GUEST_ELF;
 use ethabi::{ParamType, Token};
 use common::blob_info::G1Commitment;
@@ -185,8 +185,8 @@ pub fn decode_blob_info(
     let blob_header_tokens = extract_tuple(&blob_info[0])?;
     let commitment_tokens = extract_tuple(&blob_header_tokens[0])?;
 
-    let x = commitment_tokens[0].clone().into_uint().unwrap();
-    let y = commitment_tokens[1].clone().into_uint().unwrap();
+    let x = commitment_tokens[0].clone().into_uint().ok_or(anyhow!("Incorrect commitment"))?;
+    let y = commitment_tokens[1].clone().into_uint().ok_or(anyhow!("Incorrect commitment"))?;
 
     let mut x_bytes = [0u8; 32];
     let mut y_bytes = [0u8; 32];

@@ -17,8 +17,8 @@ impl Serialize for SerializableG1 {
         let x = format!("{:?}",self.g1.x);
         let y = format!("{:?}",self.g1.y);
         let mut tup = serializer.serialize_tuple(2)?;
-        tup.serialize_element(&x).unwrap();
-        tup.serialize_element(&y).unwrap();
+        tup.serialize_element(&x)?;
+        tup.serialize_element(&y)?;
         tup.end()
     }
 }
@@ -29,7 +29,7 @@ impl<'de> Deserialize<'de> for SerializableG1 {
         D: Deserializer<'de>,
     {
         let (x, y): (String, String) = Deserialize::deserialize(deserializer)?;
-        let g1 = G1Affine::new_unchecked(Fp::from_str(&x).unwrap(), Fp::from_str(&y).unwrap());
+        let g1 = G1Affine::new_unchecked(Fp::from_str(&x).map_err(|e| serde::de::Error::custom(format!("{:?}", e)))?, Fp::from_str(&y).map_err(|e| serde::de::Error::custom(format!("{:?}", e)))?);
         Ok(SerializableG1{g1})
     }
 }
