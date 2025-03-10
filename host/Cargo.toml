@@ -17,7 +17,6 @@ tracing-subscriber = { workspace = true }
 url = { workspace = true }
 tokio-postgres = { workspace = true }
 ethabi = { workspace = true }
-serde = { workspace = true }
 hex = {workspace = true}
 chrono = {workspace = true}
 serde_json = {workspace = true}
@@ -29,3 +28,6 @@ rust-kzg-bn254-primitives = {workspace = true}
 tonic = {workspace = true}
 kzgpad-rs = {workspace = true}
 prost = {workspace = true}
+common = {workspace = true}
+secrecy = {workspace = true}
+alloy = {workspace = true}

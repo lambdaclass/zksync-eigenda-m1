@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["host", "blob-verification-methods", "proof-equivalence-methods"]
+members = ["host", "blob-verification-methods", "proof-equivalence-methods", "common"]
 
 [workspace.dependencies]
 # Intra-workspace dependencies
@@ -34,6 +34,9 @@ ark-bn254 = "0.5"
 num-bigint = "0.4.6"
 rust-kzg-bn254-primitives = { git = "https://github.com/Layr-Labs/rust-kzg-bn254.git", branch = "master"}
 prost = "0.13.1"
+common = {path = "common"}
+secrecy = "0.8.0"
+alloy = "0.11"
 
 
 # Always optimize; building and running the guest takes much longer without optimization.

@@ -1,7 +1,7 @@
 use alloy_primitives::{Bytes, FixedBytes, U256};
 use alloy_sol_types::sol;
 
-use crate::blob_info::BlobQuorumParam;
+use common::blob_info::BlobQuorumParam;
 
 sol! {
     struct QuorumBlobParam {
@@ -66,8 +66,8 @@ impl From<BlobQuorumParam> for QuorumBlobParam {
     }
 }
 
-impl From<crate::blob_info::BlobHeader> for BlobHeader {
-    fn from(blob_header: crate::blob_info::BlobHeader) -> Self {
+impl From<common::blob_info::BlobHeader> for BlobHeader {
+    fn from(blob_header: common::blob_info::BlobHeader) -> Self {
         let x: [u8; 32] = blob_header
             .commitment
             .x
@@ -93,8 +93,8 @@ impl From<crate::blob_info::BlobHeader> for BlobHeader {
     }
 }
 
-impl From<crate::blob_info::G1Commitment> for G1Point {
-    fn from(commitment: crate::blob_info::G1Commitment) -> Self {
+impl From<common::blob_info::G1Commitment> for G1Point {
+    fn from(commitment: common::blob_info::G1Commitment) -> Self {
         let x: [u8; 32] = commitment
             .x
             .try_into()
@@ -110,8 +110,8 @@ impl From<crate::blob_info::G1Commitment> for G1Point {
     }
 }
 
-impl From<crate::blob_info::BatchHeader> for BatchHeader {
-    fn from(batch_header: crate::blob_info::BatchHeader) -> Self {
+impl From<common::blob_info::BatchHeader> for BatchHeader {
+    fn from(batch_header: common::blob_info::BatchHeader) -> Self {
         let root: [u8; 32] = batch_header
             .batch_root
             .try_into()
@@ -125,8 +125,8 @@ impl From<crate::blob_info::BatchHeader> for BatchHeader {
     }
 }
 
-impl From<crate::blob_info::BatchMetadata> for BatchMetadata {
-    fn from(batch_metadata: crate::blob_info::BatchMetadata) -> Self {
+impl From<common::blob_info::BatchMetadata> for BatchMetadata {
+    fn from(batch_metadata: common::blob_info::BatchMetadata) -> Self {
         let header: BatchHeader = BatchHeader::from(batch_metadata.batch_header);
         let signatory_record_hash: [u8; 32] = batch_metadata
             .signatory_record_hash
@@ -140,8 +140,8 @@ impl From<crate::blob_info::BatchMetadata> for BatchMetadata {
     }
 }
 
-impl From<crate::blob_info::BlobVerificationProof> for BlobVerificationProof {
-    fn from(blob_verification_proof: crate::blob_info::BlobVerificationProof) -> Self {
+impl From<common::blob_info::BlobVerificationProof> for BlobVerificationProof {
+    fn from(blob_verification_proof: common::blob_info::BlobVerificationProof) -> Self {
         let metadata: BatchMetadata = BatchMetadata::from(blob_verification_proof.batch_medatada);
         BlobVerificationProof {
             batchId: blob_verification_proof.batch_id,
