@@ -23,9 +23,9 @@ chrono = {workspace = true}
 serde_json = {workspace = true}
 rust-kzg-bn254-prover = { workspace = true }
 ark-serialize = {workspace = true}
-ark-bn254 = "0.5" # TODO: Add to upper toml
-num-bigint = "0.4.6"
-rust-kzg-bn254-primitives = { path = "../../rust-kzg-bn254/primitives" }
+ark-bn254 = {workspace = true}
+num-bigint = {workspace = true}
+rust-kzg-bn254-primitives = {workspace = true}
 tonic = {workspace = true}
 kzgpad-rs = {workspace = true}
-prost = "0.13.1"
+prost = {workspace = true}
