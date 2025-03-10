@@ -4,7 +4,7 @@ use alloy_sol_types::sol;
 use alloy_sol_types::SolCall;
 use anyhow::Context;
 use blob_verification_methods::BLOB_VERIFICATION_GUEST_ELF;
-use ethabi::ParamType;
+use ethabi::{ParamType, Token};
 use risc0_steel::{ethereum::EthEvmEnv, Contract};
 use risc0_zkvm::ProveInfo;
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
@@ -146,7 +146,7 @@ impl From<BlobVerificationProof> for crate::blob_info::BlobVerificationProof {
 
 pub fn decode_blob_info(
     inclusion_data: Vec<u8>,
-) -> Result<(BlobHeader, BlobVerificationProof), anyhow::Error> {
+) -> Result<(BlobHeader, BlobVerificationProof, Vec<u8>), anyhow::Error> {
     let param_types = vec![ParamType::Tuple(vec![
         // BlobHeader
         ParamType::Tuple(vec![
@@ -242,6 +242,11 @@ pub fn decode_blob_info(
         confirmationBlockNumber: extract_uint32(&batch_metadata_tokens[2])?,
     };
 
+    let batch_header_hash: Vec<u8> = match batch_metadata_tokens[3].clone() {
+        Token::Bytes(bytes) => Ok(bytes),
+        _ => Err(anyhow::anyhow!("Fixed bytes not found")),
+    }?;
+
     let blob_verification_proof = BlobVerificationProof {
         batchId: batch_id,
         blobIndex: blob_index,
@@ -250,7 +255,7 @@ pub fn decode_blob_info(
         quorumIndices: extract_bytes(&blob_verification_tokens[4])?,
     };
 
-    Ok((blob_header, blob_verification_proof))
+    Ok((blob_header, blob_verification_proof, batch_header_hash))
 }
 
 pub async fn run_blob_verification_guest(

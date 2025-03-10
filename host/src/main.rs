@@ -14,6 +14,7 @@
 
 use anyhow::Result;
 use clap::Parser;
+use host::eigen_client::EigenClientRetriever;
 use host::proof_equivalence;
 use host::verify_blob::decode_blob_info;
 use tokio_postgres::NoTls;
@@ -48,6 +49,9 @@ struct Args {
     /// Rpc were the proof should be verified
     #[arg(short, long, env = "PROOF_VERIFIER_RPC")]
     proof_verifier_rpc: String,
+    /// Rpc of the eigenda Disperser
+    #[arg(short, long, env = "DISPERSER_RPC")]
+    disperser_rpc: String,
 }
 
 pub struct SerializableG1 {
@@ -94,6 +98,8 @@ async fn main() -> Result<()> {
     // Parse the command line arguments.
     let args = Args::parse();
 
+    let eigen_client = EigenClientRetriever::new(&args.disperser_rpc).await?;
+
     loop {
         let rows = client
         .query("SELECT inclusion_data, sent_at FROM data_availability WHERE sent_at > $1 AND inclusion_data IS NOT NULL ORDER BY sent_at", &[&timestamp])
@@ -112,9 +118,20 @@ async fn main() -> Result<()> {
 
         for row in rows {
             let inclusion_data: Vec<u8> = row.get(0);
-            let (blob_header, blob_verification_proof) = decode_blob_info(inclusion_data)?;
+            let (blob_header, blob_verification_proof, batch_header_hash) = decode_blob_info(inclusion_data)?;
+            let blob_data = eigen_client.get_blob_data(blob_verification_proof.blobIndex, batch_header_hash).await?.ok_or(anyhow::anyhow!("Not blob data"))?;
+            let proof_equivalence_result = proof_equivalence::run_proof_equivalence(&srs, blob_header.clone().commitment,blob_data).await?;
+    
+            host::prove_risc0::prove_risc0_proof(
+                proof_equivalence_result,
+                PROOF_EQUIVALENCE_GUEST_ELF,
+                args.private_key.clone(),
+                blob_verification_proof.blobIndex,
+                args.chain_id.clone(),
+                args.proof_verifier_rpc.clone(),
+            )?;
             let blob_verification_result = host::verify_blob::run_blob_verification_guest(
-                blob_header,
+                blob_header.clone(),
                 blob_verification_proof.clone(),
                 args.rpc_url.clone(),
             )
@@ -129,16 +146,6 @@ async fn main() -> Result<()> {
                 args.proof_verifier_rpc.clone(),
             )?;
 
-            let proof_equivalence_result = proof_equivalence::run_proof_equivalence(&srs).await?;
-
-            host::prove_risc0::prove_risc0_proof(
-                proof_equivalence_result,
-                PROOF_EQUIVALENCE_GUEST_ELF,
-                args.private_key.clone(),
-                blob_verification_proof.blobIndex,
-                args.chain_id.clone(),
-                args.proof_verifier_rpc.clone(),
-            )?;
 
 
         }

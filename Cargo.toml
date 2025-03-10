@@ -28,6 +28,8 @@ chrono = "0.4"
 serde_json = "1.0"
 rust-kzg-bn254-prover = { path = "../rust-kzg-bn254/prover"}
 ark-serialize = "0.5"
+tonic = { version = "0.12.1", features = ["tls", "channel", "tls-roots"]}
+kzgpad-rs = { git = "https://github.com/Layr-Labs/kzgpad-rs.git", tag = "v0.1.0" }
 
 
 # Always optimize; building and running the guest takes much longer without optimization.
