@@ -25,7 +25,7 @@ struct Args {
     /// URL of the RPC endpoint
     #[arg(short, long, env = "RPC_URL")]
     rpc_url: Url,
-    /// Private key to verify the proof
+    /// Private key used to submit an ethereum transaction that verifys the proof
     #[arg(short, long, env = "PRIVATE_KEY")]
     private_key: Secret<String>,
     /// Rpc were the proof should be verified
