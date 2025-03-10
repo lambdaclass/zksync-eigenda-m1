@@ -7,11 +7,9 @@ edition = "2021"
 
 [dependencies]
 risc0-zkvm = { version = "1.2.0", default-features = false, features = ["std"] }
-serde = "1.0"
-rust-kzg-bn254-primitives = { path = "../../../rust-kzg-bn254/primitives", default-features = false, features = ["non-parallel"]}
-rust-kzg-bn254-verifier = { path = "../../../rust-kzg-bn254/verifier", default-features = false, features = ["non-parallel"]}
-ark-bn254 = "0.5"
-ark-ff = "0.5"
+rust-kzg-bn254-primitives = { git = "https://github.com/lambdaclass/rust-kzg-bn254.git", branch = "remove-parallel" , default-features = false, features = ["non-parallel"]}
+rust-kzg-bn254-verifier = { git = "https://github.com/lambdaclass/rust-kzg-bn254.git", branch = "remove-parallel" , default-features = false, features = ["non-parallel"]}
+common = {path = "../../common"}
 
 [patch.crates-io]
 # use optimized risc0 circuit

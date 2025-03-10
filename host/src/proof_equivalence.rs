@@ -1,32 +1,13 @@
 use ark_bn254::{Fq, G1Affine};
+use common::serializable_g1::SerializableG1;
 use proof_equivalence_methods::PROOF_EQUIVALENCE_GUEST_ELF;
 use risc0_zkvm::{default_prover, ExecutorEnv, ProveInfo, ProverOpts, VerifierContext};
 use anyhow::Context;
 use rust_kzg_bn254_prover::srs::SRS;
-use serde::{Serialize, Serializer};
-use serde::ser::SerializeTuple;
 use rust_kzg_bn254_primitives::blob::Blob;
 use rust_kzg_bn254_prover::kzg::KZG;
 
 use crate::verify_blob::G1Point;
-
-pub struct SerializableG1 { //TODO: Move to common
-    pub g1: G1Affine
-}
-
-impl Serialize for SerializableG1 {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let x = format!("{:?}",self.g1.x);
-        let y = format!("{:?}",self.g1.y);
-        let mut tup = serializer.serialize_tuple(2)?;
-        tup.serialize_element(&x).unwrap();
-        tup.serialize_element(&y).unwrap();
-        tup.end()
-    }
-}
 
 pub async fn run_proof_equivalence(
     srs: &SRS,

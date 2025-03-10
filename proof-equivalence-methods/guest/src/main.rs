@@ -17,29 +17,11 @@
 
 use risc0_zkvm::guest::env;
 
-use ark_bn254::G1Affine;
 use rust_kzg_bn254_primitives::blob::Blob;
 use rust_kzg_bn254_verifier::verify::verify_blob_kzg_proof;
-use serde::{Deserialize, Deserializer};
-use ark_ff::Fp;
-use std::str::FromStr;
+use common::serializable_g1::SerializableG1;
 
 risc0_zkvm::guest::entry!(main);
-
-pub struct SerializableG1 {
-    pub g1: G1Affine
-}
-
-impl<'de> Deserialize<'de> for SerializableG1 {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let (x, y): (String, String) = Deserialize::deserialize(deserializer)?;
-        let g1 = G1Affine::new_unchecked(Fp::from_str(&x).unwrap(), Fp::from_str(&y).unwrap());
-        Ok(SerializableG1{g1})
-    }
-}
 
 fn main() {
     let data: Vec<u8> = env::read();
