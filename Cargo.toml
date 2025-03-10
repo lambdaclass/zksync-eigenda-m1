@@ -26,10 +26,14 @@ serde = "1.0"
 hex = "0.4"
 chrono = "0.4"
 serde_json = "1.0"
-rust-kzg-bn254-prover = { path = "../rust-kzg-bn254/prover"}
+rust-kzg-bn254-prover = { git = "https://github.com/Layr-Labs/rust-kzg-bn254.git", branch = "master"}
 ark-serialize = "0.5"
 tonic = { version = "0.12.1", features = ["tls", "channel", "tls-roots"]}
 kzgpad-rs = { git = "https://github.com/Layr-Labs/kzgpad-rs.git", tag = "v0.1.0" }
+ark-bn254 = "0.5"
+num-bigint = "0.4.6"
+rust-kzg-bn254-primitives = { git = "https://github.com/Layr-Labs/rust-kzg-bn254.git", branch = "master"}
+prost = "0.13.1"
 
 
 # Always optimize; building and running the guest takes much longer without optimization.

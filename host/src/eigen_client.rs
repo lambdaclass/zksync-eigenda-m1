@@ -2,10 +2,7 @@ use std::str::FromStr;
 
 use tonic::transport::{Channel, ClientTlsConfig, Endpoint};
 
-use crate::{
-    blob_info::BlobInfo,
-    generated::disperser::{self, disperser_client::DisperserClient},
-};
+use crate::generated::disperser::{self, disperser_client::DisperserClient};
 
 #[derive(Debug, Clone)]
 pub struct EigenClientRetriever {
@@ -34,7 +31,7 @@ impl EigenClientRetriever {
             .into_inner();
 
         if get_response.data.is_empty() {
-            panic!("Empty data returned from Disperser")
+            return Err(anyhow::anyhow!("Empty data returned from Disperser"))
         }
 
         let data = kzgpad_rs::remove_empty_byte_from_padded_bytes(&get_response.data);

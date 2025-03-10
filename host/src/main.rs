@@ -19,20 +19,14 @@ use host::proof_equivalence;
 use host::verify_blob::decode_blob_info;
 use tokio_postgres::NoTls;
 use tracing_subscriber::EnvFilter;
-use std::io::{self, Write};
 
-use ark_bn254::{Fq, G1Affine};
+use ark_bn254::G1Affine;
 use url::Url;
 use blob_verification_methods::BLOB_VERIFICATION_GUEST_ELF;
 use proof_equivalence_methods::PROOF_EQUIVALENCE_GUEST_ELF;
-use risc0_steel::{ethereum::EthEvmEnv, Contract};
-use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
-use anyhow::Context;
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use serde::{Serialize, Serializer};
 use serde::ser::SerializeTuple;
-use rust_kzg_bn254_primitives::blob::Blob;
-use rust_kzg_bn254_prover::{kzg::KZG, srs::SRS};
+use rust_kzg_bn254_prover::srs::SRS;
 
 #[derive(Parser, Debug)]
 #[command(about, long_about = None)]
@@ -120,8 +114,11 @@ async fn main() -> Result<()> {
             let inclusion_data: Vec<u8> = row.get(0);
             let (blob_header, blob_verification_proof, batch_header_hash) = decode_blob_info(inclusion_data)?;
             let blob_data = eigen_client.get_blob_data(blob_verification_proof.blobIndex, batch_header_hash).await?.ok_or(anyhow::anyhow!("Not blob data"))?;
+
+            println!("Executing Proof Equivalence guest");
             let proof_equivalence_result = proof_equivalence::run_proof_equivalence(&srs, blob_header.clone().commitment,blob_data).await?;
-    
+            
+            println!("Verifying Proof Equivalence guest");
             host::prove_risc0::prove_risc0_proof(
                 proof_equivalence_result,
                 PROOF_EQUIVALENCE_GUEST_ELF,
@@ -130,6 +127,8 @@ async fn main() -> Result<()> {
                 args.chain_id.clone(),
                 args.proof_verifier_rpc.clone(),
             )?;
+
+            println!("Executing Blob Verification guest");
             let blob_verification_result = host::verify_blob::run_blob_verification_guest(
                 blob_header.clone(),
                 blob_verification_proof.clone(),
@@ -137,6 +136,7 @@ async fn main() -> Result<()> {
             )
             .await?;
 
+            println!("Verifying Blob Verification guest");
             host::prove_risc0::prove_risc0_proof(
                 blob_verification_result,
                 BLOB_VERIFICATION_GUEST_ELF,
@@ -145,9 +145,6 @@ async fn main() -> Result<()> {
                 args.chain_id.clone(),
                 args.proof_verifier_rpc.clone(),
             )?;
-
-
-
         }
     }
 }
