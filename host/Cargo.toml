@@ -19,9 +19,7 @@ tokio-postgres = { workspace = true }
 ethabi = { workspace = true }
 hex = {workspace = true}
 chrono = {workspace = true}
-serde_json = {workspace = true}
 rust-kzg-bn254-prover = { workspace = true }
-ark-serialize = {workspace = true}
 ark-bn254 = {workspace = true}
 num-bigint = {workspace = true}
 rust-kzg-bn254-primitives = {workspace = true}

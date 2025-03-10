@@ -21,12 +21,9 @@ use secrecy::Secret;
 use tokio_postgres::NoTls;
 use tracing_subscriber::EnvFilter;
 
-use ark_bn254::G1Affine;
 use url::Url;
 use blob_verification_methods::BLOB_VERIFICATION_GUEST_ELF;
 use proof_equivalence_methods::PROOF_EQUIVALENCE_GUEST_ELF;
-use serde::{Serialize, Serializer};
-use serde::ser::SerializeTuple;
 use rust_kzg_bn254_prover::srs::SRS;
 
 #[derive(Parser, Debug)]
@@ -44,24 +41,6 @@ struct Args {
     /// Rpc of the eigenda Disperser
     #[arg(short, long, env = "DISPERSER_RPC")]
     disperser_rpc: String,
-}
-
-pub struct SerializableG1 {
-    pub g1: G1Affine
-}
-
-impl Serialize for SerializableG1 {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let x = format!("{:?}",self.g1.x);
-        let y = format!("{:?}",self.g1.y);
-        let mut tup = serializer.serialize_tuple(2)?;
-        tup.serialize_element(&x).unwrap();
-        tup.serialize_element(&y).unwrap();
-        tup.end()
-    }
 }
 
 #[tokio::main]
@@ -122,9 +101,8 @@ async fn main() -> Result<()> {
                 PROOF_EQUIVALENCE_GUEST_ELF,
                 args.private_key.clone(),
                 blob_verification_proof.blobIndex,
-                args.chain_id.clone(),
                 args.proof_verifier_rpc.clone(),
-            )?;
+            ).await?;
 
             println!("Executing Blob Verification guest");
             let blob_verification_result = host::verify_blob::run_blob_verification_guest(
