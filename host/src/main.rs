@@ -50,7 +50,7 @@ async fn main() -> Result<()> {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
-    let srs = SRS::new("resources/g1.point", 268435456, 1024 * 1024 * 2 / 32).unwrap();
+    let srs = SRS::new("resources/g1.point", 268435456, 1024 * 1024 * 2 / 32)?;
 
     let (client, connection) = tokio_postgres::connect(
         "host=localhost user=postgres password=notsecurepassword dbname=zksync_server_localhost_eigenda", 
@@ -94,6 +94,9 @@ async fn main() -> Result<()> {
 
             println!("Executing Proof Equivalence guest");
             let proof_equivalence_result = proof_equivalence::run_proof_equivalence(&srs, blob_header.clone().commitment,blob_data).await?;
+
+            let hash: [u8; 32] = proof_equivalence_result.receipt.journal.decode()?;
+            println!("Data hash: {:?}", hex::encode(hash));
             
             println!("Verifying Proof Equivalence guest");
             host::prove_risc0::prove_risc0_proof(

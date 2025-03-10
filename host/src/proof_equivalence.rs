@@ -18,7 +18,7 @@ pub async fn run_proof_equivalence(
 
     let mut kzg = KZG::new();
 
-    kzg.calculate_and_store_roots_of_unity(blob.len().try_into().unwrap()).unwrap();
+    kzg.calculate_and_store_roots_of_unity(blob.len().try_into()?)?;
 
     let x: [u8;32] = commitment.x.to_be_bytes();
     let y: [u8;32] = commitment.y.to_be_bytes();
@@ -27,23 +27,23 @@ pub async fn run_proof_equivalence(
     let y_fq =  Fq::from(num_bigint::BigUint::from_bytes_be(&y));
     
     let commitment = G1Affine::new(x_fq, y_fq);
-    let real_commitment = kzg.commit_coeff_form(&blob.to_polynomial_coeff_form(), &srs).unwrap();
+    let real_commitment = kzg.commit_coeff_form(&blob.to_polynomial_coeff_form(), &srs)?;
 
     if commitment != real_commitment {
         return Err(anyhow::anyhow!("Commitments mismatched, given commitment: {:?}, real commitment: {:?}", commitment, real_commitment))
     }
     
-    let eval_commitment = kzg.commit_eval_form(&blob.to_polynomial_eval_form(), &srs).unwrap();
+    let eval_commitment = kzg.commit_eval_form(&blob.to_polynomial_eval_form(), &srs)?;
 
-    let proof = kzg.compute_blob_proof(&blob, &eval_commitment, &srs).unwrap();
+    let proof = kzg.compute_blob_proof(&blob, &eval_commitment, &srs)?;
 
     let serializable_eval = SerializableG1{g1: eval_commitment};
     let serializable_proof = SerializableG1{g1: proof};
     let session_info = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
         let env = ExecutorEnv::builder()
-            .write(&data).unwrap()
-            .write(&serializable_eval).unwrap()
-            .write(&serializable_proof).unwrap()
+            .write(&data)?
+            .write(&serializable_eval)?
+            .write(&serializable_proof)?
             .build()?;
         let exec = default_prover();
         exec.prove_with_ctx(
