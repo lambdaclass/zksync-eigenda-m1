@@ -17,6 +17,7 @@ use clap::Parser;
 use host::eigen_client::EigenClientRetriever;
 use host::proof_equivalence;
 use host::verify_blob::decode_blob_info;
+use secrecy::Secret;
 use tokio_postgres::NoTls;
 use tracing_subscriber::EnvFilter;
 
@@ -34,15 +35,12 @@ struct Args {
     /// URL of the RPC endpoint
     #[arg(short, long, env = "RPC_URL")]
     rpc_url: Url,
-    /// Private key to verify the proof
+    /// Private key used to submit an ethereum transaction that verifys the proof
     #[arg(short, long, env = "PRIVATE_KEY")]
-    private_key: String, // TODO: maybe make this a secret
-    /// Chain id were the proof should be verified
-    #[arg(short, long, env = "CHAIN_ID")]
-    chain_id: String,
+    private_key: Secret<String>,
     /// Rpc were the proof should be verified
     #[arg(short, long, env = "PROOF_VERIFIER_RPC")]
-    proof_verifier_rpc: String,
+    proof_verifier_rpc: Secret<String>,
     /// Rpc of the eigenda Disperser
     #[arg(short, long, env = "DISPERSER_RPC")]
     disperser_rpc: String,
@@ -96,7 +94,7 @@ async fn main() -> Result<()> {
 
     loop {
         let rows = client
-        .query("SELECT inclusion_data, sent_at FROM data_availability WHERE sent_at > $1 AND inclusion_data IS NOT NULL ORDER BY sent_at", &[&timestamp])
+        .query("SELECT inclusion_data, sent_at FROM data_availability WHERE sent_at > $1 AND inclusion_data IS NOT NULL ORDER BY sent_at LIMIT 5", &[&timestamp])
         .await?; // Maybe this approach doesn't work, since maybe row A with has a lower timestamp than row B, but row A has inclusion data NULL so it is not included yet and will never be.
                  // Maybe just look for batch number and go one by one.
 
@@ -142,9 +140,9 @@ async fn main() -> Result<()> {
                 BLOB_VERIFICATION_GUEST_ELF,
                 args.private_key.clone(),
                 blob_verification_proof.blobIndex,
-                args.chain_id.clone(),
                 args.proof_verifier_rpc.clone(),
-            )?;
+            )
+            .await?;
         }
     }
 }

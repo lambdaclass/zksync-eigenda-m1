@@ -131,7 +131,7 @@ zkstack server --chain eigenda
 Compile the contracts
 
 ```bash
-git submodule --update --init
+git submodule update --init
 make build_contracts
 ```
 
@@ -146,7 +146,7 @@ For testing purpouses on devnet you can use:
 PRIVATE_KEY=0x3eb15da85647edd9a1159a4a13b9e7c56877c4eb33f614546d4db06a51868b1c BLOB_VERIFIER_ADDRESS=0x00CfaC4fF61D52771eF27d07c5b6f1263C2994A1 forge script contracts/script/BlobVerifierWrapperDeployer.s.sol:BlobVerifierWrapperDeployer --rpc-url http://127.0.0.1:<your_port> --broadcast -vvvv
 ```
 
-Update the CONTRACT address on ```host/src/main.rs``` and ```methods/guest/src/main.rs``` for the one just deployed if needed.
+Update the BLOB_VERIFIER_WRAPPER_CONTRACT address on ```host/src/verify_blob.rs``` and ```methods/guest/src/main.rs``` for the one just deployed if needed.
 
 The address on CALLER is a known address from zksync, it should be changed to the needed one in the real use case.
 
@@ -161,7 +161,7 @@ There is already one deployed in holesky: `0x25b0F3F5434924821Ad73Eed8C7D81Db87D
 To run the example execute the following command:
 
 ```bash
-RPC_URL=<your_rpc> PRIVATE_KEY=<your_private_key> CHAIN_ID=<your_chain_id> PROOF_VERIFIER_RPC=<your_rpc> RUST_LOG=info cargo run --release
+RPC_URL=<your_rpc> PRIVATE_KEY=<your_private_key> PROOF_VERIFIER_RPC=<your_rpc> RUST_LOG=info cargo run --release
 ```
 
 

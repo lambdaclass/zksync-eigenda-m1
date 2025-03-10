@@ -7,7 +7,7 @@ import "forge-std/console.sol";
 
 
 // This script deploys the blob verifier wrapper
-contract Deployer is Script {
+contract BlobVerifierWrapperDeployer is Script {
     // Environment variable name for the BlobVerifier address
     string constant BLOB_VERIFIER_ENV_VAR = "BLOB_VERIFIER_ADDRESS";
 
