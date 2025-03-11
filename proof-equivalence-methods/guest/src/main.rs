@@ -34,7 +34,7 @@ fn keccak256(data: &[u8]) -> [u8; 32] {
 }
 
 fn main() {
-    let data: Vec<u8> = env::read();
+    /*let data: Vec<u8> = env::read();
 
     let blob = Blob::from_raw_data(&data);
 
@@ -48,5 +48,7 @@ fn main() {
 
     let hash = keccak256(&data);
 
-    env::commit(&hash);
+    env::commit(&hash);*/
+
+    env::commit(&"hello world");
 }

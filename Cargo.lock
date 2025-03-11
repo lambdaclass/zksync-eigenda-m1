@@ -3252,8 +3252,7 @@ dependencies = [
  "prost",
  "risc0-steel",
  "risc0-zkvm",
- "rust-kzg-bn254-primitives",
- "rust-kzg-bn254-prover",
+ "rust-kzg-bn254",
  "secrecy",
  "tokio",
  "tokio-postgres",
@@ -5465,9 +5464,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48fd7bd8a6377e15ad9d42a8ec25371b94ddc67abe7c8b9127bec79bebaaae18"
 
 [[package]]
-name = "rust-kzg-bn254-primitives"
-version = "0.1.1"
-source = "git+https://github.com/Layr-Labs/rust-kzg-bn254.git?branch=master#46b7f377e7c3089b31f811a4b5526be930b2d62c"
+name = "rust-kzg-bn254"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acdae4058a9f604acf7023d99d931d6f30261fff93787bcfd1f1ccfc725b701c"
 dependencies = [
  "ark-bn254 0.5.0",
  "ark-ec 0.5.0",
@@ -5475,26 +5475,18 @@ dependencies = [
  "ark-poly 0.5.0",
  "ark-serialize 0.5.0",
  "ark-std 0.5.0",
- "num-traits",
- "sha2 0.10.8",
- "thiserror 2.0.11",
-]
-
-[[package]]
-name = "rust-kzg-bn254-prover"
-version = "0.1.0"
-source = "git+https://github.com/Layr-Labs/rust-kzg-bn254.git?branch=master#46b7f377e7c3089b31f811a4b5526be930b2d62c"
-dependencies = [
- "ark-bn254 0.5.0",
- "ark-ec 0.5.0",
- "ark-ff 0.5.0",
- "ark-poly 0.5.0",
- "ark-std 0.5.0",
+ "byteorder",
  "crossbeam-channel",
+ "directories",
+ "hex-literal",
+ "num-bigint 0.4.6",
  "num-traits",
  "num_cpus",
+ "rand 0.8.5",
  "rayon",
- "rust-kzg-bn254-primitives",
+ "sha2 0.10.8",
+ "sys-info",
+ "ureq",
 ]
 
 [[package]]
@@ -6189,6 +6181,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "sys-info"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b3a0d0aba8bf96a0e1ddfdc352fc53b3df7f39318c71854910c3c4b024ae52c"
+dependencies = [
+ "cc",
+ "libc",
+]
+
+[[package]]
 name = "system-configuration"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6755,6 +6757,22 @@ name = "untrusted"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
+
+[[package]]
+name = "ureq"
+version = "2.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02d1a66277ed75f640d608235660df48c8e3c19f3b4edb6a263315626cc3c01d"
+dependencies = [
+ "base64 0.22.1",
+ "flate2",
+ "log",
+ "once_cell",
+ "rustls",
+ "rustls-pki-types",
+ "url",
+ "webpki-roots",
+]
 
 [[package]]
 name = "url"

@@ -24,7 +24,7 @@ use tracing_subscriber::EnvFilter;
 use url::Url;
 use blob_verification_methods::BLOB_VERIFICATION_GUEST_ELF;
 use proof_equivalence_methods::PROOF_EQUIVALENCE_GUEST_ELF;
-use rust_kzg_bn254_prover::srs::SRS;
+//use rust_kzg_bn254_prover::srs::SRS;
 
 #[derive(Parser, Debug)]
 #[command(about, long_about = None)]
@@ -50,7 +50,7 @@ async fn main() -> Result<()> {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
-    let srs = SRS::new("resources/g1.point", 268435456, 1024 * 1024 * 2 / 32)?;
+    //let srs = SRS::new("resources/g1.point", 268435456, 1024 * 1024 * 2 / 32)?;
 
     let (client, connection) = tokio_postgres::connect(
         "host=localhost user=postgres password=notsecurepassword dbname=zksync_server_localhost_eigenda", 
@@ -93,7 +93,7 @@ async fn main() -> Result<()> {
             let blob_data = eigen_client.get_blob_data(blob_verification_proof.blobIndex, batch_header_hash).await?.ok_or(anyhow::anyhow!("Not blob data"))?;
 
             println!("Executing Proof Equivalence guest");
-            let proof_equivalence_result = proof_equivalence::run_proof_equivalence(&srs, blob_header.clone().commitment,blob_data).await?;
+            let proof_equivalence_result = proof_equivalence::run_proof_equivalence(blob_header.clone().commitment,blob_data).await?;
 
             let hash: [u8; 32] = proof_equivalence_result.receipt.journal.decode()?;
             println!("Data hash: {:?}", hex::encode(hash));
