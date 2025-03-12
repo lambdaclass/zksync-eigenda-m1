@@ -52,7 +52,8 @@ interface IBlobVerifier {
     ) external view;
 }
 
-contract VerifierWrapper {
+// This is necessary because risc0 steel does not support proving for functions that do not return a vaule
+contract BlobVerifierWrapper {
     address public blobVerifier;
 
     constructor(address _blobVerifier) {

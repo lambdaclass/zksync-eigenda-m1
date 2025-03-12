@@ -1,4 +1,4 @@
-BUILD_DIR=verifierWrapper/deployer
+BUILD_DIR=contracts
 
 .PHONY: all build_contracts
 

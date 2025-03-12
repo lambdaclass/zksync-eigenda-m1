@@ -6,7 +6,18 @@
 
 To get started, you need to have Rust installed.
 
-Next, you will also need to have the `cargo-risczero` tool installed.
+Next, you will also need to have the [`cargo-risczero`](https://dev.risczero.com/api/zkvm/install) tool installed.
+
+Next we need to install cuda 12.6
+
+Install [cuda](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Debian&target_version=12&target_type=runfile_local).
+Use the runfile (local) option, use the wget shown to download the script and run it as:
+
+```bash
+sudo ./<file>.run
+```
+
+
 
 ## Run the example
 
@@ -25,18 +36,6 @@ Go to [Avs-Devnet repo](https://github.com/Layr-Labs/avs-devnet/blob/main/exampl
 
 Line 214: `vm.serializeAddress(output,"blobVerifier", address(eigenDABlobVerifier));`
 
-Also modify `devnet.yaml` adding 
-
-```
-- name: zksync_rich_1
-  address: "0xE90E12261CCb0F3F7976Ae611A29e84a6A85f424"
-- name: zksync_rich_2
-  address: "0xe706e60ab5Dc512C36A4646D719b889F398cbBcB"
-```
-
-To the keys section.
-
-
 After runnning the devnet run
 
 ```bash
@@ -48,7 +47,7 @@ Save ports for `el-1-besu-lighthouse: rpc` and `disperser: grpc`
 
 Save addresses of `blobVerifier` and `eigenDAServiceManager`
 
-### Run zksync-era (eigenda-m0 branch on lambdaclass fork):
+### Run zksync-era (eigenda-m1 branch on lambdaclass fork):
 
 Install zkstack:
 
@@ -63,6 +62,13 @@ Reload your terminal, and run on zksync-era root:
 zkstackup --local
 ```
 
+Install foundry-zksync 0.0.2:
+
+```
+curl -L https://raw.githubusercontent.com/matter-labs/foundry-zksync/main/install-foundry-zksync | bash
+foundryup-zksync --commit 27360d4c8d12beddbb730dae07ad33a206b38f4b
+```
+
 Modify `etc/env/file_based/overrides/validium.yaml`:
 
 ```
@@ -74,9 +80,7 @@ da_client:
     eigenda_svc_manager_address: <eigenDAServiceManager>
     wait_for_finalization: false
     authenticated: false
-    points_source: ./resources
-    g1_url: https://github.com/Layr-Labs/eigenda-proxy/raw/2fd70b99ef5bf137d7bbca3461cf9e1f2c899451/resources/g1.point
-    g2_url: https://github.com/Layr-Labs/eigenda-proxy/raw/2fd70b99ef5bf137d7bbca3461cf9e1f2c899451/resources/g2.point.powerOf2
+    path: ./resources
 ```
 
 Copy the resources folder inside eigenda to zksync-era root
@@ -88,9 +92,6 @@ da:
   eigen:
     private_key: <your_private_key>
 ```
-
-
-For this to work we need [`foundry-zksync`](https://github.com/matter-labs/foundry-zksync/releases/nightly-27360d4c8d12beddbb730dae07ad33a206b38f4b) version `0.0.2` 
 
 Run
 
@@ -119,10 +120,6 @@ zkstack ecosystem init \
           --verbose
 ```
 
-This will init zksync, you then need to start the server, which will disperse a blob after some time, you need the specific information of that blob for this poc example to work, the best way would be to modify the following in zksync-era to print that blob:
-
-On `core/Cargo.toml` change the branch of `eigenda-client-rs` for `print-blob-info` and delete `core/Cargo.lock`.
-
 Then run
 ```
 zkstack server --chain eigenda
@@ -134,31 +131,37 @@ zkstack server --chain eigenda
 Compile the contracts
 
 ```bash
-git submodule update --init --recursive
+git submodule update --init
 make build_contracts
 ```
 
-Deploy the verifierWrapper:
+Deploy the blobVerifierWrapper:
 
 ```bash
-PRIVATE_KEY=<your_private_key> BLOB_VERIFIER_ADDRESS=<your_blob_verifier_address> forge script verifierWrapper/deployer/script/Deployer.s.sol:Deployer --rpc-url <your_rpc_url> --broadcast -vvvv
+PRIVATE_KEY=<your_private_key> BLOB_VERIFIER_ADDRESS=<your_blob_verifier_address> forge script contracts/script/BlobVerifierWrapperDeployer.s.sol:BlobVerifierWrapperDeployer --rpc-url <your_rpc_url> --broadcast -vvvv
 ```
 
 For testing purpouses on devnet you can use:
 ```bash
-PRIVATE_KEY=0x3eb15da85647edd9a1159a4a13b9e7c56877c4eb33f614546d4db06a51868b1c BLOB_VERIFIER_ADDRESS=0x00CfaC4fF61D52771eF27d07c5b6f1263C2994A1 forge script verifierWrapper/deployer/script/Deployer.s.sol:Deployer --rpc-url http://127.0.0.1:<your_port> --broadcast -vvvv
+PRIVATE_KEY=0x3eb15da85647edd9a1159a4a13b9e7c56877c4eb33f614546d4db06a51868b1c BLOB_VERIFIER_ADDRESS=0x00CfaC4fF61D52771eF27d07c5b6f1263C2994A1 forge script contracts/script/BlobVerifierWrapperDeployer.s.sol:BlobVerifierWrapperDeployer --rpc-url http://127.0.0.1:<your_port> --broadcast -vvvv
 ```
 
-Update the CONTRACT address on ```host/src/main.rs``` and ```methods/guest/src/main.rs``` for the one just deployed if needed.
+Update the BLOB_VERIFIER_WRAPPER_CONTRACT address on ```host/src/verify_blob.rs``` and ```methods/guest/src/main.rs``` for the one just deployed if needed.
 
 The address on CALLER is a known address from zksync, it should be changed to the needed one in the real use case.
 
-Update the CALL struct with the blobInfo printed on zksync-era, both on `host/src/main.rs` and `methods/guest/src/main.rs`
+If necessary, deploy the `Risc0ProofVerifierWrapper`:
+
+```bash
+PRIVATE_KEY=<your_pk> RISC0_VERIFIER_ADDRESS=<your_address> forge script contracts/script/Risc0ProofVerifierWrapperDeployer.s.sol:Risc0ProofVerifierWrapperDeployer --rpc-url <your_rpc> --broadcast -vvvv
+```
+
+There is already one deployed in holesky: `0x25b0F3F5434924821Ad73Eed8C7D81Db87DB0a15`
 
 To run the example execute the following command:
 
 ```bash
-RPC_URL=<your_rpc> RUST_LOG=info cargo run --release
+RPC_URL=<your_rpc> PRIVATE_KEY=<your_private_key> PROOF_VERIFIER_RPC=<your_rpc> RUST_LOG=info cargo run --release
 ```
 
 
