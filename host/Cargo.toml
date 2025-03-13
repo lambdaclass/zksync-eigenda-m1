@@ -11,7 +11,7 @@ clap = { workspace = true }
 blob-verification-methods = { workspace = true }
 risc0-steel = { workspace = true, features = ["host"] }
 risc0-zkvm = { workspace = true, features = ["client", "cuda"] }
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["time"] }
 tracing-subscriber = { workspace = true }
 url = { workspace = true }
 tokio-postgres = { workspace = true }
@@ -22,3 +22,4 @@ serde_json = {workspace = true}
 common = {workspace = true}
 secrecy = {workspace = true}
 alloy = {workspace = true}
+reqwest = {workspace = true}

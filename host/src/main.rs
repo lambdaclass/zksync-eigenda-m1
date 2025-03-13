@@ -14,7 +14,7 @@
 
 use anyhow::Result;
 use clap::Parser;
-use host::verify_blob::decode_blob_info;
+use host::{inclusion_data::get_inclusion_data, verify_blob::decode_blob_info};
 use secrecy::Secret;
 use tokio_postgres::NoTls;
 use url::Url;
@@ -31,12 +31,15 @@ struct Args {
     /// Rpc were the proof should be verified
     #[arg(short, long, env = "PROOF_VERIFIER_RPC")]
     proof_verifier_rpc: Secret<String>,
+    /// Url of the zksync's json api
+    #[arg(short, long, env = "API_URL")]
+    api_url: String,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let (client, connection) = tokio_postgres::connect(
-        "host=localhost user=postgres password=notsecurepassword dbname=zksync_server_localhost_eigenda", 
+    /*let (client, connection) = tokio_postgres::connect(
+        "host=localhost user=postgres password=notsecurepassword dbname=zksync_server_localhost_eigenda",
         NoTls,
     ).await?;
 
@@ -47,13 +50,17 @@ async fn main() -> Result<()> {
     });
 
     let mut timestamp =
-        chrono::NaiveDateTime::parse_from_str("1970-01-01 00:00:00", "%Y-%m-%d %H:%M:%S")?;
+        chrono::NaiveDateTime::parse_from_str("1970-01-01 00:00:00", "%Y-%m-%d %H:%M:%S")?;*/
 
     // Parse the command line arguments.
     let args = Args::parse();
 
+    let mut current_batch = 1;
+
     loop {
-        let rows = client
+        let inclusion_data = get_inclusion_data(current_batch, args.api_url.clone()).await?;
+        current_batch += 1;
+        /*let rows = client
         .query("SELECT inclusion_data, sent_at FROM data_availability WHERE sent_at > $1 AND inclusion_data IS NOT NULL ORDER BY sent_at LIMIT 5", &[&timestamp])
         .await?; // Maybe this approach doesn't work, since maybe row A with has a lower timestamp than row B, but row A has inclusion data NULL so it is not included yet and will never be.
                  // Maybe just look for batch number and go one by one.
@@ -66,9 +73,25 @@ async fn main() -> Result<()> {
         timestamp = rows
             .last()
             .ok_or(anyhow::anyhow!("Not enough rows"))?
-            .get(1);
+            .get(1);*/
 
-        for row in rows {
+        let (blob_header, blob_verification_proof) = decode_blob_info(inclusion_data)?;
+        let session_info = host::verify_blob::run_blob_verification_guest(
+            blob_header,
+            blob_verification_proof.clone(),
+            args.rpc_url.clone(),
+        )
+        .await?;
+
+        host::prove_risc0::prove_risc0_proof(
+            session_info,
+            args.private_key.clone(),
+            blob_verification_proof.blobIndex,
+            args.proof_verifier_rpc.clone(),
+        )
+        .await?;
+
+        /*for row in rows {
             let inclusion_data: Vec<u8> = row.get(0);
             let (blob_header, blob_verification_proof) = decode_blob_info(inclusion_data)?;
             let session_info = host::verify_blob::run_blob_verification_guest(
@@ -85,6 +108,6 @@ async fn main() -> Result<()> {
                 args.proof_verifier_rpc.clone(),
             )
             .await?;
-        }
+        }*/
     }
 }
