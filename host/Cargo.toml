@@ -14,7 +14,6 @@ risc0-zkvm = { workspace = true, features = ["client", "cuda"] }
 tokio = { workspace = true, features = ["time"] }
 tracing-subscriber = { workspace = true }
 url = { workspace = true }
-tokio-postgres = { workspace = true }
 ethabi = { workspace = true }
 hex = {workspace = true}
 chrono = {workspace = true}

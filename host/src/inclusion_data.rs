@@ -23,6 +23,10 @@ pub async fn get_inclusion_data(batch_number: u64, url: String) -> anyhow::Resul
         let result = json_response
             .get("result")
             .ok_or(anyhow::anyhow!("No result field"))?;
+        if result.is_null() {
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+            continue;
+        }
         let inclusion_data = result
             .get("inclusionData")
             .ok_or(anyhow::anyhow!("No inclusionData field"))?;
