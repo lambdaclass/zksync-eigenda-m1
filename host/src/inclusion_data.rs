@@ -1,10 +1,8 @@
 use reqwest::Client;
 use serde_json::{json, Value};
 
-pub async fn get_inclusion_data(batch_number: u64, url: String) -> anyhow::Result<Vec<u8>> {
+pub async fn get_inclusion_data(batch_number: u64, url: String, client: &Client) -> anyhow::Result<Vec<u8>> {
     loop {
-        let client = Client::new();
-
         let payload = json!({
             "jsonrpc": "2.0",
             "id": 1,

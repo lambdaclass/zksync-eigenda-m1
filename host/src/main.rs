@@ -15,8 +15,11 @@
 use anyhow::Result;
 use clap::Parser;
 use host::{inclusion_data::get_inclusion_data, verify_blob::decode_blob_info};
+use reqwest::Client;
 use secrecy::Secret;
 use url::Url;
+
+const LAST_BATCH_FILE: &str = "last_batch.txt";
 
 #[derive(Parser, Debug)]
 #[command(about, long_about = None)]
@@ -33,6 +36,9 @@ struct Args {
     /// Url of the zksync's json api
     #[arg(short, long, env = "API_URL")]
     api_url: String,
+    /// If activated, it will start from the last batch verified
+    #[arg(short, long, env = "RESTORE")]
+    restore: bool,
 }
 
 #[tokio::main]
@@ -40,12 +46,17 @@ async fn main() -> Result<()> {
     // Parse the command line arguments.
     let args = Args::parse();
 
+    let client = Client::new();
+
     let mut current_batch = 1;
+    if args.restore {
+        let content = tokio::fs::read_to_string(LAST_BATCH_FILE).await?; // Read file as string
+        current_batch = content.trim().parse()?;
+    }
 
     loop {
-        let inclusion_data = get_inclusion_data(current_batch, args.api_url.clone()).await?;
-        current_batch += 1;
-
+        let inclusion_data = get_inclusion_data(current_batch, args.api_url.clone(), &client).await?;
+        
         let (blob_header, blob_verification_proof) = decode_blob_info(inclusion_data)?;
         let session_info = host::verify_blob::run_blob_verification_guest(
             blob_header,
@@ -61,5 +72,8 @@ async fn main() -> Result<()> {
             args.proof_verifier_rpc.clone(),
         )
         .await?;
+    
+        current_batch += 1;
+        tokio::fs::write(LAST_BATCH_FILE, current_batch.to_string()).await?;
     }
 }
