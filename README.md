@@ -163,7 +163,7 @@ Deploy the `Risc0ProofVerifierWrapper`:
 PRIVATE_KEY=<your_pk> RISC0_VERIFIER_ADDRESS=<your_address> forge script contracts/script/Risc0ProofVerifierWrapperDeployer.s.sol:Risc0ProofVerifierWrapperDeployer --rpc-url <your_rpc> --broadcast -vvvv
 ```
 
-Save the address.
+Keep the contract address at hand for the next command.
 
 To run the example execute the following command:
 
