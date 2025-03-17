@@ -5,6 +5,7 @@ use alloy::{
     signers::local::PrivateKeySigner,
     sol,
 };
+use alloy_primitives::U256;
 use risc0_zkvm::ProveInfo;
 use risc0_zkvm::{compute_image_id, sha::Digestible};
 use secrecy::{ExposeSecret, Secret};
@@ -74,6 +75,60 @@ pub async fn prove_risc0_proof(
     println!(
         "Proof of data inclusion for blob {} verified on L1. Tx hash: {}",
         blob_index, receipt.transaction_hash,
+    );
+
+    Ok(())
+}
+
+use tiny_keccak::{Hasher, Keccak};
+
+fn keccak256(data: &[u8]) -> [u8; 32] {
+    let mut hasher = Keccak::v256();
+    let mut output = [0u8; 32];
+    hasher.update(data);
+    hasher.finalize(&mut output);
+    output
+}
+
+sol!(
+    #[sol(rpc)]
+    interface IFakeRiscZeroVerifier {
+        function verify(uint256 batchNumber, bytes32 eigenDAHash) external;
+    }
+);
+
+pub async fn fake_prove_risc0_proof(
+    data: Vec<u8>,
+    batch_number: u64,
+    private_key: Secret<String>,
+    proof_verifier_rpc: Secret<String>,
+) -> anyhow::Result<()> {
+    let signer: PrivateKeySigner = private_key.expose_secret().parse()?;
+    let wallet = EthereumWallet::from(signer);
+    let provider = ProviderBuilder::new()
+        .wallet(wallet)
+        .on_http(proof_verifier_rpc.expose_secret().parse()?);
+
+    let contract_address: Address = "0xC4504ADF4f81E620bfA52ea9b7EF3dAD66839D86"
+        .parse()
+        .expect("Invalid contract address");
+
+    let contract = IFakeRiscZeroVerifier::new(contract_address, &provider);
+
+
+    let pending_tx = contract
+        .verify(
+            U256::from(batch_number),
+            B256::from_slice(&keccak256(&data)),
+        ).gas_price(1000000)
+        .send()
+        .await?;
+
+    let receipt = pending_tx.get_receipt().await?;
+
+    println!(
+        "Proof of data inclusion for blob {} verified on L1. Tx hash: {}",
+        batch_number, receipt.transaction_hash,
     );
 
     Ok(())

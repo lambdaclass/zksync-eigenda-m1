@@ -16,6 +16,7 @@ use anyhow::Result;
 use clap::Parser;
 use host::eigen_client::EigenClientRetriever;
 use host::proof_equivalence;
+use host::prove_risc0::fake_prove_risc0_proof;
 use host::verify_blob::decode_blob_info;
 use secrecy::Secret;
 use tokio_postgres::NoTls;
@@ -29,9 +30,6 @@ use rust_kzg_bn254_prover::srs::SRS;
 #[derive(Parser, Debug)]
 #[command(about, long_about = None)]
 struct Args {
-    /// URL of the RPC endpoint
-    #[arg(short, long, env = "RPC_URL")]
-    rpc_url: Url,
     /// Private key used to submit an ethereum transaction that verifys the proof
     #[arg(short, long, env = "PRIVATE_KEY")]
     private_key: Secret<String>,
@@ -42,6 +40,8 @@ struct Args {
     #[arg(short, long, env = "DISPERSER_RPC")]
     disperser_rpc: String,
 }
+
+
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -71,9 +71,11 @@ async fn main() -> Result<()> {
 
     let eigen_client = EigenClientRetriever::new(&args.disperser_rpc).await?;
 
+
+
     loop {
         let rows = client
-        .query("SELECT inclusion_data, sent_at FROM data_availability WHERE sent_at > $1 AND inclusion_data IS NOT NULL ORDER BY sent_at LIMIT 5", &[&timestamp])
+        .query("SELECT inclusion_data, sent_at, l1_batch_number FROM data_availability WHERE sent_at > $1 AND inclusion_data IS NOT NULL ORDER BY sent_at LIMIT 5", &[&timestamp])
         .await?; // Maybe this approach doesn't work, since maybe row A with has a lower timestamp than row B, but row A has inclusion data NULL so it is not included yet and will never be.
                  // Maybe just look for batch number and go one by one.
 
@@ -91,8 +93,9 @@ async fn main() -> Result<()> {
             let inclusion_data: Vec<u8> = row.get(0);
             let (blob_header, blob_verification_proof, batch_header_hash) = decode_blob_info(inclusion_data)?;
             let blob_data = eigen_client.get_blob_data(blob_verification_proof.blobIndex, batch_header_hash).await?.ok_or(anyhow::anyhow!("Not blob data"))?;
-
-            println!("Executing Proof Equivalence guest");
+            let batch_number: i64 = row.get(2);
+            fake_prove_risc0_proof(blob_data, batch_number as u64, args.private_key.clone(), args.proof_verifier_rpc.clone()).await?;
+            /*println!("Executing Proof Equivalence guest");
             let proof_equivalence_result = proof_equivalence::run_proof_equivalence(&srs, blob_header.clone().commitment,blob_data).await?;
 
             let hash: [u8; 32] = proof_equivalence_result.receipt.journal.decode()?;
@@ -123,7 +126,7 @@ async fn main() -> Result<()> {
                 blob_verification_proof.blobIndex,
                 args.proof_verifier_rpc.clone(),
             )
-            .await?;
+            .await?;*/
         }
     }
 }
