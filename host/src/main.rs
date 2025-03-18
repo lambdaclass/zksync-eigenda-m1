@@ -14,16 +14,15 @@
 
 use anyhow::Result;
 use clap::Parser;
+use common::output::Output;
 use host::eigen_client::EigenClientRetriever;
-use host::proof_equivalence;
 use host::verify_blob::decode_blob_info;
 use secrecy::Secret;
 use tokio_postgres::NoTls;
 use tracing_subscriber::EnvFilter;
+use methods::GUEST_ELF;
 
 use url::Url;
-use blob_verification_methods::BLOB_VERIFICATION_GUEST_ELF;
-use proof_equivalence_methods::PROOF_EQUIVALENCE_GUEST_ELF;
 use rust_kzg_bn254_prover::srs::SRS;
 
 #[derive(Parser, Debug)]
@@ -92,10 +91,9 @@ async fn main() -> Result<()> {
             let (blob_header, blob_verification_proof, batch_header_hash) = decode_blob_info(inclusion_data)?;
             let blob_data = eigen_client.get_blob_data(blob_verification_proof.blobIndex, batch_header_hash).await?.ok_or(anyhow::anyhow!("Not blob data"))?;
 
-            println!("Executing Proof Equivalence guest");
-            let proof_equivalence_result = proof_equivalence::run_proof_equivalence(&srs, blob_header.clone().commitment,blob_data).await?;
-
-            let hash: [u8; 32] = proof_equivalence_result.receipt.journal.decode()?;
+            //println!("Executing Proof Equivalence guest");
+            //let proof_equivalence_result = proof_equivalence::run_proof_equivalence(&srs, blob_header.clone().commitment,blob_data).await?;
+            /*let output: Output = result.receipt.journal.decode()?;
             println!("Data hash: {:?}", hex::encode(hash));
             
             println!("Verifying Proof Equivalence guest");
@@ -106,19 +104,30 @@ async fn main() -> Result<()> {
                 blob_verification_proof.blobIndex,
                 args.proof_verifier_rpc.clone(),
             ).await?;
-
+            
             println!("Executing Blob Verification guest");
             let blob_verification_result = host::verify_blob::run_blob_verification_guest(
                 blob_header.clone(),
                 blob_verification_proof.clone(),
                 args.rpc_url.clone(),
             )
-            .await?;
+            .await?;*/
+        
+            let result = host::guest_caller::run_guest(
+                blob_header.clone(),
+                blob_verification_proof.clone(),
+                &srs, 
+                blob_header.clone().commitment,
+                blob_data,
+                args.rpc_url.clone(),
+            ).await?;
 
-            println!("Verifying Blob Verification guest");
+            let output: Output = result.receipt.journal.decode()?;
+            println!("Hash: {:?}", output.hash);
+            println!("Verifying guest");
             host::prove_risc0::prove_risc0_proof(
-                blob_verification_result,
-                BLOB_VERIFICATION_GUEST_ELF,
+                result,
+                GUEST_ELF,
                 args.private_key.clone(),
                 blob_verification_proof.blobIndex,
                 args.proof_verifier_rpc.clone(),

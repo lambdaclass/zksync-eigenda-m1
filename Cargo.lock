@@ -3247,6 +3247,7 @@ dependencies = [
  "ethabi",
  "hex",
  "kzgpad-rs",
+ "methods",
  "num-bigint 0.4.6",
  "proof-equivalence-methods",
  "prost",
@@ -3951,6 +3952,13 @@ dependencies = [
  "log",
  "objc",
  "paste",
+]
+
+[[package]]
+name = "methods"
+version = "0.1.0"
+dependencies = [
+ "risc0-build",
 ]
 
 [[package]]
