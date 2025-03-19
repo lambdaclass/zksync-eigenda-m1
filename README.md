@@ -36,6 +36,17 @@ Go to [Avs-Devnet repo](https://github.com/Layr-Labs/avs-devnet/blob/main/exampl
 
 Line 214: `vm.serializeAddress(output,"blobVerifier", address(eigenDABlobVerifier));`
 
+And add
+
+```yaml
+- name: zksync_rich_9
+  address: "0xe706e60ab5Dc512C36A4646D719b889F398cbBcB"
+- name: zksync_rich_10
+  address: "0xE90E12261CCb0F3F7976Ae611A29e84a6A85f424"
+```
+
+To `keys:` section
+
 After runnning the devnet run
 
 ```bash
