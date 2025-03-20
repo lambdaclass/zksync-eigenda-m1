@@ -28,3 +28,5 @@ prost = {workspace = true}
 common = {workspace = true}
 secrecy = {workspace = true}
 alloy = {workspace = true}
+rust-eigenda-client = {workspace = true}
+async-trait = { workspace = true }
