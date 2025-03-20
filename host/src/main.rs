@@ -12,15 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::{str::FromStr, sync::Arc};
+
 use anyhow::Result;
 use clap::Parser;
 use common::output::Output;
 use host::eigen_client::EigenClientRetriever;
 use host::verify_blob::decode_blob_info;
-use secrecy::Secret;
+use rust_eigenda_client::{client::BlobProvider, config::{EigenConfig, EigenSecrets, PrivateKey, SecretUrl, SrsPointsSource}, EigenClient};
+use secrecy::{ExposeSecret, Secret};
 use tokio_postgres::NoTls;
 use tracing_subscriber::EnvFilter;
 use methods::GUEST_ELF;
+use std::error::Error;
 
 use url::Url;
 use rust_kzg_bn254_prover::srs::SRS;
@@ -32,14 +36,30 @@ struct Args {
     #[arg(short, long, env = "RPC_URL")]
     rpc_url: Url,
     /// Private key used to submit an ethereum transaction that verifys the proof
-    #[arg(short, long, env = "PRIVATE_KEY")]
-    private_key: Secret<String>,
+    #[arg(short, long, env = "VERIFICATION_PRIVATE_KEY")]
+    verification_private_key: Secret<String>,
+    /// Private key used to get inclusion data from the disperser
+    #[arg(short, long, env = "DISPERSER_PRIVATE_KEY")]
+    disperser_private_key: Secret<String>,
     /// Rpc were the proof should be verified
     #[arg(short, long, env = "PROOF_VERIFIER_RPC")]
     proof_verifier_rpc: Secret<String>,
     /// Rpc of the eigenda Disperser
     #[arg(short, long, env = "DISPERSER_RPC")]
     disperser_rpc: String,
+    /// Service Manager Address
+    #[arg(short, long, env = "SVC_MANAGER_ADDR")]
+    svc_manager_addr: String,
+}
+
+#[derive(Debug)]
+struct FakeBlobProvider;
+
+#[async_trait::async_trait]
+impl BlobProvider for FakeBlobProvider {
+    async fn get_blob(&self, _input: &str) -> Result<Option<Vec<u8>>, Box<dyn Error + Send + Sync>> {
+        Ok(None)
+    }
 }
 
 #[tokio::main]
@@ -68,11 +88,25 @@ async fn main() -> Result<()> {
     // Parse the command line arguments.
     let args = Args::parse();
 
-    let eigen_client = EigenClientRetriever::new(&args.disperser_rpc).await?;
+    let eigen_retriever = EigenClientRetriever::new(&args.disperser_rpc).await?;
+
+    let eigen_client = EigenClient::new(EigenConfig::new(
+            args.disperser_rpc,
+            SecretUrl::new(args.rpc_url.clone()),
+            0,
+            ethabi::ethereum_types::H160::from_str(&args.svc_manager_addr)?,
+            false,
+            false,
+            SrsPointsSource::Path("./resources".to_string()),
+            vec![]
+        )?,
+        EigenSecrets{private_key: PrivateKey::from_str(args.disperser_private_key.expose_secret())?},
+        Arc::new(FakeBlobProvider{})
+    ).await?;
 
     loop {
         let rows = client
-        .query("SELECT inclusion_data, sent_at FROM data_availability WHERE sent_at > $1 AND inclusion_data IS NOT NULL ORDER BY sent_at LIMIT 5", &[&timestamp])
+        .query("SELECT blob_id, sent_at FROM data_availability WHERE sent_at > $1 AND inclusion_data IS NOT NULL ORDER BY sent_at LIMIT 5", &[&timestamp])
         .await?; // Maybe this approach doesn't work, since maybe row A with has a lower timestamp than row B, but row A has inclusion data NULL so it is not included yet and will never be.
                  // Maybe just look for batch number and go one by one.
 
@@ -87,9 +121,17 @@ async fn main() -> Result<()> {
             .get(1);
 
         for row in rows {
-            let inclusion_data: Vec<u8> = row.get(0);
+            let blob_id: String = row.get(0);
+            let inclusion_data: Vec<u8>;
+            loop {
+                let opt_inclusion_data = eigen_client.get_inclusion_data(&blob_id).await?;
+                if let Some(opt_inclusion_data) = opt_inclusion_data {
+                    inclusion_data = opt_inclusion_data;
+                    break
+                }
+            }
             let (blob_header, blob_verification_proof, batch_header_hash) = decode_blob_info(inclusion_data)?;
-            let blob_data = eigen_client.get_blob_data(blob_verification_proof.blobIndex, batch_header_hash).await?.ok_or(anyhow::anyhow!("Not blob data"))?;
+            let blob_data = eigen_retriever.get_blob_data(blob_verification_proof.blobIndex, batch_header_hash).await?.ok_or(anyhow::anyhow!("Not blob data"))?;
         
             let result = host::guest_caller::run_guest(
                 blob_header.clone(),
@@ -106,7 +148,7 @@ async fn main() -> Result<()> {
             host::prove_risc0::prove_risc0_proof(
                 result,
                 GUEST_ELF,
-                args.private_key.clone(),
+                args.verification_private_key.clone(),
                 blob_verification_proof.blobIndex,
                 args.proof_verifier_rpc.clone(),
             )
