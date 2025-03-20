@@ -1,7 +1,7 @@
 use alloy_primitives::{address, Address};
 use alloy_sol_types::SolCall;
 use anyhow::Context;
-use blob_verification_methods::BLOB_VERIFICATION_GUEST_ELF;
+use methods::GUEST_ELF;
 use risc0_steel::{ethereum::EthEvmEnv, Contract};
 use risc0_zkvm::ProveInfo;
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
@@ -97,7 +97,7 @@ pub async fn run_guest(
         exec.prove_with_ctx(
             env,
             &VerifierContext::default(),
-            BLOB_VERIFICATION_GUEST_ELF,
+            GUEST_ELF,
             &ProverOpts::groth16(),
         )
         .context("failed to run executor")
