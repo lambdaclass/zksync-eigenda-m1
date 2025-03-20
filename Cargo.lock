@@ -1786,13 +1786,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "blob-verification-methods"
-version = "0.1.0"
-dependencies = [
- "risc0-build",
-]
-
-[[package]]
 name = "block"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3240,7 +3233,6 @@ dependencies = [
  "alloy-sol-types",
  "anyhow",
  "ark-bn254 0.5.0",
- "blob-verification-methods",
  "chrono",
  "clap",
  "common",
@@ -3249,7 +3241,6 @@ dependencies = [
  "kzgpad-rs",
  "methods",
  "num-bigint 0.4.6",
- "proof-equivalence-methods",
  "prost",
  "risc0-steel",
  "risc0-zkvm",
@@ -4625,13 +4616,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60946a68e5f9d28b0dc1c21bb8a97ee7d018a8b322fa57838ba31cc878e22d99"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "proof-equivalence-methods"
-version = "0.1.0"
-dependencies = [
- "risc0-build",
 ]
 
 [[package]]

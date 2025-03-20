@@ -1,5 +1,4 @@
 use alloy_primitives::U256;
-use alloy_primitives::{address, Address};
 use alloy_sol_types::sol;
 use anyhow::anyhow;
 use ethabi::{ParamType, Token};
