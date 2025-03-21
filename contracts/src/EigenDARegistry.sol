@@ -8,22 +8,22 @@ interface IRiscZeroVerifier {
 // Wraps the Risc0 groth16 verifier to make the function not view
 contract EigenDARegistry {
     IRiscZeroVerifier public risc0verifier;
-    mapping (uint256 => bool) public finishedBatches;
-    mapping (uint256 => bool) public verifiedBatches;
-    mapping (uint256 => bytes32) public hashes;
+    mapping (bytes => bool) public finishedBatches;
+    mapping (bytes => bool) public verifiedBatches;
+    mapping (bytes => bytes32) public hashes;
 
     constructor(address _risc0verifier) {
         risc0verifier = IRiscZeroVerifier(_risc0verifier);
     }
 
-    function verify(bytes calldata seal, bytes32 imageId, bytes32 journalDigest, bytes32 eigendaHash, uint256 batchNumber) public {
+    function verify(bytes calldata seal, bytes32 imageId, bytes32 journalDigest, bytes32 eigendaHash, bytes calldata inclusion_data) public {
         try risc0verifier.verify(seal, imageId, journalDigest) {
-            finishedBatches[uint256(batchNumber)] = true;
-            verifiedBatches[uint256(batchNumber)] = true;
-            hashes[uint256(batchNumber)] = eigendaHash;
+            finishedBatches[inclusion_data] = true;
+            verifiedBatches[inclusion_data] = true;
+            hashes[inclusion_data] = eigendaHash;
         } catch {
-            finishedBatches[uint256(batchNumber)] = true;
-            verifiedBatches[uint256(batchNumber)] = false;
+            finishedBatches[inclusion_data] = true;
+            verifiedBatches[inclusion_data] = false;
         }
     }
 }
