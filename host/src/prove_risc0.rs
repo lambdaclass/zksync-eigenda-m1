@@ -5,6 +5,7 @@ use alloy::{
     signers::local::PrivateKeySigner,
     sol,
 };
+use alloy_primitives::U256;
 use risc0_zkvm::ProveInfo;
 use risc0_zkvm::{compute_image_id, sha::Digestible};
 use secrecy::{ExposeSecret, Secret};
@@ -12,8 +13,8 @@ use url::Url;
 
 sol!(
     #[sol(rpc)]
-    interface IRiscZeroVerifier {
-        function verify(bytes calldata seal, bytes32 imageId, bytes32 journalDigest) external;
+    interface IEigenDARegistry {
+        function verify(bytes calldata seal, bytes32 imageId, bytes32 journalDigest, bytes32 eigendaHash, uint256 batchNumber) external;
     }
 );
 
@@ -21,9 +22,10 @@ pub async fn prove_risc0_proof(
     session_info: ProveInfo,
     guest_elf: &[u8],
     private_key: Secret<String>,
-    blob_index: u32,
+    batch_number: u64,
     proof_verifier_rpc: Url,
     eigenda_registry_addr: String,
+    eigenda_hash: Vec<u8>,
 ) -> anyhow::Result<()> {
     let image_id = compute_image_id(guest_elf)?;
     let image_id: risc0_zkvm::sha::Digest = image_id.into();
@@ -62,13 +64,15 @@ pub async fn prove_risc0_proof(
         .parse()
         .expect("Invalid contract address");
 
-    let contract = IRiscZeroVerifier::new(eigenda_registry_addr, &provider);
+    let contract = IEigenDARegistry::new(eigenda_registry_addr, &provider);
 
     let pending_tx = contract
         .verify(
             Bytes::from(block_proof),
             B256::from_slice(&image_id),
             B256::from_slice(&journal_digest),
+            B256::from_slice(&eigenda_hash),
+            U256::from(batch_number),
         )
         .send()
         .await?;
@@ -76,8 +80,8 @@ pub async fn prove_risc0_proof(
     let receipt = pending_tx.get_receipt().await?;
 
     println!(
-        "Proof of data inclusion for blob {} verified on L1. Tx hash: {}",
-        blob_index, receipt.transaction_hash,
+        "Proof of data inclusion for batch {} verified on L1. Tx hash: {}",
+        batch_number, receipt.transaction_hash,
     );
 
     Ok(())

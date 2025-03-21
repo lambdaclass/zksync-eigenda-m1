@@ -108,7 +108,7 @@ async fn main() -> Result<()> {
 
     loop {
         let rows = client
-        .query("SELECT blob_id, sent_at FROM data_availability WHERE sent_at > $1 AND inclusion_data IS NOT NULL ORDER BY sent_at LIMIT 5", &[&timestamp])
+        .query("SELECT blob_id, sent_at, l1_batch_number FROM data_availability WHERE sent_at > $1 AND inclusion_data IS NOT NULL ORDER BY sent_at LIMIT 5", &[&timestamp])
         .await?; // Maybe this approach doesn't work, since maybe row A with has a lower timestamp than row B, but row A has inclusion data NULL so it is not included yet and will never be.
                  // Maybe just look for batch number and go one by one.
 
@@ -124,6 +124,7 @@ async fn main() -> Result<()> {
 
         for row in rows {
             let blob_id: String = row.get(0);
+            let l1_batch_number: i64 = row.get(2);
             let inclusion_data: Vec<u8>;
             loop {
                 let opt_inclusion_data = eigen_client.get_inclusion_data(&blob_id).await?;
@@ -140,21 +141,20 @@ async fn main() -> Result<()> {
                 blob_header.clone(),
                 blob_verification_proof.clone(),
                 &srs, 
-                blob_header.clone().commitment,
                 blob_data,
                 args.rpc_url.clone(),
             ).await?;
 
             let output: Output = result.receipt.journal.decode()?;
-            println!("Hash: {:?}", output.hash);
-            println!("Verifying guest");
+
             host::prove_risc0::prove_risc0_proof(
                 result,
                 GUEST_ELF,
                 args.verification_private_key.clone(),
-                blob_verification_proof.blobIndex,
+                l1_batch_number as u64,
                 args.rpc_url.clone(),
-                args.eigenda_registry_addr.clone()
+                args.eigenda_registry_addr.clone(),
+                output.hash,
             )
             .await?;
         }
