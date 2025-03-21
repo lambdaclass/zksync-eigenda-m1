@@ -23,7 +23,7 @@ pub async fn prove_risc0_proof(
     private_key: Secret<String>,
     blob_index: u32,
     proof_verifier_rpc: Url,
-    risc0_verifier_address: String,
+    eigenda_registry_addr: String,
 ) -> anyhow::Result<()> {
     let image_id = compute_image_id(guest_elf)?;
     let image_id: risc0_zkvm::sha::Digest = image_id.into();
@@ -58,11 +58,11 @@ pub async fn prove_risc0_proof(
         .wallet(wallet)
         .on_http(proof_verifier_rpc);
 
-    let risc0_verifier_contract_address: Address = risc0_verifier_address
+    let eigenda_registry_addr: Address = eigenda_registry_addr
         .parse()
         .expect("Invalid contract address");
 
-    let contract = IRiscZeroVerifier::new(risc0_verifier_contract_address, &provider);
+    let contract = IRiscZeroVerifier::new(eigenda_registry_addr, &provider);
 
     let pending_tx = contract
         .verify(
