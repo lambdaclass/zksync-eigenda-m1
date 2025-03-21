@@ -58,7 +58,7 @@ Save ports for `el-1-besu-lighthouse: rpc` and `disperser: grpc`
 
 Save addresses of `blobVerifier` and `eigenDAServiceManager`
 
-### Run zksync-era (eigenda-m1 branch on lambdaclass fork):
+### Run zksync-era (eigenda-m1-post-merge branch on lambdaclass fork):
 
 Install zkstack:
 
@@ -91,7 +91,7 @@ da_client:
     eigenda_svc_manager_address: <eigenDAServiceManager>
     wait_for_finalization: false
     authenticated: false
-    path: ./resources
+    points_source_path: ./resources
 ```
 
 Copy the resources folder inside eigenda to zksync-era root
