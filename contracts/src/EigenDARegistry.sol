@@ -6,7 +6,7 @@ interface IRiscZeroVerifier {
 }
 
 // Wraps the Risc0 groth16 verifier to make the function not view
-contract Risc0ProofVerifierWrapper {
+contract EigenDARegistry {
     IRiscZeroVerifier public risc0verifier;
 
     event ProofVerified();

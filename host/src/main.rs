@@ -41,9 +41,9 @@ struct Args {
     /// Private key used to get inclusion data from the disperser
     #[arg(short, long, env = "DISPERSER_PRIVATE_KEY")]
     disperser_private_key: Secret<String>,
-    /// Address of the Risc0 Verifier Wrapper
-    #[arg(short, long, env = "RISC0_VERIFIER_WRAPPER")]
-    risc0_verifier_address: String,
+    /// Address of the EigenDA Registry
+    #[arg(short, long, env = "EIGENDA_REGISTRY_ADDR")]
+    eigenda_registry_addr: String,
     /// Rpc of the eigenda Disperser
     #[arg(short, long, env = "DISPERSER_RPC")]
     disperser_rpc: String,
@@ -154,7 +154,7 @@ async fn main() -> Result<()> {
                 args.verification_private_key.clone(),
                 blob_verification_proof.blobIndex,
                 args.rpc_url.clone(),
-                args.risc0_verifier_address.clone()
+                args.eigenda_registry_addr.clone()
             )
             .await?;
         }

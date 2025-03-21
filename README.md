@@ -168,10 +168,10 @@ make deploy-risc0-verifier ETH_WALLET_PRIVATE_KEY=<your_pk> RPC_URL=<your_rpc>
 
 Save the address under `Contract Address: <address>`
 
-Deploy the `Risc0ProofVerifierWrapper`:
+Deploy the `EigenDARegistry`:
 
 ```bash
-PRIVATE_KEY=<your_pk> RISC0_VERIFIER_ADDRESS=<your_address> forge script contracts/script/Risc0ProofVerifierWrapperDeployer.s.sol:Risc0ProofVerifierWrapperDeployer --rpc-url <your_rpc> --broadcast -vvvv
+PRIVATE_KEY=<your_pk> RISC0_VERIFIER_ADDRESS=<your_address> forge script contracts/script/EigenDARegistryDeployer.s.sol:EigenDARegistryDeployer --rpc-url <your_rpc> --broadcast -vvvv
 ```
 
 Keep the contract address at hand for the next command.
@@ -179,7 +179,7 @@ Keep the contract address at hand for the next command.
 To run the example execute the following command:
 
 ```bash
-RPC_URL=<your_rpc> VERIFICATION_PRIVATE_KEY=<your_private_key> DISPERSER_PRIVATE_KEY=<your_private_key> RISC0_VERIFIER_WRAPPER=<your_risc0_verifier_address> DISPERSER_RPC=<your_rpc> SVC_MANAGER_ADDR=<your_svc_manager_addr> RUST_LOG=info cargo run --release
+RPC_URL=<your_rpc> VERIFICATION_PRIVATE_KEY=<your_private_key> DISPERSER_PRIVATE_KEY=<your_private_key> EIGENDA_REGISTRY_ADDR=<your_eigenda_registry_addr> DISPERSER_RPC=<your_rpc> SVC_MANAGER_ADDR=<your_svc_manager_addr> RUST_LOG=info cargo run --release
 ```
 
 

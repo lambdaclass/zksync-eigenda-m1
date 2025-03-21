@@ -2,11 +2,11 @@
 pragma solidity ^0.8.0;
 
 import {Script} from "forge-std/Script.sol";
-import {Risc0ProofVerifierWrapper} from "../src/Risc0ProofVerifierWrapper.sol";
+import {EigenDARegistry} from "../src/EigenDARegistry.sol";
 import "forge-std/console.sol";
 
 
-contract Risc0ProofVerifierWrapperDeployer is Script {
+contract EigenDARegistryDeployer is Script {
     // Environment variable name for the BlobVerifier address
     string constant RISC0_VERIFIER_ADDRESS = "RISC0_VERIFIER_ADDRESS";
 
@@ -22,11 +22,11 @@ contract Risc0ProofVerifierWrapperDeployer is Script {
         vm.txGasPrice( 0.000000002  gwei);
         
         // Deploy VerifierWrapper with the specified BlobVerifier address
-        Risc0ProofVerifierWrapper wrapper = new Risc0ProofVerifierWrapper(risc0Verifier);
+        EigenDARegistry wrapper = new EigenDARegistry(risc0Verifier);
         
         vm.stopBroadcast();
 
         // Log the deployed address
-        console.log("Risc0ProofVerifierWrapper deployed at:", address(wrapper));
+        console.log("EigenDARegistry deployed at:", address(wrapper));
     }
 }
