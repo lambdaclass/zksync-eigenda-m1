@@ -20,13 +20,10 @@ use rust_kzg_bn254_prover::srs::SRS;
 use rust_kzg_bn254_primitives::blob::Blob;
 use rust_kzg_bn254_prover::kzg::KZG;
 
-use crate::verify_blob::G1Point;
-
 pub async fn run_guest(
     blob_header: BlobHeader,
     blob_verification_proof: BlobVerificationProof,
     srs: &SRS,
-    commitment: G1Point,
     data: Vec<u8>,
     rpc_url: Url,
 ) -> anyhow::Result<ProveInfo> {
@@ -54,7 +51,7 @@ pub async fn run_guest(
     let input = env.into_input().await?;
 
     let blob_info = common::blob_info::BlobInfo {
-        blob_header: blob_header.into(),
+        blob_header: blob_header.clone().into(),
         blob_verification_proof: blob_verification_proof.clone().into(),
     };
 
@@ -64,8 +61,8 @@ pub async fn run_guest(
 
     kzg.calculate_and_store_roots_of_unity(blob.len().try_into()?)?;
 
-    let x: [u8;32] = commitment.x.to_be_bytes();
-    let y: [u8;32] = commitment.y.to_be_bytes();
+    let x: [u8;32] = blob_header.commitment.x.to_be_bytes();
+    let y: [u8;32] = blob_header.commitment.y.to_be_bytes();
     
     let x_fq = Fq::from(num_bigint::BigUint::from_bytes_be(&x));
     let y_fq =  Fq::from(num_bigint::BigUint::from_bytes_be(&y));
