@@ -8,6 +8,7 @@ use alloy::{
 use risc0_zkvm::ProveInfo;
 use risc0_zkvm::{compute_image_id, sha::Digestible};
 use secrecy::{ExposeSecret, Secret};
+use url::Url;
 
 sol!(
     #[sol(rpc)]
@@ -21,7 +22,8 @@ pub async fn prove_risc0_proof(
     guest_elf: &[u8],
     private_key: Secret<String>,
     blob_index: u32,
-    proof_verifier_rpc: Secret<String>,
+    proof_verifier_rpc: Url,
+    risc0_verifier_address: String,
 ) -> anyhow::Result<()> {
     let image_id = compute_image_id(guest_elf)?;
     let image_id: risc0_zkvm::sha::Digest = image_id.into();
@@ -54,13 +56,13 @@ pub async fn prove_risc0_proof(
     let wallet = EthereumWallet::from(signer);
     let provider = ProviderBuilder::new()
         .wallet(wallet)
-        .on_http(proof_verifier_rpc.expose_secret().parse()?);
+        .on_http(proof_verifier_rpc);
 
-    let contract_address: Address = "0x25b0F3F5434924821Ad73Eed8C7D81Db87DB0a15"
+    let risc0_verifier_contract_address: Address = risc0_verifier_address
         .parse()
         .expect("Invalid contract address");
 
-    let contract = IRiscZeroVerifier::new(contract_address, &provider);
+    let contract = IRiscZeroVerifier::new(risc0_verifier_contract_address, &provider);
 
     let pending_tx = contract
         .verify(

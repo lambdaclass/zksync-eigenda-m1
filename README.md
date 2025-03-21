@@ -161,18 +161,25 @@ Update the BLOB_VERIFIER_WRAPPER_CONTRACT address on ```host/src/verify_blob.rs`
 
 The address on CALLER is a known address from zksync, it should be changed to the needed one in the real use case.
 
-If necessary, deploy the `Risc0ProofVerifierWrapper`:
+Deploy the `Risc0Groth16Verifier`:
+```bash
+make deploy-risc0-verifier ETH_WALLET_PRIVATE_KEY=<your_pk> RPC_URL=<your_rpc>
+```
+
+Save the address under `Contract Address: <address>`
+
+Deploy the `Risc0ProofVerifierWrapper`:
 
 ```bash
 PRIVATE_KEY=<your_pk> RISC0_VERIFIER_ADDRESS=<your_address> forge script contracts/script/Risc0ProofVerifierWrapperDeployer.s.sol:Risc0ProofVerifierWrapperDeployer --rpc-url <your_rpc> --broadcast -vvvv
 ```
 
-There is already one deployed in holesky: `0x25b0F3F5434924821Ad73Eed8C7D81Db87DB0a15`
+Keep the contract address at hand for the next command.
 
 To run the example execute the following command:
 
 ```bash
-RPC_URL=<your_rpc> VERIFICATION_PRIVATE_KEY=<your_private_key> DISPERSER_PRIVATE_KEY=<your_private_key> PROOF_VERIFIER_RPC=<your_rpc> DISPERSER_RPC=<your_rpc> SVC_MANAGER_ADDR=<your_svc_manager_addr> RUST_LOG=info cargo run --release
+RPC_URL=<your_rpc> VERIFICATION_PRIVATE_KEY=<your_private_key> DISPERSER_PRIVATE_KEY=<your_private_key> RISC0_VERIFIER_WRAPPER=<your_risc0_verifier_address> DISPERSER_RPC=<your_rpc> SVC_MANAGER_ADDR=<your_svc_manager_addr> RUST_LOG=info cargo run --release
 ```
 
 
