@@ -48,7 +48,9 @@ pub async fn prove_risc0_proof(
         .as_bytes()
         .to_vec();
 
-    let signer: PrivateKeySigner = private_key.expose_secret().parse()?;
+    let pk = private_key.expose_secret();
+    let pk = "0x".to_owned() + pk.strip_prefix("0x").unwrap_or(pk);
+    let signer: PrivateKeySigner = pk.parse()?;
     let wallet = EthereumWallet::from(signer);
     let provider = ProviderBuilder::new()
         .wallet(wallet)

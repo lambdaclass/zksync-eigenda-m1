@@ -90,6 +90,8 @@ async fn main() -> Result<()> {
 
     let eigen_retriever = EigenClientRetriever::new(&args.disperser_rpc).await?;
 
+    let disperser_pk = args.disperser_private_key.expose_secret();
+
     let eigen_client = EigenClient::new(EigenConfig::new(
             args.disperser_rpc,
             SecretUrl::new(args.rpc_url.clone()),
@@ -100,7 +102,7 @@ async fn main() -> Result<()> {
             SrsPointsSource::Path("./resources".to_string()),
             vec![]
         )?,
-        EigenSecrets{private_key: PrivateKey::from_str(args.disperser_private_key.expose_secret())?},
+        EigenSecrets{private_key: PrivateKey::from_str(disperser_pk.strip_prefix("0x").unwrap_or(disperser_pk))?},
         Arc::new(FakeBlobProvider{})
     ).await?;
 
@@ -129,6 +131,7 @@ async fn main() -> Result<()> {
                     inclusion_data = opt_inclusion_data;
                     break
                 }
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             }
             let (blob_header, blob_verification_proof, batch_header_hash) = decode_blob_info(inclusion_data)?;
             let blob_data = eigen_retriever.get_blob_data(blob_verification_proof.blobIndex, batch_header_hash).await?.ok_or(anyhow::anyhow!("Not blob data"))?;
