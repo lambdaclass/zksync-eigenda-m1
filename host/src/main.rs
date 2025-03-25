@@ -35,7 +35,7 @@ struct Args {
     #[arg(short, long, env = "API_URL")]
     api_url: String,
     /// Batch number where verification should start
-    #[arg(short, long, env = "START_BATCH")]
+    #[arg(short, long, env = "START_BATCH", value_parser = clap::value_parser!(u64).range(1..))]
     start_batch: u64,
 }
 
@@ -45,10 +45,6 @@ async fn main() -> Result<()> {
     let args = Args::parse();
 
     let client = Client::new();
-
-    if args.start_batch == 0 {
-        return Err(anyhow::anyhow!("Start batch should be greater than 0"));
-    }
 
     let mut current_batch = args.start_batch;
 
