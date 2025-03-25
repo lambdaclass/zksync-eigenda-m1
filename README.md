@@ -150,9 +150,9 @@ Update the BLOB_VERIFIER_WRAPPER_CONTRACT address on ```host/src/verify_blob.rs`
 
 The address on CALLER is a known address from zksync, it should be changed to the needed one in the real use case.
 
-Deploy the `Risc0Groth16Verifier`:
+Deploy the `RiscZeroGroth16Verifier`:
 ```bash
-make deploy-risc0-verifier ETH_WALLET_PRIVATE_KEY=<your_pk> RPC_URL=<your_rpc>
+ETH_WALLET_PRIVATE_KEY=<your_sk> forge script contracts/script/DeployRiscZeroGroth16Verifier.s.sol:DeployRiscZeroGroth16Verifier --rpc-url <your_rpc> --broadcast -vvvv
 ```
 
 Save the address under `Contract Address: <address>`
@@ -160,7 +160,7 @@ Save the address under `Contract Address: <address>`
 Deploy the `Risc0ProofVerifierWrapper`:
 
 ```bash
-PRIVATE_KEY=<your_pk> RISC0_VERIFIER_ADDRESS=<your_address> forge script contracts/script/Risc0ProofVerifierWrapperDeployer.s.sol:Risc0ProofVerifierWrapperDeployer --rpc-url <your_rpc> --broadcast -vvvv
+PRIVATE_KEY=<your_sk> RISC0_VERIFIER_ADDRESS=<your_address> forge script contracts/script/Risc0ProofVerifierWrapperDeployer.s.sol:Risc0ProofVerifierWrapperDeployer --rpc-url <your_rpc> --broadcast -vvvv
 ```
 
 Keep the contract address at hand for the next command.

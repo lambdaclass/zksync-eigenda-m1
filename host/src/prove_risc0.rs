@@ -22,7 +22,7 @@ pub async fn prove_risc0_proof(
     session_info: ProveInfo,
     private_key: Secret<String>,
     blob_index: u32,
-    proof_verifier_rpc: Url,
+    rpc: Url,
     risc0_verifier_address: String,
 ) -> anyhow::Result<()> {
     let image_id = compute_image_id(BLOB_VERIFICATION_GUEST_ELF)?;
@@ -54,7 +54,7 @@ pub async fn prove_risc0_proof(
     let wallet = EthereumWallet::from(signer);
     let provider = ProviderBuilder::new()
         .wallet(wallet)
-        .on_http(proof_verifier_rpc);
+        .on_http(rpc);
 
     let risc0_verifier_contract_address: Address = risc0_verifier_address
         .parse()
