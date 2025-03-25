@@ -164,11 +164,11 @@ To run the example execute the following command:
 RPC_URL=<your_rpc> PRIVATE_KEY=<your_private_key> PROOF_VERIFIER_RPC=<your_rpc> API_URL=<your_url> START_BATCH=1 RUST_LOG=info cargo run --release
 ```
 
-For a local server, you can get your api url under `chains/<your_chain>/configs/general.yaml` 
+For a local server, you can get your api url under `chains/<your_chain>/configs/general.yaml` on the `zksync-era` repository
 
 ```
 api:
   web3_json_rpc:
-    hhtp_url:
+    http_url:
 ```
 
