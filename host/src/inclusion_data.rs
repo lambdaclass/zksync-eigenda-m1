@@ -4,6 +4,9 @@ use serde_json::{json, Value};
 /// Gets the inclusion data for the given batch number
 pub async fn get_inclusion_data(batch_number: u64, url: String, client: &Client) -> anyhow::Result<Vec<u8>> {
     loop {
+        // The unstable_getDataAvailabilityDetails is an unstable method that could be deleted later
+        // Here is the code in the zksync-era repository were it is defined
+        // https://github.com/matter-labs/zksync-era/blob/0a095b704c513dc72dbb417ba2731b09e9a2dd5d/core/node/api_server/src/web3/backend_jsonrpsee/namespaces/unstable.rs#L52
         let payload = json!({
             "jsonrpc": "2.0",
             "id": 1,
