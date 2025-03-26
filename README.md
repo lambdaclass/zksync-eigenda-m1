@@ -17,8 +17,6 @@ Use the runfile (local) option, use the wget shown to download the script and ru
 sudo ./<file>.run
 ```
 
-
-
 ## Run the example
 
 ### First run the eigenda devnet:
@@ -36,16 +34,50 @@ Go to [Avs-Devnet repo](https://github.com/Layr-Labs/avs-devnet/blob/main/exampl
 
 Line 214: `vm.serializeAddress(output,"blobVerifier", address(eigenDABlobVerifier));`
 
+Also replace line 28 on `avs-devnet/kurtosis_package/keys.star` for
+
+`shared_utils.send_funds(plan, context, info["address"], "10000ether")`
+
 And add
 
 ```yaml
+- name: zksync_rich_1
+  address: "0x36615Cf349d7F6344891B1e7CA7C72883F5dc049"
+- name: zksync_rich_2
+  address: "0xa61464658AfeAf65CccaaFD3a512b69A83B77618"
+- name: zksync_rich_3
+  address: "0x0D43eB5B8a47bA8900d84AA36656c92024e9772e"
+- name: zksync_rich_4
+  address: "0xA13c10C0D5bd6f79041B9835c63f91de35A15883"
+- name: zksync_rich_5
+  address: "0x8002cD98Cfb563492A6fB3E7C8243b7B9Ad4cc92"
+- name: zksync_rich_6
+  address: "0x4F9133D1d3F50011A6859807C837bdCB31Aaab13"
+- name: zksync_rich_7
+  address: "0xbd29A1B981925B94eEc5c4F1125AF02a2Ec4d1cA"
+- name: zksync_rich_8
+  address: "0xedB6F5B4aab3dD95C7806Af42881FF12BE7e9daa"
 - name: zksync_rich_9
   address: "0xe706e60ab5Dc512C36A4646D719b889F398cbBcB"
 - name: zksync_rich_10
   address: "0xE90E12261CCb0F3F7976Ae611A29e84a6A85f424"
 ```
 
-To `keys:` section
+To `keys:` section of `devnet.yaml`
+
+As well as replacing ehereum-package section for
+
+```yaml
+# ethereum-package configuration
+ethereum_package:
+  additional_services:
+    - blockscout
+  network_params:
+    # NOTE: turning this to 1s causes "referenceBlockNumber is in future" errors
+    seconds_per_slot: 3
+    network_id: "9"
+```
+
 
 After runnning the devnet run
 
@@ -66,6 +98,10 @@ Install zkstack:
 cd ./zkstack_cli/zkstackup
 ./install --local
 ```
+
+On `zksync-era/zkstack_cli/crates/types/src/l1_network.rs`
+
+Modify the address for `eigenda_registry` for your address.
 
 Reload your terminal, and run on zksync-era root:
 
@@ -124,7 +160,7 @@ zkstack ecosystem init \
           --deploy-paymaster true \
           --deploy-erc20 true \
           --deploy-ecosystem true \
-          --l1-rpc-url http://127.0.0.1:8545 \
+          --l1-rpc-url http://127.0.0.1:<your_rpc> \
           --server-db-url=postgres://postgres:notsecurepassword@localhost:5432 \
           --server-db-name=zksync_server_localhost_eigenda \
           --chain eigenda \
@@ -146,40 +182,60 @@ git submodule update --init
 make build_contracts
 ```
 
+Export the needed variables (rpcs should have http://, private keys and addresses should have 0x)
+```bash
+export PRIVATE_KEY=<your_private_key>
+export DISPERSER_PRIVATE_KEY=<your_disperser_private_key>
+export BLOB_VERIFIER_ADDRESS=<your_blob_verifier_address>
+export RPC_URL=<your_rpc>
+export DISPERSER_RPC=<your_rpc>
+export SVC_MANAGER_ADDR=<your_address>
+export CALLER_ADDR=<your_address>
+```
+Disperser private key should be the one you have listed to use with the eigenda disperser
+Caller address is the address you want to use to call the `VerifyBlobV1` function
+
 Deploy the blobVerifierWrapper:
 
 ```bash
-PRIVATE_KEY=<your_private_key> BLOB_VERIFIER_ADDRESS=<your_blob_verifier_address> forge script contracts/script/BlobVerifierWrapperDeployer.s.sol:BlobVerifierWrapperDeployer --rpc-url <your_rpc_url> --broadcast -vvvv
+forge script contracts/script/BlobVerifierWrapperDeployer.s.sol:BlobVerifierWrapperDeployer --rpc-url $RPC_URL --broadcast -vvvv
 ```
 
-For testing purpouses on devnet you can use:
+Save the address under `Contract Address: <address>`
+
 ```bash
-PRIVATE_KEY=0x3eb15da85647edd9a1159a4a13b9e7c56877c4eb33f614546d4db06a51868b1c BLOB_VERIFIER_ADDRESS=0x00CfaC4fF61D52771eF27d07c5b6f1263C2994A1 forge script contracts/script/BlobVerifierWrapperDeployer.s.sol:BlobVerifierWrapperDeployer --rpc-url http://127.0.0.1:<your_port> --broadcast -vvvv
+export BLOB_VERIFIER_WRAPPER_ADDR=<your_address>
 ```
-
-Update the BLOB_VERIFIER_WRAPPER_CONTRACT address on ```host/src/verify_blob.rs``` and ```methods/guest/src/main.rs``` for the one just deployed if needed.
 
 The address on CALLER is a known address from zksync, it should be changed to the needed one in the real use case.
 
 Deploy the `Risc0Groth16Verifier`:
 ```bash
-make deploy-risc0-verifier ETH_WALLET_PRIVATE_KEY=<your_pk> RPC_URL=<your_rpc>
+make deploy-risc0-verifier ETH_WALLET_PRIVATE_KEY=$PRIVATE_KEY RPC_URL=$RPC_URL
 ```
 
 Save the address under `Contract Address: <address>`
 
+```bash
+export RISC0_VERIFIER_ADDRESS=<your_address>
+```
+
 Deploy the `EigenDARegistry`:
 
 ```bash
-PRIVATE_KEY=<your_pk> RISC0_VERIFIER_ADDRESS=<your_address> forge script contracts/script/EigenDARegistryDeployer.s.sol:EigenDARegistryDeployer --rpc-url <your_rpc> --broadcast -vvvv
+forge script contracts/script/EigenDARegistryDeployer.s.sol:EigenDARegistryDeployer --rpc-url $RPC_URL --broadcast -vvvv
 ```
 
-Keep the contract address at hand for the next command.
+Save the address under `Contract Address: <address>`
+
+```bash
+export EIGENDA_REGISTRY_ADDR=<your_address>
+```
 
 To run the example execute the following command:
 
 ```bash
-RPC_URL=<your_rpc> VERIFICATION_PRIVATE_KEY=<your_private_key> DISPERSER_PRIVATE_KEY=<your_private_key> EIGENDA_REGISTRY_ADDR=<your_eigenda_registry_addr> DISPERSER_RPC=<your_rpc> SVC_MANAGER_ADDR=<your_svc_manager_addr> RUST_LOG=info cargo run --release
+VERIFICATION_PRIVATE_KEY=$PRIVATE_KEY RUST_LOG=info cargo run --release
 ```
 
 

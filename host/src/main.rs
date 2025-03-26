@@ -14,6 +14,7 @@
 
 use std::{str::FromStr, sync::Arc};
 
+use alloy_primitives::Address;
 use anyhow::Result;
 use clap::Parser;
 use common::output::Output;
@@ -50,6 +51,12 @@ struct Args {
     /// Service Manager Address
     #[arg(short, long, env = "SVC_MANAGER_ADDR")]
     svc_manager_addr: String,
+    /// Blob Verifier Wrapper Contract Address
+    #[arg(short, long, env = "BLOB_VERIFIER_WRAPPER_ADDR")]
+    blob_verifier_wrapper_addr: Address,
+    /// Caller Address
+    #[arg(short, long, env = "CALLER_ADDR")]
+    caller_addr: Address,
 }
 
 #[derive(Debug)]
@@ -142,6 +149,8 @@ async fn main() -> Result<()> {
                 &srs, 
                 blob_data,
                 args.rpc_url.clone(),
+                args.blob_verifier_wrapper_addr.clone(),
+                args.caller_addr.clone(),
             ).await?;
 
             let output: Output = result.receipt.journal.decode()?;
