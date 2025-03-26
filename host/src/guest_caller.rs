@@ -1,4 +1,4 @@
-use alloy_primitives::{address, Address};
+use alloy_primitives::Address;
 use alloy_sol_types::SolCall;
 use anyhow::Context;
 use methods::GUEST_ELF;
@@ -7,13 +7,6 @@ use risc0_zkvm::ProveInfo;
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
 use url::Url;
 use crate::verify_blob::{BlobHeader, BlobVerificationProof, IVerifyBlob};
-
-/// Address of the deployed blob verifier wrapper contract to call the function on.
-const BLOB_VERIFIER_WRAPPER_CONTRACT: Address =
-    address!("c551b009C1CE0b6efD691E23998AEFd4103680D3"); // If the contract address changes modify this.
-/// Address of the caller.
-const CALLER: Address = address!("E90E12261CCb0F3F7976Ae611A29e84a6A85f424");
-
 use ark_bn254::{Fq, G1Affine};
 use common::serializable_g1::SerializableG1;
 use rust_kzg_bn254_prover::srs::SRS;
@@ -26,6 +19,8 @@ pub async fn run_guest(
     srs: &SRS,
     data: Vec<u8>,
     rpc_url: Url,
+    blob_verifier_wrapper_addr: Address,
+    caller_addr: Address,
 ) -> anyhow::Result<ProveInfo> {
     let call = IVerifyBlob::verifyBlobV1Call {
         blobHeader: blob_header.clone(),
@@ -37,13 +32,13 @@ pub async fn run_guest(
 
     // Preflight the call to prepare the input that is required to execute the function in
     // the guest without RPC access. It also returns the result of the call.
-    let mut contract = Contract::preflight(BLOB_VERIFIER_WRAPPER_CONTRACT, &mut env);
-    let returns = contract.call_builder(&call).from(CALLER).call().await?;
+    let mut contract = Contract::preflight(blob_verifier_wrapper_addr, &mut env);
+    let returns = contract.call_builder(&call).from(caller_addr).call().await?;
     println!(
         "Call {} Function by {:#} on {:#} returns: {}",
         IVerifyBlob::verifyBlobV1Call::SIGNATURE,
-        CALLER,
-        BLOB_VERIFIER_WRAPPER_CONTRACT,
+        caller_addr,
+        blob_verifier_wrapper_addr,
         returns._0
     );
 
@@ -89,6 +84,8 @@ pub async fn run_guest(
             .write(&data)?
             .write(&serializable_eval)?
             .write(&serializable_proof)?
+            .write(&blob_verifier_wrapper_addr)?
+            .write(&caller_addr)?
             .build()?;
         let exec = default_prover();
         exec.prove_with_ctx(

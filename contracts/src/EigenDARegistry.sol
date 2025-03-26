@@ -26,4 +26,8 @@ contract EigenDARegistry {
             verifiedBatches[inclusion_data] = false;
         }
     }
+
+    function isVerified(bytes calldata inclusion_data) external view returns (bool, bytes32) {
+        return (verifiedBatches[inclusion_data], hashes[inclusion_data]);
+    }
 }
