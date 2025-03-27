@@ -8,7 +8,7 @@ It wrapps the `BlobVerifier` contract from eigenda, since we need for the `verif
 
 ## EigenDARegistry
 
-This wrapps the Risc0 Groth16 verifier contract, this is in order to make the function `non-view`, so we can create a transaction when calling it.
+This calls the Risc0 Groth16 verifier contract, which verifies the proof, and then stores whether they were correctly verified, along with the hash of the blob for a given inclusion data.
 
 # Scripts
 
