@@ -1,8 +1,8 @@
 # ZKSYNC-EIGENDA M1
 
-**The EigenDA sidecar where risc0-steel is used in order to generate a proof for the call of the VerifyBlobV1 function of EigenDA's BlobVerifier contract, which performs the necessary checks to make sure a given blob is present**
-**As well as performing the proof of equivalence verifying a proof that the EigenDA commitment commits to the given Blob**
-**Finally it sends the Risc0 Proof to verify to the EigenDA Registry contract, which stores whether it was correctly verified**
+**The EigenDA sidecar where risc0-steel is used in order to generate a proof for the call of the VerifyBlobV1 function of EigenDA's BlobVerifier contract, which performs the necessary checks to make sure a given blob is present.**
+**As well as performing the proof of equivalence verifying a proof that the EigenDA commitment commits to the given Blob.**
+**Finally it sends the Risc0 Proof to verify to the EigenDA Registry contract, which stores whether it was correctly verified.**
 ## Prerequisites
 
 To get started, you need to have Rust installed.
@@ -113,7 +113,7 @@ export SVC_MANAGER_ADDR=<your_address> #On avs-devnet addresses
 export CALLER_ADDR=<your_address> #Address you want to use to call the `VerifyBlobV1` function
 ```
 
-Deploy the blobVerifierWrapper:
+Deploy the `blobVerifierWrapper`:
 
 ```bash
 forge script contracts/script/BlobVerifierWrapperDeployer.s.sol:BlobVerifierWrapperDeployer --rpc-url $RPC_URL --broadcast -vvvv
@@ -167,7 +167,7 @@ Reload your terminal, and run on zksync-era root:
 zkstackup --local
 ```
 
-Install foundry-zksync 0.0.2:
+Install `foundry-zksync` `0.0.2`:
 
 ```
 curl -L https://raw.githubusercontent.com/matter-labs/foundry-zksync/main/install-foundry-zksync | bash
