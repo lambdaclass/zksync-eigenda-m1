@@ -80,7 +80,8 @@ pub async fn prove_risc0_proof(
 
     println!(
         "Proof of data inclusion for batch with inclusion data {} verified on L1. Tx hash: {}",
-        hex::encode(inclusion_data), receipt.transaction_hash,
+        hex::encode(inclusion_data),
+        receipt.transaction_hash,
     );
 
     Ok(())

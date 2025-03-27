@@ -1,8 +1,8 @@
 use alloy_primitives::U256;
 use alloy_sol_types::sol;
 use anyhow::anyhow;
-use ethabi::{ParamType, Token};
 use common::blob_info::G1Commitment;
+use ethabi::{ParamType, Token};
 
 use crate::utils::{
     extract_array, extract_bytes, extract_fixed_bytes, extract_tuple, extract_uint32, extract_uint8,
@@ -172,8 +172,14 @@ pub fn decode_blob_info(
     let blob_header_tokens = extract_tuple(&blob_info[0])?;
     let commitment_tokens = extract_tuple(&blob_header_tokens[0])?;
 
-    let x = commitment_tokens[0].clone().into_uint().ok_or(anyhow!("Incorrect commitment"))?;
-    let y = commitment_tokens[1].clone().into_uint().ok_or(anyhow!("Incorrect commitment"))?;
+    let x = commitment_tokens[0]
+        .clone()
+        .into_uint()
+        .ok_or(anyhow!("Incorrect commitment"))?;
+    let y = commitment_tokens[1]
+        .clone()
+        .into_uint()
+        .ok_or(anyhow!("Incorrect commitment"))?;
 
     let mut x_bytes = [0u8; 32];
     let mut y_bytes = [0u8; 32];

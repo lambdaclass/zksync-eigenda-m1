@@ -19,7 +19,11 @@ impl EigenClientRetriever {
         Ok(EigenClientRetriever { client })
     }
 
-    pub async fn get_blob_data(&self, blob_index: u32, batch_header_hash: Vec<u8>) -> anyhow::Result<Option<Vec<u8>>> {
+    pub async fn get_blob_data(
+        &self,
+        blob_index: u32,
+        batch_header_hash: Vec<u8>,
+    ) -> anyhow::Result<Option<Vec<u8>>> {
         let get_response = self
             .client
             .clone()
@@ -31,7 +35,7 @@ impl EigenClientRetriever {
             .into_inner();
 
         if get_response.data.is_empty() {
-            return Err(anyhow::anyhow!("Empty data returned from Disperser"))
+            return Err(anyhow::anyhow!("Empty data returned from Disperser"));
         }
 
         let data = kzgpad_rs::remove_empty_byte_from_padded_bytes(&get_response.data);
