@@ -20,15 +20,19 @@ use clap::Parser;
 use common::output::Output;
 use host::eigen_client::EigenClientRetriever;
 use host::verify_blob::decode_blob_info;
-use rust_eigenda_client::{client::BlobProvider, config::{EigenConfig, EigenSecrets, PrivateKey, SecretUrl, SrsPointsSource}, EigenClient};
+use methods::GUEST_ELF;
+use rust_eigenda_client::{
+    client::BlobProvider,
+    config::{EigenConfig, EigenSecrets, PrivateKey, SecretUrl, SrsPointsSource},
+    EigenClient,
+};
 use secrecy::{ExposeSecret, Secret};
+use std::error::Error;
 use tokio_postgres::NoTls;
 use tracing_subscriber::EnvFilter;
-use methods::GUEST_ELF;
-use std::error::Error;
 
-use url::Url;
 use rust_kzg_bn254_prover::srs::SRS;
+use url::Url;
 
 #[derive(Parser, Debug)]
 #[command(about, long_about = None)]
@@ -64,14 +68,16 @@ struct FakeBlobProvider;
 
 #[async_trait::async_trait]
 impl BlobProvider for FakeBlobProvider {
-    async fn get_blob(&self, _input: &str) -> Result<Option<Vec<u8>>, Box<dyn Error + Send + Sync>> {
+    async fn get_blob(
+        &self,
+        _input: &str,
+    ) -> Result<Option<Vec<u8>>, Box<dyn Error + Send + Sync>> {
         Ok(None)
     }
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
@@ -99,7 +105,8 @@ async fn main() -> Result<()> {
 
     let disperser_pk = args.disperser_private_key.expose_secret();
 
-    let eigen_client = EigenClient::new(EigenConfig::new(
+    let eigen_client = EigenClient::new(
+        EigenConfig::new(
             args.disperser_rpc,
             SecretUrl::new(args.rpc_url.clone()),
             0,
@@ -107,11 +114,16 @@ async fn main() -> Result<()> {
             false,
             false,
             SrsPointsSource::Path("./resources".to_string()),
-            vec![]
+            vec![],
         )?,
-        EigenSecrets{private_key: PrivateKey::from_str(disperser_pk.strip_prefix("0x").unwrap_or(disperser_pk))?},
-        Arc::new(FakeBlobProvider{})
-    ).await?;
+        EigenSecrets {
+            private_key: PrivateKey::from_str(
+                disperser_pk.strip_prefix("0x").unwrap_or(disperser_pk),
+            )?,
+        },
+        Arc::new(FakeBlobProvider {}),
+    )
+    .await?;
 
     loop {
         let rows = client
@@ -136,22 +148,27 @@ async fn main() -> Result<()> {
                 let opt_inclusion_data = eigen_client.get_inclusion_data(&blob_id).await?;
                 if let Some(opt_inclusion_data) = opt_inclusion_data {
                     inclusion_data = opt_inclusion_data;
-                    break
+                    break;
                 }
                 tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             }
-            let (blob_header, blob_verification_proof, batch_header_hash) = decode_blob_info(inclusion_data.clone())?;
-            let blob_data = eigen_retriever.get_blob_data(blob_verification_proof.blobIndex, batch_header_hash).await?.ok_or(anyhow::anyhow!("Not blob data"))?;
-        
+            let (blob_header, blob_verification_proof, batch_header_hash) =
+                decode_blob_info(inclusion_data.clone())?;
+            let blob_data = eigen_retriever
+                .get_blob_data(blob_verification_proof.blobIndex, batch_header_hash)
+                .await?
+                .ok_or(anyhow::anyhow!("Not blob data"))?;
+
             let result = host::guest_caller::run_guest(
                 blob_header.clone(),
                 blob_verification_proof.clone(),
-                &srs, 
+                &srs,
                 blob_data,
                 args.rpc_url.clone(),
                 args.blob_verifier_wrapper_addr.clone(),
                 args.caller_addr.clone(),
-            ).await?;
+            )
+            .await?;
 
             let output: Output = result.receipt.journal.decode()?;
 
