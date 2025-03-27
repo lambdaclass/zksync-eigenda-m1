@@ -5,7 +5,7 @@ interface IRiscZeroVerifier {
     function verify(bytes calldata seal, bytes32 imageId, bytes32 journalDigest) external view;
 }
 
-// Wraps the Risc0 groth16 verifier to make the function not view
+// Sends proofs to verify to the Risc0 groth16 verifier, storing whether they are verified, along with the hash of the blob
 contract EigenDARegistry {
     IRiscZeroVerifier public risc0verifier;
     mapping (bytes => bool) public finishedBatches;
