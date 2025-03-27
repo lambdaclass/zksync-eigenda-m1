@@ -21,12 +21,12 @@ contract EigenDARegistryDeployer is Script {
         vm.startBroadcast(deployerPrivateKey);
         vm.txGasPrice( 0.000000002  gwei);
         
-        // Deploy VerifierWrapper with the specified BlobVerifier address
-        EigenDARegistry wrapper = new EigenDARegistry(risc0Verifier);
+        // Deploy EigenDARegistry with the specified BlobVerifier address
+        EigenDARegistry registry = new EigenDARegistry(risc0Verifier);
         
         vm.stopBroadcast();
 
         // Log the deployed address
-        console.log("EigenDARegistry deployed at:", address(wrapper));
+        console.log("EigenDARegistry deployed at:", address(registry));
     }
 }
