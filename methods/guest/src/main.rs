@@ -38,6 +38,7 @@ fn keccak256(data: &[u8]) -> [u8; 32] {
 
 /// This guest uses the risc0 Steel library to prove an eth_call on the BlobVerifierWrapper.
 /// It receives serialized blob_info from the host, which it uses as arguments to the eth_call.
+/// Then it verifies that commitment commits to the given blob
 fn main() {
     // Read the input from the guest environment.
     let input: EthEvmInput = env::read();
