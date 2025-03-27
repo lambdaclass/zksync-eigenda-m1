@@ -15,7 +15,7 @@
 #![allow(unused_doc_comments)]
 #![no_main]
 
-use alloy_primitives::{address, Address};
+use alloy_primitives::Address;
 use common::blob_info::BlobInfo;
 use common::output::Output;
 use common::serializable_g1::SerializableG1;
