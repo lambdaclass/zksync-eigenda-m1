@@ -1,7 +1,8 @@
 # ZKSYNC-EIGENDA M1
 
-**A proof of concept where risc0-steel is used in order to generate a proof for the call of the VerifyBlobV1 function of EigenDA's BlobVerifier contract, which performs the necessary checks to make sure a given blob is present**
-
+**The EigenDA sidecar where risc0-steel is used in order to generate a proof for the call of the VerifyBlobV1 function of EigenDA's BlobVerifier contract, which performs the necessary checks to make sure a given blob is present**
+**As well as performing the proof of equivalence verifying a proof that the EigenDA commitment commits to the given Blob**
+**Finally it sends the Risc0 Proof to verify to the EigenDA Registry contract, which stores whether it was correctly verified**
 ## Prerequisites
 
 To get started, you need to have Rust installed.
@@ -17,7 +18,7 @@ Use the runfile (local) option, use the wget shown to download the script and ru
 sudo ./<file>.run
 ```
 
-## Run the example
+## Run the sidecar
 
 ### First run the eigenda devnet:
 
@@ -30,15 +31,17 @@ make deps      # installs dependencies
 make install   # installs the project
 ```
 
-Go to [Avs-Devnet repo](https://github.com/Layr-Labs/avs-devnet/blob/main/examples/eigenda.yaml) and follow the steps to run the EigenDA devnet, before running `avs-devnet start`, add the following line on `contracts/script/SetUpEigenDA.s.sol` on eigenda:
+Go to [Avs-Devnet repo](https://github.com/Layr-Labs/avs-devnet/blob/main/examples/eigenda.yaml) and follow the steps to run the EigenDA devnet, before running `avs-devnet start`:
+
+Add the following line on `contracts/script/SetUpEigenDA.s.sol` on eigenda:
 
 Line 214: `vm.serializeAddress(output,"blobVerifier", address(eigenDABlobVerifier));`
 
-Also replace line 28 on `avs-devnet/kurtosis_package/keys.star` for
+Replace line 28 on `avs-devnet/kurtosis_package/keys.star` for
 
 `shared_utils.send_funds(plan, context, info["address"], "10000ether")`
 
-And add
+Add
 
 ```yaml
 - name: zksync_rich_1
@@ -65,7 +68,7 @@ And add
 
 To `keys:` section of `devnet.yaml`
 
-As well as replacing ehereum-package section for
+And replace `ehereum-package` section for
 
 ```yaml
 # ethereum-package configuration
@@ -90,90 +93,7 @@ Save ports for `el-1-besu-lighthouse: rpc` and `disperser: grpc`
 
 Save addresses of `blobVerifier` and `eigenDAServiceManager`
 
-### Run zksync-era (eigenda-m1-post-merge branch on lambdaclass fork):
-
-Install zkstack:
-
-```bash
-cd ./zkstack_cli/zkstackup
-./install --local
-```
-
-On `zksync-era/zkstack_cli/crates/types/src/l1_network.rs`
-
-Modify the address for `eigenda_registry` for your address.
-
-Reload your terminal, and run on zksync-era root:
-
-```bash
-zkstackup --local
-```
-
-Install foundry-zksync 0.0.2:
-
-```
-curl -L https://raw.githubusercontent.com/matter-labs/foundry-zksync/main/install-foundry-zksync | bash
-foundryup-zksync --commit 27360d4c8d12beddbb730dae07ad33a206b38f4b
-```
-
-Modify `etc/env/file_based/overrides/validium.yaml`:
-
-```
-da_client:
-  eigen:
-    disperser_rpc: http://<disperser: grpc>
-    settlement_layer_confirmation_depth: 0
-    eigenda_eth_rpc: http://<el-1-besu-lighthouse: rpc>
-    eigenda_svc_manager_address: <eigenDAServiceManager>
-    wait_for_finalization: false
-    authenticated: false
-    points_source_path: ./resources
-```
-
-Copy the resources folder inside eigenda to zksync-era root
-
-Modify `etc/env/file_based/secrets.yaml`:
-
-```
-da:
-  eigen:
-    private_key: <your_private_key>
-```
-
-Run
-
-```bash
-zkstack containers --observability true
-
-zkstack chain create \
-          --chain-name eigenda \
-          --chain-id sequential \
-          --prover-mode no-proofs \
-          --wallet-creation localhost \
-          --l1-batch-commit-data-generator-mode validium \
-          --base-token-address 0x0000000000000000000000000000000000000001 \
-          --base-token-price-nominator 1 \
-          --base-token-price-denominator 1 \
-          --set-as-default false
-
-zkstack ecosystem init \
-          --deploy-paymaster true \
-          --deploy-erc20 true \
-          --deploy-ecosystem true \
-          --l1-rpc-url http://127.0.0.1:<your_rpc> \
-          --server-db-url=postgres://postgres:notsecurepassword@localhost:5432 \
-          --server-db-name=zksync_server_localhost_eigenda \
-          --chain eigenda \
-          --verbose
-```
-
-Then run
-```
-zkstack server --chain eigenda
-```
-
-
-### Run this example (back on this repo):
+### Deployment steps (On this repo):
 
 Compile the contracts
 
@@ -184,16 +104,14 @@ make build_contracts
 
 Export the needed variables (rpcs should have http://, private keys and addresses should have 0x)
 ```bash
-export PRIVATE_KEY=<your_private_key>
-export DISPERSER_PRIVATE_KEY=<your_disperser_private_key>
-export BLOB_VERIFIER_ADDRESS=<your_blob_verifier_address>
-export RPC_URL=<your_rpc>
-export DISPERSER_RPC=<your_rpc>
-export SVC_MANAGER_ADDR=<your_address>
-export CALLER_ADDR=<your_address>
+export PRIVATE_KEY=<your_private_key> #The private key you want to use to deploy contracts and call to VerifyBlobV1
+export DISPERSER_PRIVATE_KEY=<your_disperser_private_key> #The private key you want to use with the eigenda disperser
+export BLOB_VERIFIER_ADDRESS=<your_blob_verifier_address> #On avs-devnet addresses
+export RPC_URL=<your_rpc> #On avs-devnet ports
+export DISPERSER_RPC=<your_rpc> #On avs-devnet ports
+export SVC_MANAGER_ADDR=<your_address> #On avs-devnet addresses
+export CALLER_ADDR=<your_address> #Address you want to use to call the `VerifyBlobV1` function
 ```
-Disperser private key should be the one you have listed to use with the eigenda disperser
-Caller address is the address you want to use to call the `VerifyBlobV1` function
 
 Deploy the blobVerifierWrapper:
 
@@ -206,8 +124,6 @@ Save the address under `Contract Address: <address>`
 ```bash
 export BLOB_VERIFIER_WRAPPER_ADDR=<your_address>
 ```
-
-The address on CALLER is a known address from zksync, it should be changed to the needed one in the real use case.
 
 Deploy the `Risc0Groth16Verifier`:
 ```bash
@@ -232,10 +148,95 @@ Save the address under `Contract Address: <address>`
 export EIGENDA_REGISTRY_ADDR=<your_address>
 ```
 
-To run the example execute the following command:
+### Run zksync-era (eigenda-m1-post-merge branch on lambdaclass fork):
+
+Install zkstack:
+
+```bash
+cd ./zkstack_cli/zkstackup
+./install --local
+```
+
+On `zksync-era/zkstack_cli/crates/types/src/l1_network.rs`
+
+Modify the address for `eigenda_registry` for your address (the one under `EIGENDA_REGISTRY_ADDR` env variable).
+
+Reload your terminal, and run on zksync-era root:
+
+```bash
+zkstackup --local
+```
+
+Install foundry-zksync 0.0.2:
+
+```
+curl -L https://raw.githubusercontent.com/matter-labs/foundry-zksync/main/install-foundry-zksync | bash
+foundryup-zksync --commit 27360d4c8d12beddbb730dae07ad33a206b38f4b
+```
+
+Modify `etc/env/file_based/overrides/validium.yaml`:
+
+```yaml
+da_client:
+  eigen:
+    disperser_rpc: http://<disperser: grpc> #On avs-devnet ports
+    settlement_layer_confirmation_depth: 0
+    eigenda_eth_rpc: http://<el-1-besu-lighthouse: rpc> #On avs-devnet ports
+    eigenda_svc_manager_address: <eigenDAServiceManager> #On avs-devnet addresses
+    wait_for_finalization: false
+    authenticated: false
+    points_source_path: ./resources
+    eigenda_registry_addr: <eigenDARegistry> #Under EIGENDA_REGISTRY_ADDR env variable
+```
+
+**Copy the resources folder inside eigenda to zksync-era root**
+
+Modify `etc/env/file_based/secrets.yaml`:
+
+```yaml
+da:
+  eigen:
+    private_key: <your_private_key> #The private key you want to use with the eigenda disperser
+```
+
+Run replacing with your l1 rpc:
+
+```bash
+zkstack containers --observability true
+
+zkstack chain create \
+          --chain-name eigenda \
+          --chain-id sequential \
+          --prover-mode no-proofs \
+          --wallet-creation localhost \
+          --l1-batch-commit-data-generator-mode validium \
+          --base-token-address 0x0000000000000000000000000000000000000001 \
+          --base-token-price-nominator 1 \
+          --base-token-price-denominator 1 \
+          --set-as-default false
+
+zkstack ecosystem init \
+          --deploy-paymaster true \
+          --deploy-erc20 true \
+          --deploy-ecosystem true \
+          --l1-rpc-url http://127.0.0.1:<your_l1_rpc> \
+          --server-db-url=postgres://postgres:notsecurepassword@localhost:5432 \
+          --server-db-name=zksync_server_localhost_eigenda \
+          --chain eigenda \
+          --verbose
+```
+
+Then run
+```bash
+zkstack server --chain eigenda
+```
+
+### Run the sidecar (On this repo)
 
 ```bash
 VERIFICATION_PRIVATE_KEY=$PRIVATE_KEY RUST_LOG=info cargo run --release
 ```
 
+On zksync-era you should see blobs being dispatched:
 
+On the sidecar you should see blobs being verified:
