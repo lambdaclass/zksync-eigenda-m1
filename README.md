@@ -98,7 +98,7 @@ Save addresses of `blobVerifier` and `eigenDAServiceManager`
 Compile the contracts
 
 ```bash
-git submodule update --init
+git submodule update --init --recursive
 make build_contracts
 ```
 
@@ -127,7 +127,7 @@ export BLOB_VERIFIER_WRAPPER_ADDR=<your_address>
 
 Deploy the `Risc0Groth16Verifier`:
 ```bash
-make deploy-risc0-verifier ETH_WALLET_PRIVATE_KEY=$PRIVATE_KEY RPC_URL=$RPC_URL
+ETH_WALLET_PRIVATE_KEY=$PRIVATE_KEY forge script contracts/script/DeployRiscZeroGroth16Verifier.s.sol:DeployRiscZeroGroth16Verifier --rpc-url $RPC_URL --broadcast -vvvv
 ```
 
 Save the address under `Contract Address: <address>`
@@ -234,7 +234,15 @@ zkstack server --chain eigenda
 ### Run the sidecar (On this repo)
 
 ```bash
-VERIFICATION_PRIVATE_KEY=$PRIVATE_KEY RUST_LOG=info cargo run --release
+VERIFICATION_PRIVATE_KEY=$PRIVATE_KEY API_URL=<your_url> START_BATCH=1 RUST_LOG=info cargo run --release
+```
+
+For a local server, you can get your api url under `chains/<your_chain>/configs/general.yaml` on the `zksync-era` repository
+
+```yaml
+api:
+  web3_json_rpc:
+    http_url:
 ```
 
 On zksync-era you should see blobs being dispatched:

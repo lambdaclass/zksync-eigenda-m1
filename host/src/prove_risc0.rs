@@ -21,7 +21,7 @@ pub async fn prove_risc0_proof(
     session_info: ProveInfo,
     guest_elf: &[u8],
     private_key: Secret<String>,
-    proof_verifier_rpc: Url,
+    eth_rpc: Url,
     eigenda_registry_addr: String,
     eigenda_hash: Vec<u8>,
     inclusion_data: Vec<u8>,
@@ -57,7 +57,7 @@ pub async fn prove_risc0_proof(
     let wallet = EthereumWallet::from(signer);
     let provider = ProviderBuilder::new()
         .wallet(wallet)
-        .on_http(proof_verifier_rpc);
+        .on_http(eth_rpc);
 
     let eigenda_registry_addr: Address = eigenda_registry_addr
         .parse()
