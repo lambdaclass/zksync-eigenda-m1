@@ -28,9 +28,9 @@ struct Args {
     /// Private key used to submit an ethereum transaction that verifys the proof
     #[arg(short, long, env = "PRIVATE_KEY")]
     private_key: Secret<String>,
-    /// Rpc were the proof should be verified
-    #[arg(short, long, env = "PROOF_VERIFIER_RPC")]
-    proof_verifier_rpc: Secret<String>,
+    /// Address of the Risc0 Verifier Wrapper
+    #[arg(short, long, env = "RISC0_VERIFIER_WRAPPER")]
+    risc0_verifier_address: String,
 }
 
 #[tokio::main]
@@ -82,7 +82,8 @@ async fn main() -> Result<()> {
                 session_info,
                 args.private_key.clone(),
                 blob_verification_proof.blobIndex,
-                args.proof_verifier_rpc.clone(),
+                args.rpc_url.clone(),
+                args.risc0_verifier_address.clone()
             )
             .await?;
         }
