@@ -18,6 +18,10 @@ There are also scripts that are used to make use of the contracts easier.
 
 Deploys the `BlobVerifierWrapper`
 
+## DeployRiscZeroGroth16Verifier
+
+Deploys the risc0 groth16 verifier using the risc0-ethereum contracts
+
 ## Risc0ProofVerifierWrapperDeployer
 
 Deploys the `Risc0ProofVerifierWrapper`
