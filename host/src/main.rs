@@ -14,9 +14,9 @@
 
 use anyhow::Result;
 use clap::Parser;
-use host::verify_blob::decode_blob_info;
+use host::{inclusion_data::get_inclusion_data, verify_blob::decode_blob_info};
+use reqwest::Client;
 use secrecy::Secret;
-use tokio_postgres::NoTls;
 use url::Url;
 
 #[derive(Parser, Debug)]
@@ -28,6 +28,12 @@ struct Args {
     /// Private key used to submit an ethereum transaction that verifys the proof
     #[arg(short, long, env = "PRIVATE_KEY")]
     private_key: Secret<String>,
+    /// Url of the zksync's json api
+    #[arg(short, long, env = "API_URL")]
+    api_url: String,
+    /// Batch number where verification should start
+    #[arg(short, long, env = "START_BATCH", value_parser = clap::value_parser!(u64).range(1..))]
+    start_batch: u64,
     /// Address of the Risc0 Verifier Wrapper
     #[arg(short, long, env = "RISC0_VERIFIER_WRAPPER")]
     risc0_verifier_address: String,
@@ -35,57 +41,33 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let (client, connection) = tokio_postgres::connect(
-        "host=localhost user=postgres password=notsecurepassword dbname=zksync_server_localhost_eigenda", 
-        NoTls,
-    ).await?;
-
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            eprintln!("connection error: {}", e);
-        }
-    });
-
-    let mut timestamp =
-        chrono::NaiveDateTime::parse_from_str("1970-01-01 00:00:00", "%Y-%m-%d %H:%M:%S")?;
-
     // Parse the command line arguments.
     let args = Args::parse();
 
+    let client = Client::new();
+
+    let mut current_batch = args.start_batch;
+
     loop {
-        let rows = client
-        .query("SELECT inclusion_data, sent_at FROM data_availability WHERE sent_at > $1 AND inclusion_data IS NOT NULL ORDER BY sent_at LIMIT 5", &[&timestamp])
-        .await?; // Maybe this approach doesn't work, since maybe row A with has a lower timestamp than row B, but row A has inclusion data NULL so it is not included yet and will never be.
-                 // Maybe just look for batch number and go one by one.
+        let inclusion_data = get_inclusion_data(current_batch, args.api_url.clone(), &client).await?;
+        
+        let (blob_header, blob_verification_proof) = decode_blob_info(inclusion_data)?;
+        let session_info = host::verify_blob::run_blob_verification_guest(
+            blob_header,
+            blob_verification_proof.clone(),
+            args.rpc_url.clone(),
+        )
+        .await?;
 
-        if rows.is_empty() {
-            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-            continue;
-        }
-
-        timestamp = rows
-            .last()
-            .ok_or(anyhow::anyhow!("Not enough rows"))?
-            .get(1);
-
-        for row in rows {
-            let inclusion_data: Vec<u8> = row.get(0);
-            let (blob_header, blob_verification_proof) = decode_blob_info(inclusion_data)?;
-            let session_info = host::verify_blob::run_blob_verification_guest(
-                blob_header,
-                blob_verification_proof.clone(),
-                args.rpc_url.clone(),
-            )
-            .await?;
-
-            host::prove_risc0::prove_risc0_proof(
-                session_info,
-                args.private_key.clone(),
-                blob_verification_proof.blobIndex,
-                args.rpc_url.clone(),
-                args.risc0_verifier_address.clone()
-            )
-            .await?;
-        }
+        host::prove_risc0::prove_risc0_proof(
+            session_info,
+            args.private_key.clone(),
+            blob_verification_proof.blobIndex,
+            args.rpc_url.clone(),
+            args.risc0_verifier_address.clone()
+        )
+        .await?;
+    
+        current_batch += 1;
     }
 }

@@ -47,7 +47,7 @@ Save ports for `el-1-besu-lighthouse: rpc` and `disperser: grpc`
 
 Save addresses of `blobVerifier` and `eigenDAServiceManager`
 
-### Run zksync-era (eigenda-m1 branch on lambdaclass fork):
+### Run zksync-era (eigenda-m1-temporal branch on lambdaclass fork):
 
 Install zkstack:
 
@@ -80,7 +80,7 @@ da_client:
     eigenda_svc_manager_address: <eigenDAServiceManager>
     wait_for_finalization: false
     authenticated: false
-    path: ./resources
+    points_source_path: ./resources
 ```
 
 Copy the resources folder inside eigenda to zksync-era root
@@ -131,7 +131,7 @@ zkstack server --chain eigenda
 Compile the contracts
 
 ```bash
-git submodule update --init
+git submodule update --init --recursive
 make build_contracts
 ```
 
@@ -168,7 +168,14 @@ Keep the contract address at hand for the next command.
 To run the example execute the following command:
 
 ```bash
-RPC_URL=<your_rpc> PRIVATE_KEY=<your_private_key> RISC0_VERIFIER_WRAPPER=<your_risc0_verifier_address> RUST_LOG=info cargo run --release
+RPC_URL=<your_rpc> PRIVATE_KEY=<your_private_key> RISC0_VERIFIER_WRAPPER=<your_risc0_verifier_address> API_URL=<your_url> START_BATCH=1 RUST_LOG=info cargo run --release
 ```
 
+For a local server, you can get your api url under `chains/<your_chain>/configs/general.yaml` on the `zksync-era` repository
+
+```
+api:
+  web3_json_rpc:
+    http_url:
+```
 
