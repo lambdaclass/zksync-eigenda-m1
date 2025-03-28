@@ -6,9 +6,9 @@ This directory contains the necessary contracts for the Blob Verification to be 
 
 It wrapps the `BlobVerifier` contract from eigenda, since we need for the `verifyBlobV1` function to return a value.
 
-## Risc0ProofVerifierWrapper
+## EigenDARegistry
 
-This wrapps the Risc0 Groth16 verifier contract, this is in order to make the function `non-view`, so we can create a transaction when calling it.
+This calls the Risc0 Groth16 verifier contract, which verifies the proof, and then stores whether they were correctly verified, along with the hash of the blob for a given inclusion data.
 
 # Scripts
 
@@ -22,6 +22,6 @@ Deploys the `BlobVerifierWrapper`
 
 Deploys the risc0 groth16 verifier using the risc0-ethereum contracts
 
-## Risc0ProofVerifierWrapperDeployer
+## EigenDARegistryDeployer
 
-Deploys the `Risc0ProofVerifierWrapper`
+Deploys the `EigenDARegistry`

@@ -1,8 +1,8 @@
 use reqwest::Client;
 use serde_json::{json, Value};
 
-/// Gets the inclusion data for the given batch number
-pub async fn get_inclusion_data(batch_number: u64, url: String, client: &Client) -> anyhow::Result<Vec<u8>> {
+/// Gets the blob id for the given batch number
+pub async fn get_blob_id(batch_number: u64, url: String, client: &Client) -> anyhow::Result<String> {
     loop {
         // The unstable_getDataAvailabilityDetails is an unstable method that could be deleted later
         // Here is the code in the zksync-era repository were it is defined, there is no other documentation
@@ -29,20 +29,13 @@ pub async fn get_inclusion_data(batch_number: u64, url: String, client: &Client)
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             continue;
         }
-        let inclusion_data = result
-            .get("inclusionData")
-            .ok_or(anyhow::anyhow!("No inclusionData field"))?;
-        if inclusion_data.is_null() {
+        let blob_id = result
+            .get("blobId")
+            .ok_or(anyhow::anyhow!("No blobID field"))?;
+        if blob_id.is_null() {
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             continue;
         }
-        let inclusion_data = inclusion_data
-            .as_array()
-            .ok_or(anyhow::anyhow!("inclusionData is not an array"))?;
-        let inclusion_data: Vec<u8> = inclusion_data
-            .iter()
-            .filter_map(|v| v.as_u64().map(|num| num as u8))
-            .collect();
-        return Ok(inclusion_data);
+        return Ok(blob_id.to_string())
     }
 }
