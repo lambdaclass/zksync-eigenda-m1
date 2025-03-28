@@ -18,7 +18,8 @@ use alloy_primitives::Address;
 use anyhow::Result;
 use clap::Parser;
 use common::output::Output;
-use host::{eigen_client::EigenClientRetriever, inclusion_data};
+use host::inclusion_data::get_blob_id;
+use host::eigen_client::EigenClientRetriever;
 use host::verify_blob::decode_blob_info;
 use methods::GUEST_ELF;
 use rust_eigenda_client::{
@@ -28,11 +29,9 @@ use rust_eigenda_client::{
 };
 use secrecy::{ExposeSecret, Secret};
 use std::error::Error;
-use tokio_postgres::NoTls;
 use tracing_subscriber::EnvFilter;
 
 use rust_kzg_bn254_prover::srs::SRS;
-use host::{inclusion_data::get_inclusion_data, verify_blob::decode_blob_info};
 use reqwest::Client;
 use url::Url;
 
