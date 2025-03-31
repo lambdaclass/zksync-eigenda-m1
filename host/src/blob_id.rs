@@ -36,6 +36,11 @@ pub async fn get_blob_id(batch_number: u64, url: String, client: &Client) -> any
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             continue;
         }
+        let blob_id = blob_id.to_string();
+        let blob_id = blob_id
+            .strip_prefix("\"")
+            .unwrap_or(&blob_id);
+        let blob_id = blob_id.strip_suffix("\"").unwrap_or(blob_id);
         return Ok(blob_id.to_string())
     }
 }
