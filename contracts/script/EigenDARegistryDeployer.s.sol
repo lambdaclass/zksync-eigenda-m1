@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import {Script} from "forge-std/Script.sol";
 import {EigenDARegistry} from "../src/EigenDARegistry.sol";
 import "forge-std/console.sol";
+import {ERC1967Proxy} from "openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 
 contract EigenDARegistryDeployer is Script {
@@ -21,12 +22,23 @@ contract EigenDARegistryDeployer is Script {
         vm.startBroadcast(deployerPrivateKey);
         vm.txGasPrice( 0.000000002  gwei);
         
-        // Deploy EigenDARegistry with the specified BlobVerifier address
-        EigenDARegistry registry = new EigenDARegistry(risc0Verifier);
+        // Deploy EigenDARegistry
+        EigenDARegistry implementation = new EigenDARegistry();
+
+        // Encode initializer call
+        bytes memory initializerData = abi.encodeWithSignature(
+            "initialize(address,address)",
+            risc0Verifier,
+            vm.addr(deployerPrivateKey) // Set the deployer as owner
+        );
+
+        // Deploy the proxy pointing to the implementation
+        ERC1967Proxy proxy = new ERC1967Proxy(
+            address(implementation),
+            initializerData
+        );
+        console.log("EigenDARegistry Proxy deployed at:", address(proxy));
         
         vm.stopBroadcast();
-
-        // Log the deployed address
-        console.log("EigenDARegistry deployed at:", address(registry));
     }
 }

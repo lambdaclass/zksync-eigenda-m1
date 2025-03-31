@@ -130,7 +130,7 @@ Deploy the `Risc0Groth16Verifier`:
 ETH_WALLET_PRIVATE_KEY=$PRIVATE_KEY forge script contracts/script/DeployRiscZeroGroth16Verifier.s.sol:DeployRiscZeroGroth16Verifier --rpc-url $RPC_URL --broadcast -vvvv
 ```
 
-Save the address under `Contract Address: <address>`
+Save the address under `EigenDARegistry Proxy deployed at: <address>`
 
 ```bash
 export RISC0_VERIFIER_ADDRESS=<your_address>
