@@ -113,38 +113,17 @@ export SVC_MANAGER_ADDR=<your_address> #On avs-devnet addresses
 export CALLER_ADDR=<your_address> #Address you want to use to call the `VerifyBlobV1` function
 ```
 
-Deploy the `blobVerifierWrapper`:
+Deploy the contracts:
 
 ```bash
-forge script contracts/script/BlobVerifierWrapperDeployer.s.sol:BlobVerifierWrapperDeployer --rpc-url $RPC_URL --broadcast -vvvv
+forge script contracts/script/ContractsDeployer.s.sol:ContractsDeployer --rpc-url $RPC_URL --broadcast -vvvv
 ```
 
-Save the address under `Contract Address: <address>`
-
-```bash
-export BLOB_VERIFIER_WRAPPER_ADDR=<your_address>
-```
-
-Deploy the `Risc0Groth16Verifier`:
-```bash
-ETH_WALLET_PRIVATE_KEY=$PRIVATE_KEY forge script contracts/script/DeployRiscZeroGroth16Verifier.s.sol:DeployRiscZeroGroth16Verifier --rpc-url $RPC_URL --broadcast -vvvv
-```
-
+Save the address under `BlobVerifierWrapper deployed at: <address>`
 Save the address under `EigenDARegistry Proxy deployed at: <address>`
 
 ```bash
-export RISC0_VERIFIER_ADDRESS=<your_address>
-```
-
-Deploy the `EigenDARegistry`:
-
-```bash
-forge script contracts/script/EigenDARegistryDeployer.s.sol:EigenDARegistryDeployer --rpc-url $RPC_URL --broadcast -vvvv
-```
-
-Save the address under `Contract Address: <address>`
-
-```bash
+export BLOB_VERIFIER_WRAPPER_ADDR=<your_address>
 export EIGENDA_REGISTRY_ADDR=<your_address>
 ```
 
@@ -331,4 +310,5 @@ Note: `verifyBlobV1` will be replaced by the V2 API once the `EigenDAv2` Client 
 2. The sidecar queries the node for the latest blob id.
 3. The sidecar queries `EigenDA` disperser for the `blobInfo` and data related to the last Blob obtained.
 4. The sidecar performs both the Proof of Equivalence and the `verifyBlob` call and generates a risc0 proof, which sends to the `EigenDA` registry to verify. The `EigenDA` registry verifies it by calling the groth16 verifier and stores wether it was correctly verified or not.
-5. The node calls the `commit_batches` function of `Executor.sol`, which calls `checkDA` to the `L1DAValidator`, it asks the `EigenDA` Registry if the given blob was correctly verified, and if it was it continues execution.
+5. The zksync node calls the EigenDA Registry in order to check if the blob has been verified.
+6. The node calls the `commit_batches` function of `Executor.sol`, which calls `checkDA` to the `L1DAValidator`, it asks the `EigenDA` Registry if the given blob was correctly verified, and if it was it continues execution.
