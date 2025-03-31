@@ -18,7 +18,7 @@ use alloy_primitives::Address;
 use anyhow::Result;
 use clap::Parser;
 use common::output::Output;
-use host::inclusion_data::get_blob_id;
+use host::blob_id::get_blob_id;
 use host::eigen_client::EigenClientRetriever;
 use host::verify_blob::decode_blob_info;
 use methods::GUEST_ELF;
