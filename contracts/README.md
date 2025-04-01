@@ -14,14 +14,6 @@ This calls the Risc0 Groth16 verifier contract, which verifies the proof, and th
 
 There are also scripts that are used to make use of the contracts easier.
 
-## BlobVerifierWrapperDeployer
+## ContractsDeployer
 
-Deploys the `BlobVerifierWrapper`
-
-## DeployRiscZeroGroth16Verifier
-
-Deploys the risc0 groth16 verifier using the risc0-ethereum contracts
-
-## EigenDARegistryDeployer
-
-Deploys the `EigenDARegistry`
+Deploys the `BlobVerifierWrapper` and `EigenDARegistry`
