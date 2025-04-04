@@ -129,6 +129,10 @@ impl From<BlobVerificationProof> for common::blob_info::BlobVerificationProof {
     }
 }
 
+/// Decodes the Blob Info given the inclusion data raw bytes
+/// It returns the BlobHeader and BlobVerificationProof needed to call VerifyBlobV1
+/// It also returns the batch header hash, which is needed to get the blob data, and is not included in the BlobInfo received by VerifyBlobV1
+/// So we need to store it in a separate variable
 pub fn decode_blob_info(
     inclusion_data: Vec<u8>,
 ) -> Result<(BlobHeader, BlobVerificationProof, Vec<u8>), anyhow::Error> {
