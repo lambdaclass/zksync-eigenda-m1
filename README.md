@@ -3,6 +3,8 @@
 **The EigenDA sidecar where risc0-steel is used in order to generate a proof for the call of the VerifyBlobV1 function of EigenDA's BlobVerifier contract, which performs the necessary checks to make sure a given blob is present.**
 **As well as performing the proof of equivalence verifying a proof that the EigenDA commitment commits to the given Blob.**
 **Finally it sends the Risc0 Proof to verify to the EigenDA Registry contract, which stores whether it was correctly verified.**
+
+Note: `verifyBlobV1` will be replaced by the V2 API once the `EigenDAv2` Client is ready
 ## Prerequisites
 
 To get started, you need to have Rust installed.

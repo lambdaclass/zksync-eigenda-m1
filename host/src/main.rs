@@ -83,13 +83,16 @@ impl BlobProvider for FakeBlobProvider {
     }
 }
 
+const SRS_ORDER: u32 = 268435456;
+const SRS_POINTS_TO_LOAD: u32 = 1024 * 1024 * 2 / 32;
+
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
-    let srs = SRS::new("resources/g1.point", 268435456, 1024 * 1024 * 2 / 32)?;
+    let srs = SRS::new("resources/g1.point", SRS_ORDER, SRS_POINTS_TO_LOAD)?;
     // Parse the command line arguments.
     let args = Args::parse();
 
