@@ -129,7 +129,7 @@ export BLOB_VERIFIER_WRAPPER_ADDR=<your_address>
 export EIGENDA_REGISTRY_ADDR=<your_address>
 ```
 
-### Run zksync-era (eigenda-m1-post-merge branch on lambdaclass fork):
+### Run zksync-era (m1-eigenda branch on lambdaclass fork):
 
 Install zkstack:
 
