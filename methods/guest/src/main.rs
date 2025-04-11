@@ -42,11 +42,16 @@ fn keccak256(data: &[u8]) -> [u8; 32] {
 fn main() {
     // Read the input from the guest environment.
     let input: EthEvmInput = env::read();
+    // aka EigenDACert
     let blob_info: BlobInfo = env::read();
+    // Raw bytes dispersed by zksync's sequencer to EigenDA
     let data: Vec<u8> = env::read();
+    // Commitment to the blob
     let eval_commitment: SerializableG1 = env::read();
+    // Proof that the given commitment commits to the blob
     let proof: SerializableG1 = env::read();
     let blob_verifier_wrapper_addr: Address = env::read();
+    // Address that is used to call the VerifyBlobV1 function
     let caller_addr: Address = env::read();
     let blob = Blob::from_raw_data(&data);
 
@@ -61,13 +66,17 @@ fn main() {
     };
     let returns = contract.call_builder(&call).from(caller_addr).call();
     println!("View call result: {}", returns._0);
+    // Here we assert that the result of the verifyBlobV1 call is true, meaning it executed correctly
     assert!(returns._0);
 
+    // Verification of the kzg proof for the given commitment and blob
     let verified = verify_blob_kzg_proof(&blob, &eval_commitment.g1, &proof.g1).unwrap();
     assert!(verified);
 
+    // Here we calculate the keccak hash of the data, which we will use on zksync's EigenDAL1Validator to compare it to the hashes there
     let hash = keccak256(&data);
 
+    // Public outputs of the guest, eigenDAHash and commitment to the risc0 steel environment, they are embedded on the proof
     let output = Output {
         hash: hash.to_vec(),
         env: env.commitment().abi_encode(),

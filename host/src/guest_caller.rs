@@ -32,6 +32,8 @@ pub async fn run_guest(
 
     // Preflight the call to prepare the input that is required to execute the function in
     // the guest without RPC access. It also returns the result of the call.
+    // Risc0 steel creates an ethereum VM using revm, where it simulates the call to VerifyBlobV1.
+    // So we need to make this preflight call to populate the VM environment with the current state of the chain
     let mut contract = Contract::preflight(blob_verifier_wrapper_addr, &mut env);
     let returns = contract
         .call_builder(&call)
@@ -49,6 +51,7 @@ pub async fn run_guest(
     // Finally, construct the input from the environment.
     let input = env.into_input().await?;
 
+    // aka EigenDACert
     let blob_info = common::blob_info::BlobInfo {
         blob_header: blob_header.clone().into(),
         blob_verification_proof: blob_verification_proof.clone().into(),
@@ -67,8 +70,10 @@ pub async fn run_guest(
     let y_fq = Fq::from(num_bigint::BigUint::from_bytes_be(&y));
 
     let commitment = G1Affine::new(x_fq, y_fq);
+    // Calculate the commitment directly from the blob
     let real_commitment = kzg.commit_coeff_form(&blob.to_polynomial_coeff_form(), &srs)?;
 
+    // Check that the commitment from the blob and from Blobinfo are the same
     if commitment != real_commitment {
         return Err(anyhow::anyhow!(
             "Commitments mismatched, given commitment: {:?}, real commitment: {:?}",
@@ -77,8 +82,11 @@ pub async fn run_guest(
         ));
     }
 
+    // Calculate eval commitment, we need to use this and not the coeff commitment (the one inside blobInfo), since proof generation
+    // and verification does not work with coeff commitments.
     let eval_commitment = kzg.commit_eval_form(&blob.to_polynomial_eval_form(), &srs)?;
 
+    // Compute the proof that the commitment corresponds to the given blob
     let proof = kzg.compute_blob_proof(&blob, &eval_commitment, &srs)?;
 
     let serializable_eval = SerializableG1 {
