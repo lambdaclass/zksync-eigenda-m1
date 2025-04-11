@@ -125,6 +125,7 @@ async fn main() -> Result<()> {
 
     loop {
         let blob_id: String = get_blob_id(current_batch, args.api_url.clone(), &reqwest_client).await?;
+        // Abi encoded BlobInfo (EigenDACert)
         let inclusion_data: Vec<u8>;
 
         loop {
@@ -139,6 +140,7 @@ async fn main() -> Result<()> {
         let (blob_header, blob_verification_proof, batch_header_hash) =
                 decode_blob_info(inclusion_data.clone())?;
         
+        // Raw bytes dispersed by zksync sequencer to EigenDA
         let blob_data = eigen_retriever
             .get_blob_data(blob_verification_proof.blobIndex, batch_header_hash)
             .await?

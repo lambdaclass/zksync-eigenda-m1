@@ -60,6 +60,7 @@ contract BlobVerifierWrapper {
         blobVerifier = _blobVerifier;
     }
 
+    // Wrapps the verifyBlobV1 function of the eigenDA blobVerifier contract, since we need it to return a value
     function verifyBlobV1(
         BlobHeader calldata blobHeader,
         BlobVerificationProof calldata blobVerificationProof
