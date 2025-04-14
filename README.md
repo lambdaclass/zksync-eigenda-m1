@@ -121,11 +121,11 @@ forge script contracts/script/ContractsDeployer.s.sol:ContractsDeployer --rpc-ur
 ```
 
 Save the address under `BlobVerifierWrapper deployed at: <address>`
-Save the address under `EigenDARegistry Proxy deployed at: <address>`
+Save the address under `CertAndBlobVerifier Proxy deployed at: <address>`
 
 ```bash
 export BLOB_VERIFIER_WRAPPER_ADDR=<your_address>
-export EIGENDA_REGISTRY_ADDR=<your_address>
+export EIGENDA_CERT_AND_BLOB_VERIFIER_ADDR=<your_address>
 ```
 
 ### Run zksync-era (m1-eigenda branch on lambdaclass fork):
@@ -139,7 +139,7 @@ cd ./zkstack_cli/zkstackup
 
 On `zksync-era/zkstack_cli/crates/types/src/l1_network.rs`
 
-Modify the address for `eigenda_registry` for your address (the one under `EIGENDA_REGISTRY_ADDR` env variable).
+Modify the address for `eigenda_cert_and_blob_verifier` for your address (the one under `EIGENDA_CERT_AND_BLOB_VERIFIER_ADDR` env variable).
 
 Reload your terminal, and run on zksync-era root:
 
@@ -166,7 +166,7 @@ da_client:
     wait_for_finalization: false
     authenticated: false
     points_source_path: ./resources
-    eigenda_registry_addr: <eigenDARegistry> #Under EIGENDA_REGISTRY_ADDR env variable
+    cert_and_blob_verifier_addr: <CertAndBlobVerifier> #Under CERT_AND_BLOB_VERIFIER_ADDR env variable
 ```
 
 **Copy the resources folder inside eigenda to zksync-era root**

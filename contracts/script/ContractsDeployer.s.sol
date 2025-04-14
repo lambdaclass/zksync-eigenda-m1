@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {Script} from "forge-std/Script.sol";
-import {EigenDARegistry} from "../src/EigenDARegistry.sol";
+import {CertAndBlobVerifier} from "../src/CertAndBlobVerifier.sol";
 import "forge-std/console.sol";
 import {ERC1967Proxy} from "openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {BlobVerifierWrapper} from "../src/BlobVerifierWrapper.sol";
@@ -29,8 +29,8 @@ contract ContractsDeployer is Script {
 
         IRiscZeroVerifier verifier = new RiscZeroGroth16Verifier(hex"8cdad9242664be3112aba377c5425a4df735eb1c6966472b561d2855932c0469", ControlID.BN254_CONTROL_ID);
         
-        // Deploy EigenDARegistry
-        EigenDARegistry implementation = new EigenDARegistry();
+        // Deploy CertAndBlobVerifier
+        CertAndBlobVerifier implementation = new CertAndBlobVerifier();
 
         // Encode initializer call
         bytes memory initializerData = abi.encodeWithSignature(
@@ -44,7 +44,7 @@ contract ContractsDeployer is Script {
             address(implementation),
             initializerData
         );
-        console.log("EigenDARegistry Proxy deployed at:", address(proxy));
+        console.log("CertAndBlobVerifier Proxy deployed at:", address(proxy));
         
         vm.stopBroadcast();
     }

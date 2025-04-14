@@ -48,8 +48,8 @@ struct Args {
     #[arg(short, long, env = "DISPERSER_PRIVATE_KEY")]
     disperser_private_key: Secret<String>,
     /// Address of the EigenDA Registry
-    #[arg(short, long, env = "EIGENDA_REGISTRY_ADDR")]
-    eigenda_registry_addr: String,
+    #[arg(short, long, env = "EIGENDA_CERT_AND_BLOB_VERIFIER_ADDR")]
+    eigenda_cert_and_blob_verifier_addr: String,
     /// Rpc of the eigenda Disperser
     #[arg(short, long, env = "DISPERSER_RPC")]
     disperser_rpc: String,
@@ -160,7 +160,7 @@ async fn main() -> Result<()> {
             GUEST_ELF,
             args.verification_private_key.clone(),
             args.rpc_url.clone(),
-            args.eigenda_registry_addr.clone(),
+            args.eigenda_cert_and_blob_verifier_addr.clone(),
             output.hash,
             inclusion_data,
         )

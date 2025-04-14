@@ -12,7 +12,7 @@ use url::Url;
 
 sol!(
     #[sol(rpc)]
-    interface IEigenDARegistry {
+    interface ICertAndBlobVerifier {
         function verify(bytes calldata seal, bytes32 imageId, bytes32 journalDigest, bytes32 eigendaHash, bytes calldata inclusionData) external;
     }
 );
@@ -22,7 +22,7 @@ pub async fn prove_risc0_proof(
     guest_elf: &[u8],
     private_key: Secret<String>,
     eth_rpc: Url,
-    eigenda_registry_addr: String,
+    eigenda_cert_and_blob_verifier_addr: String,
     eigenda_hash: Vec<u8>,
     inclusion_data: Vec<u8>,
 ) -> anyhow::Result<()> {
@@ -59,11 +59,11 @@ pub async fn prove_risc0_proof(
         .wallet(wallet)
         .on_http(eth_rpc);
 
-    let eigenda_registry_addr: Address = eigenda_registry_addr
+    let eigenda_cert_and_blob_verifier_addr: Address = eigenda_cert_and_blob_verifier_addr
         .parse()
         .expect("Invalid contract address");
 
-    let contract = IEigenDARegistry::new(eigenda_registry_addr, &provider);
+    let contract = ICertAndBlobVerifier::new(eigenda_cert_and_blob_verifier_addr, &provider);
 
     let pending_tx = contract
         .verify(
