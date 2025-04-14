@@ -1,5 +1,3 @@
-pub mod eigen_client;
-pub mod generated;
 pub mod guest_caller;
 pub mod blob_id;
 pub mod prove_risc0;

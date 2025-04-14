@@ -22,7 +22,6 @@ rust-kzg-bn254-primitives = {workspace = true}
 ark-bn254 = {workspace = true}
 num-bigint = {workspace = true}
 tonic = {workspace = true}
-kzgpad-rs = {workspace = true}
 prost = {workspace = true}
 common = {workspace = true}
 secrecy = {workspace = true}

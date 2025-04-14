@@ -19,7 +19,6 @@ use anyhow::Result;
 use clap::Parser;
 use common::output::Output;
 use host::blob_id::get_blob_id;
-use host::eigen_client::EigenClientRetriever;
 use host::verify_blob::decode_blob_info;
 use methods::GUEST_ELF;
 use rust_eigenda_client::{
@@ -93,8 +92,6 @@ async fn main() -> Result<()> {
     // Parse the command line arguments.
     let args = Args::parse();
 
-    let eigen_retriever = EigenClientRetriever::new(&args.disperser_rpc).await?;
-
     let disperser_pk = args.disperser_private_key.expose_secret();
 
     let eigen_client = EigenClient::new(
@@ -138,8 +135,8 @@ async fn main() -> Result<()> {
                 decode_blob_info(inclusion_data.clone())?;
         
         // Raw bytes dispersed by zksync sequencer to EigenDA
-        let blob_data = eigen_retriever
-            .get_blob_data(blob_verification_proof.blobIndex, batch_header_hash)
+        let blob_data = eigen_client
+            .get_blob(blob_verification_proof.blobIndex, batch_header_hash)
             .await?
             .ok_or(anyhow::anyhow!("Not blob data"))?;
 

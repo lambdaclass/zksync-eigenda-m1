@@ -166,7 +166,7 @@ da_client:
     wait_for_finalization: false
     authenticated: false
     points_source_path: ./resources
-    cert_and_blob_verifier_addr: <CertAndBlobVerifier> #Under CERT_AND_BLOB_VERIFIER_ADDR env variable
+    eigenda_cert_and_blob_verifier_addr: <CertAndBlobVerifier> #Under CERT_AND_BLOB_VERIFIER_ADDR env variable
 ```
 
 **Copy the resources folder inside eigenda to zksync-era root**
