@@ -68,7 +68,6 @@ fn main() {
         blobVerificationProof: blob_info.blob_verification_proof.into(),
     };
     let returns = contract.call_builder(&call).call();
-    println!("View call result: {}", returns._0);
     // Here we assert that the result of the verifyBlobV1 call is true, meaning it executed correctly
     assert!(returns._0);
 
