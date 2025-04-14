@@ -69,7 +69,7 @@ pub async fn run_guest(
     let x_fq = Fq::from(num_bigint::BigUint::from_bytes_be(&x));
     let y_fq = Fq::from(num_bigint::BigUint::from_bytes_be(&y));
 
-    let commcert_commitmentitment = G1Affine::new(x_fq, y_fq);
+    let cert_commitment = G1Affine::new(x_fq, y_fq);
     // Calculate the commitment directly from the blob
     let blob_commitment = kzg.commit_coeff_form(&blob.to_polynomial_coeff_form(), &srs)?;
 
