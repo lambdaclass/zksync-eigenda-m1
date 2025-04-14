@@ -36,9 +36,13 @@ fn keccak256(data: &[u8]) -> [u8; 32] {
     output
 }
 
-/// This guest uses the risc0 Steel library to prove an eth_call on the BlobVerifierWrapper.
+/// This guest proves that an EigenDA Cert (BlobInfo) is valid, as well as that
+/// the cert's commitment corresponds to a given blob.
+/// It uses the risc0 Steel library to prove the cert validity via an eth_call on the BlobVerifierWrapper.
 /// It receives serialized blob_info from the host, which it uses as arguments to the eth_call.
-/// Then it verifies that commitment commits to the given blob
+/// Then it verifies that the received blob (data) commits to the same commitment as found in the blob_info
+/// It also computes the keccak256 hash of the blob data, which is used as a public output.
+/// This is done to later compare on EigenDAL1DAValidator against the calculated hashes
 fn main() {
     // Read the input from the guest environment.
     let input: EthEvmInput = env::read();

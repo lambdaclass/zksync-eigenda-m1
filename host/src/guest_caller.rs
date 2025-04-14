@@ -69,16 +69,16 @@ pub async fn run_guest(
     let x_fq = Fq::from(num_bigint::BigUint::from_bytes_be(&x));
     let y_fq = Fq::from(num_bigint::BigUint::from_bytes_be(&y));
 
-    let commitment = G1Affine::new(x_fq, y_fq);
+    let commcert_commitmentitment = G1Affine::new(x_fq, y_fq);
     // Calculate the commitment directly from the blob
-    let real_commitment = kzg.commit_coeff_form(&blob.to_polynomial_coeff_form(), &srs)?;
+    let blob_commitment = kzg.commit_coeff_form(&blob.to_polynomial_coeff_form(), &srs)?;
 
     // Check that the commitment from the blob and from Blobinfo are the same
-    if commitment != real_commitment {
+    if cert_commitment != blob_commitment {
         return Err(anyhow::anyhow!(
-            "Commitments mismatched, given commitment: {:?}, real commitment: {:?}",
-            commitment,
-            real_commitment
+            "Commitments mismatched, given commitment: {:?}, blob commitment: {:?}",
+            cert_commitment,
+            blob_commitment
         ));
     }
 
