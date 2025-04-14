@@ -4837,7 +4837,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5595,7 +5595,8 @@ dependencies = [
 [[package]]
 name = "rust-kzg-bn254-primitives"
 version = "0.1.1"
-source = "git+https://github.com/Layr-Labs/rust-kzg-bn254.git?branch=master#46b7f377e7c3089b31f811a4b5526be930b2d62c"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6989f6e05d05fe20a940050d35a82d5697e16599a63f94fa75b28f723aa1abe"
 dependencies = [
  "ark-bn254 0.5.0",
  "ark-ec 0.5.0",
@@ -5610,8 +5611,9 @@ dependencies = [
 
 [[package]]
 name = "rust-kzg-bn254-prover"
-version = "0.1.0"
-source = "git+https://github.com/Layr-Labs/rust-kzg-bn254.git?branch=master#46b7f377e7c3089b31f811a4b5526be930b2d62c"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed1af11c66ca1e505ef959e398e86c39d9b2b20d0aa9a45a62e053a8a9044209"
 dependencies = [
  "ark-bn254 0.5.0",
  "ark-ec 0.5.0",

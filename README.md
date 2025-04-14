@@ -70,7 +70,7 @@ Add
 
 To `keys:` section of `devnet.yaml`
 
-And replace `ehereum-package` section for
+And replace `ethereum-package` section for
 
 ```yaml
 # ethereum-package configuration

@@ -18,9 +18,9 @@ ethabi = { workspace = true }
 hex = {workspace = true}
 chrono = {workspace = true}
 rust-kzg-bn254-prover = { workspace = true }
+rust-kzg-bn254-primitives = {workspace = true}
 ark-bn254 = {workspace = true}
 num-bigint = {workspace = true}
-rust-kzg-bn254-primitives = {workspace = true}
 tonic = {workspace = true}
 kzgpad-rs = {workspace = true}
 prost = {workspace = true}
