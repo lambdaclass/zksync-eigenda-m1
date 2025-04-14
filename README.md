@@ -1,4 +1,5 @@
 # ZKSYNC-EIGENDA M1
+**Warning: This sidecar only works on a x86 machine with cuda support**
 
 **The EigenDA sidecar where risc0-steel is used in order to generate a proof for the call of the VerifyBlobV1 function of EigenDA's BlobVerifier contract, which performs the necessary checks to make sure a given blob is present.**
 **As well as performing the proof of equivalence verifying a proof that the EigenDA commitment commits to the given Blob.**
