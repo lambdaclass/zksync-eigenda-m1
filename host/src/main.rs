@@ -59,9 +59,6 @@ struct Args {
     /// Blob Verifier Wrapper Contract Address
     #[arg(short, long, env = "BLOB_VERIFIER_WRAPPER_ADDR")]
     blob_verifier_wrapper_addr: Address,
-    /// Caller Address
-    #[arg(short, long, env = "CALLER_ADDR")]
-    caller_addr: Address,
     /// Url of the zksync's json api
     #[arg(short, long, env = "API_URL")]
     api_url: String,
@@ -153,7 +150,6 @@ async fn main() -> Result<()> {
             blob_data,
             args.rpc_url.clone(),
             args.blob_verifier_wrapper_addr.clone(),
-            args.caller_addr.clone(),
         )
         .await?;
 

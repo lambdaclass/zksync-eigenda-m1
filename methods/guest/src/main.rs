@@ -56,7 +56,6 @@ fn main() {
     let proof: SerializableG1 = env::read();
     let blob_verifier_wrapper_addr: Address = env::read();
     // Address that is used to call the VerifyBlobV1 function
-    let caller_addr: Address = env::read();
     let blob = Blob::from_raw_data(&data);
 
     // Converts the input into a `EvmEnv` for execution.
@@ -68,7 +67,7 @@ fn main() {
         blobHeader: blob_info.blob_header.into(),
         blobVerificationProof: blob_info.blob_verification_proof.into(),
     };
-    let returns = contract.call_builder(&call).from(caller_addr).call();
+    let returns = contract.call_builder(&call).call();
     println!("View call result: {}", returns._0);
     // Here we assert that the result of the verifyBlobV1 call is true, meaning it executed correctly
     assert!(returns._0);

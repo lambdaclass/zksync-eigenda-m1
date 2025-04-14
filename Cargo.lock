@@ -2096,6 +2096,7 @@ version = "0.1.0"
 dependencies = [
  "ark-bn254 0.5.0",
  "ark-ff 0.5.0",
+ "ark-serialize 0.5.0",
  "serde",
 ]
 
