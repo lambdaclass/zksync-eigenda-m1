@@ -1,24 +1,25 @@
 use ark_bn254::G1Affine;
-use ark_ff::Fp;
 use serde::ser::SerializeTuple;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
 
 pub struct SerializableG1 {
     pub g1: G1Affine,
 }
-use std::str::FromStr;
 
 impl Serialize for SerializableG1 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let x = format!("{:?}", self.g1.x);
-        let y = format!("{:?}", self.g1.y);
-        let mut tup = serializer.serialize_tuple(2)?;
-        tup.serialize_element(&x)?;
-        tup.serialize_element(&y)?;
+        let mut compressed_bytes = Vec::new();
+        self.g1.serialize_compressed(&mut compressed_bytes).map_err(|e| {
+            serde::ser::Error::custom(format!("Failed to serialize G1Affine: {:?}", e))
+        })?;
+        let mut tup = serializer.serialize_tuple(1)?;
+        tup.serialize_element(&compressed_bytes)?;
         tup.end()
+
     }
 }
 
@@ -27,11 +28,10 @@ impl<'de> Deserialize<'de> for SerializableG1 {
     where
         D: Deserializer<'de>,
     {
-        let (x, y): (String, String) = Deserialize::deserialize(deserializer)?;
-        let g1 = G1Affine::new_unchecked(
-            Fp::from_str(&x).map_err(|e| serde::de::Error::custom(format!("{:?}", e)))?,
-            Fp::from_str(&y).map_err(|e| serde::de::Error::custom(format!("{:?}", e)))?,
-        );
+        let bytes: Vec<u8> = Deserialize::deserialize(deserializer)?;
+        let g1 = G1Affine::deserialize_compressed(&bytes[..]).map_err(|e| {
+            serde::de::Error::custom(format!("Failed to deserialize G1Affine: {:?}", e))
+        })?;
         Ok(SerializableG1 { g1 })
     }
 }

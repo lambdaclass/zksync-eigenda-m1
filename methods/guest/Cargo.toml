@@ -10,9 +10,10 @@ alloy-primitives = { version = "0.8" }
 alloy-sol-types = { version = "0.8" }
 risc0-steel = { git = "https://github.com/risc0/risc0-ethereum", tag = "v1.2.0" }
 risc0-zkvm = { version = "1.2.0", default-features = false, features = ["std"] }
+risc0-zkvm-platform = {version = "1.2.0", features=["sys-getenv"]}
 common = {path = "../../common"}
-rust-kzg-bn254-primitives = { git = "https://github.com/lambdaclass/rust-kzg-bn254.git", branch = "remove-parallel" , default-features = false, features = ["non-parallel"]}
-rust-kzg-bn254-verifier = { git = "https://github.com/lambdaclass/rust-kzg-bn254.git", branch = "remove-parallel" , default-features = false, features = ["non-parallel"]}
+rust-kzg-bn254-primitives = "0.1.1"
+rust-kzg-bn254-verifier = "0.1.1"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
 
 

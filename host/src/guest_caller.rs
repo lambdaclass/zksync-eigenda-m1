@@ -20,7 +20,6 @@ pub async fn run_guest(
     data: Vec<u8>,
     rpc_url: Url,
     blob_verifier_wrapper_addr: Address,
-    caller_addr: Address,
 ) -> anyhow::Result<ProveInfo> {
     let call = IVerifyBlob::verifyBlobV1Call {
         blobHeader: blob_header.clone(),
@@ -37,13 +36,11 @@ pub async fn run_guest(
     let mut contract = Contract::preflight(blob_verifier_wrapper_addr, &mut env);
     let returns = contract
         .call_builder(&call)
-        .from(caller_addr)
         .call()
         .await?;
     println!(
-        "Call {} Function by {:#} on {:#} returns: {}",
+        "Call {} Function on {:#} returns: {}",
         IVerifyBlob::verifyBlobV1Call::SIGNATURE,
-        caller_addr,
         blob_verifier_wrapper_addr,
         returns._0
     );
@@ -103,7 +100,6 @@ pub async fn run_guest(
             .write(&serializable_eval)?
             .write(&serializable_proof)?
             .write(&blob_verifier_wrapper_addr)?
-            .write(&caller_addr)?
             .build()?;
         let exec = default_prover();
         exec.prove_with_ctx(

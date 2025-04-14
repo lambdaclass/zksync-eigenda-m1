@@ -112,7 +112,6 @@ export BLOB_VERIFIER_ADDRESS=<your_blob_verifier_address> #On avs-devnet address
 export RPC_URL=<your_rpc> #On avs-devnet ports
 export DISPERSER_RPC=<your_rpc> #On avs-devnet ports
 export SVC_MANAGER_ADDR=<your_address> #On avs-devnet addresses
-export CALLER_ADDR=<your_address> #Address you want to use to call the `VerifyBlobV1` function
 ```
 
 Deploy the contracts:
