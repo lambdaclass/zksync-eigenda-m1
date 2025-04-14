@@ -83,7 +83,7 @@ fn main() {
     // Public outputs of the guest, eigenDAHash and commitment to the risc0 steel environment, they are embedded on the proof
     let output = Output {
         hash: hash.to_vec(),
-        env: env.commitment().abi_encode(),
+        env_commitment: env.commitment().abi_encode(),
     };
 
     env::commit(&output);
