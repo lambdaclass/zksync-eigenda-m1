@@ -12,11 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::{str::FromStr, sync::Arc};
+
+use alloy_primitives::Address;
 use anyhow::Result;
 use clap::Parser;
-use host::{inclusion_data::get_inclusion_data, verify_blob::decode_blob_info};
+use common::output::Output;
+use host::blob_id::get_blob_id;
+use host::verify_blob::decode_blob_info;
+use methods::GUEST_ELF;
+use rust_eigenda_client::{
+    client::BlobProvider,
+    config::{EigenConfig, EigenSecrets, PrivateKey, SecretUrl, SrsPointsSource},
+    EigenClient,
+};
+use secrecy::{ExposeSecret, Secret};
+use std::error::Error;
+use tracing_subscriber::EnvFilter;
+
+use rust_kzg_bn254_prover::srs::SRS;
 use reqwest::Client;
-use secrecy::Secret;
 use url::Url;
 
 #[derive(Parser, Debug)]
@@ -26,48 +41,128 @@ struct Args {
     #[arg(short, long, env = "RPC_URL")]
     rpc_url: Url,
     /// Private key used to submit an ethereum transaction that verifys the proof
-    #[arg(short, long, env = "PRIVATE_KEY")]
-    private_key: Secret<String>,
+    #[arg(short, long, env = "VERIFICATION_PRIVATE_KEY")]
+    verification_private_key: Secret<String>,
+    /// Private key used to get inclusion data from the disperser
+    #[arg(short, long, env = "DISPERSER_PRIVATE_KEY")]
+    disperser_private_key: Secret<String>,
+    /// Address of the EigenDA Registry
+    #[arg(short, long, env = "EIGENDA_CERT_AND_BLOB_VERIFIER_ADDR")]
+    eigenda_cert_and_blob_verifier_addr: String,
+    /// Rpc of the eigenda Disperser
+    #[arg(short, long, env = "DISPERSER_RPC")]
+    disperser_rpc: String,
+    /// Service Manager Address
+    #[arg(short, long, env = "SVC_MANAGER_ADDR")]
+    svc_manager_addr: String,
+    /// Blob Verifier Wrapper Contract Address
+    #[arg(short, long, env = "BLOB_VERIFIER_WRAPPER_ADDR")]
+    blob_verifier_wrapper_addr: Address,
     /// Url of the zksync's json api
     #[arg(short, long, env = "API_URL")]
     api_url: String,
     /// Batch number where verification should start
     #[arg(short, long, env = "START_BATCH", value_parser = clap::value_parser!(u64).range(1..))]
     start_batch: u64,
-    /// Address of the Risc0 Verifier Wrapper
-    #[arg(short, long, env = "RISC0_VERIFIER_WRAPPER")]
-    risc0_verifier_address: String,
 }
+
+#[derive(Debug)]
+struct FakeBlobProvider;
+
+#[async_trait::async_trait]
+impl BlobProvider for FakeBlobProvider {
+    async fn get_blob(
+        &self,
+        _input: &str,
+    ) -> Result<Option<Vec<u8>>, Box<dyn Error + Send + Sync>> {
+        Ok(None)
+    }
+}
+
+const SRS_ORDER: u32 = 268435456;
+const SRS_POINTS_TO_LOAD: u32 = 1024 * 1024 * 2 / 32;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
+
+    let srs = SRS::new("resources/g1.point", SRS_ORDER, SRS_POINTS_TO_LOAD)?;
     // Parse the command line arguments.
     let args = Args::parse();
 
-    let client = Client::new();
+    let disperser_pk = args.disperser_private_key.expose_secret();
+
+    let eigen_client = EigenClient::new(
+        EigenConfig::new(
+            args.disperser_rpc,
+            SecretUrl::new(args.rpc_url.clone()),
+            0,
+            ethabi::ethereum_types::H160::from_str(&args.svc_manager_addr)?,
+            false,
+            false,
+            SrsPointsSource::Path("./resources".to_string()),
+            vec![],
+        )?,
+        EigenSecrets {
+            private_key: PrivateKey::from_str(
+                disperser_pk.strip_prefix("0x").unwrap_or(disperser_pk),
+            )?,
+        },
+        Arc::new(FakeBlobProvider {}),
+    )
+    .await?;
+    let reqwest_client = Client::new();
 
     let mut current_batch = args.start_batch;
 
     loop {
-        let inclusion_data = get_inclusion_data(current_batch, args.api_url.clone(), &client).await?;
+        let blob_id: String = get_blob_id(current_batch, args.api_url.clone(), &reqwest_client).await?;
+        // Abi encoded BlobInfo (EigenDACert)
+        let inclusion_data: Vec<u8>;
+
+        loop {
+            let opt_inclusion_data = eigen_client.get_inclusion_data(&blob_id).await?;
+            if let Some(opt_inclusion_data) = opt_inclusion_data {
+                inclusion_data = opt_inclusion_data;
+                break;
+            }
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        }
         
-        let (blob_header, blob_verification_proof) = decode_blob_info(inclusion_data)?;
-        let session_info = host::verify_blob::run_blob_verification_guest(
-            blob_header,
+        let (blob_header, blob_verification_proof, batch_header_hash) =
+                decode_blob_info(inclusion_data.clone())?;
+        
+        // Raw bytes dispersed by zksync sequencer to EigenDA
+        let blob_data = eigen_client
+            .get_blob(blob_verification_proof.blobIndex, batch_header_hash)
+            .await?
+            .ok_or(anyhow::anyhow!("Not blob data"))?;
+
+        let result = host::guest_caller::run_guest(
+            blob_header.clone(),
             blob_verification_proof.clone(),
+            &srs,
+            blob_data,
             args.rpc_url.clone(),
+            args.blob_verifier_wrapper_addr.clone(),
         )
         .await?;
 
+        let output: Output = result.receipt.journal.decode()?;
+
         host::prove_risc0::prove_risc0_proof(
-            session_info,
-            args.private_key.clone(),
-            blob_verification_proof.blobIndex,
+            result,
+            GUEST_ELF,
+            args.verification_private_key.clone(),
             args.rpc_url.clone(),
-            args.risc0_verifier_address.clone()
+            args.eigenda_cert_and_blob_verifier_addr.clone(),
+            output.hash,
+            inclusion_data,
         )
         .await?;
-    
+
         current_batch += 1;
     }
 }

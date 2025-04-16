@@ -1,25 +1,12 @@
 use alloy_primitives::U256;
-use alloy_primitives::{address, Address};
 use alloy_sol_types::sol;
-use alloy_sol_types::SolCall;
-use anyhow::Context;
-use blob_verification_methods::BLOB_VERIFICATION_GUEST_ELF;
+use anyhow::anyhow;
 use common::blob_info::G1Commitment;
-use ethabi::ParamType;
-use risc0_steel::{ethereum::EthEvmEnv, Contract};
-use risc0_zkvm::ProveInfo;
-use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
-use url::Url;
+use ethabi::{ParamType, Token};
 
 use crate::utils::{
     extract_array, extract_bytes, extract_fixed_bytes, extract_tuple, extract_uint32, extract_uint8,
 };
-
-/// Address of the deployed blob verifier wrapper contract to call the function on.
-const BLOB_VERIFIER_WRAPPER_CONTRACT: Address =
-    address!("c551b009C1CE0b6efD691E23998AEFd4103680D3"); // If the contract address changes modify this.
-/// Address of the caller.
-const CALLER: Address = address!("E90E12261CCb0F3F7976Ae611A29e84a6A85f424");
 
 sol! {
     struct QuorumBlobParam {
@@ -142,9 +129,13 @@ impl From<BlobVerificationProof> for common::blob_info::BlobVerificationProof {
     }
 }
 
+/// Decodes the Blob Info given the inclusion data raw bytes
+/// It returns the BlobHeader and BlobVerificationProof needed to call VerifyBlobV1
+/// It also returns the batch header hash, which is needed to get the blob data, and is not included in the BlobInfo received by VerifyBlobV1
+/// So we need to store it in a separate variable
 pub fn decode_blob_info(
     inclusion_data: Vec<u8>,
-) -> Result<(BlobHeader, BlobVerificationProof), anyhow::Error> {
+) -> Result<(BlobHeader, BlobVerificationProof, Vec<u8>), anyhow::Error> {
     let param_types = vec![ParamType::Tuple(vec![
         // BlobHeader
         ParamType::Tuple(vec![
@@ -185,8 +176,14 @@ pub fn decode_blob_info(
     let blob_header_tokens = extract_tuple(&blob_info[0])?;
     let commitment_tokens = extract_tuple(&blob_header_tokens[0])?;
 
-    let x = commitment_tokens[0].clone().into_uint().unwrap();
-    let y = commitment_tokens[1].clone().into_uint().unwrap();
+    let x = commitment_tokens[0]
+        .clone()
+        .into_uint()
+        .ok_or(anyhow!("Incorrect commitment"))?;
+    let y = commitment_tokens[1]
+        .clone()
+        .into_uint()
+        .ok_or(anyhow!("Incorrect commitment"))?;
 
     let mut x_bytes = [0u8; 32];
     let mut y_bytes = [0u8; 32];
@@ -240,6 +237,11 @@ pub fn decode_blob_info(
         confirmationBlockNumber: extract_uint32(&batch_metadata_tokens[2])?,
     };
 
+    let batch_header_hash: Vec<u8> = match batch_metadata_tokens[3].clone() {
+        Token::Bytes(bytes) => Ok(bytes),
+        _ => Err(anyhow::anyhow!("Fixed bytes not found")),
+    }?;
+
     let blob_verification_proof = BlobVerificationProof {
         batchId: batch_id,
         blobIndex: blob_index,
@@ -248,58 +250,5 @@ pub fn decode_blob_info(
         quorumIndices: extract_bytes(&blob_verification_tokens[4])?,
     };
 
-    Ok((blob_header, blob_verification_proof))
-}
-
-pub async fn run_blob_verification_guest(
-    blob_header: BlobHeader,
-    blob_verification_proof: BlobVerificationProof,
-    rpc_url: Url,
-) -> anyhow::Result<ProveInfo> {
-    let call = IVerifyBlob::verifyBlobV1Call {
-        blobHeader: blob_header.clone(),
-        blobVerificationProof: blob_verification_proof.clone(),
-    };
-
-    // Create an EVM environment from an RPC endpoint defaulting to the latest block.
-    let mut env = EthEvmEnv::builder().rpc(rpc_url.clone()).build().await?;
-
-    // Preflight the call to prepare the input that is required to execute the function in
-    // the guest without RPC access. It also returns the result of the call.
-    let mut contract = Contract::preflight(BLOB_VERIFIER_WRAPPER_CONTRACT, &mut env);
-    let returns = contract.call_builder(&call).from(CALLER).call().await?;
-    println!(
-        "Call {} Function by {:#} on {:#} returns: {}",
-        IVerifyBlob::verifyBlobV1Call::SIGNATURE,
-        CALLER,
-        BLOB_VERIFIER_WRAPPER_CONTRACT,
-        returns._0
-    );
-
-    // Finally, construct the input from the environment.
-    let input = env.into_input().await?;
-
-    let blob_info = common::blob_info::BlobInfo {
-        blob_header: blob_header.into(),
-        blob_verification_proof: blob_verification_proof.clone().into(),
-    };
-
-    println!("Running the guest with the constructed input...");
-    let session_info = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
-        let env = ExecutorEnv::builder()
-            .write(&input)?
-            .write(&blob_info)?
-            .build()?;
-        let exec = default_prover();
-        exec.prove_with_ctx(
-            env,
-            &VerifierContext::default(),
-            BLOB_VERIFICATION_GUEST_ELF,
-            &ProverOpts::groth16(),
-        )
-        .context("failed to run executor")
-    })
-    .await??;
-
-    Ok(session_info)
+    Ok((blob_header, blob_verification_proof, batch_header_hash))
 }
