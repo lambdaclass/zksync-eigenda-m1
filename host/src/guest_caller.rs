@@ -9,6 +9,7 @@ use risc0_steel::{ethereum::EthEvmEnv, Contract};
 use risc0_zkvm::ProveInfo;
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
 use rust_kzg_bn254_primitives::blob::Blob;
+use rust_kzg_bn254_primitives::helpers::compute_challenge;
 use rust_kzg_bn254_prover::kzg::KZG;
 use rust_kzg_bn254_prover::srs::SRS;
 use url::Url;
@@ -67,28 +68,16 @@ pub async fn run_guest(
     let y_fq = Fq::from(num_bigint::BigUint::from_bytes_be(&y));
 
     let cert_commitment = G1Affine::new(x_fq, y_fq);
-    // Calculate the commitment directly from the blob
-    let blob_commitment = kzg.commit_coeff_form(&blob.to_polynomial_coeff_form(), &srs)?;
 
-    // Check that the commitment from the blob and from Blobinfo are the same
-    if cert_commitment != blob_commitment {
-        return Err(anyhow::anyhow!(
-            "Commitments mismatched, given commitment: {:?}, blob commitment: {:?}",
-            cert_commitment,
-            blob_commitment
-        ));
-    }
+    // Calculate the polynomial in evaluation form
+    let poly_coeff = blob.to_polynomial_coeff_form();
+    let poly_eval = poly_coeff.to_eval_form()?;
 
-    // Calculate eval commitment, we need to use this and not the coeff commitment (the one inside blobInfo), since proof generation
-    // and verification does not work with coeff commitments.
-    let eval_commitment = kzg.commit_eval_form(&blob.to_polynomial_eval_form(), &srs)?;
+    let evaluation_challenge = compute_challenge(&blob, &cert_commitment)?;
 
     // Compute the proof that the commitment corresponds to the given blob
-    let proof = kzg.compute_blob_proof(&blob, &eval_commitment, &srs)?;
+    let proof = kzg.compute_proof(&poly_eval,&evaluation_challenge,&srs)?;
 
-    let serializable_eval = SerializableG1 {
-        g1: eval_commitment,
-    };
     let serializable_proof = SerializableG1 { g1: proof };
 
     println!("Running the guest with the constructed input...");
@@ -97,7 +86,6 @@ pub async fn run_guest(
             .write(&input)?
             .write(&blob_info)?
             .write(&data)?
-            .write(&serializable_eval)?
             .write(&serializable_proof)?
             .write(&blob_verifier_wrapper_addr)?
             .build()?;

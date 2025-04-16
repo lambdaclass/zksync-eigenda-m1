@@ -395,7 +395,6 @@ Inputs: input
 	    blobVerificationProof: blob_info.blob_verification_proof.into(),
 		};
 	let returns = contract.call_builder(&call).from(caller_addr).call();
-	println!("View call result: {}", returns._0);
 	assert!(returns._0); 
 ```
 
@@ -428,39 +427,60 @@ Inputs: **BlobInfo, BlobData,** SRSPoints
     let x_fq = Fq::from(num_bigint::BigUint::from_bytes_be(&x));
     let y_fq = Fq::from(num_bigint::BigUint::from_bytes_be(&y));
 
-    let commitment = G1Affine::new(x_fq, y_fq);
-    let real_commitment = kzg.commit_coeff_form(&blob.to_polynomial_coeff_form(), &srs)?;
-
-    if commitment != real_commitment {
-        return Err(anyhow::anyhow!(
-            "Commitments mismatched, given commitment: {:?}, real commitment: {:?}",
-            commitment,
-            real_commitment
-        ));
-    }
+    let cert_commitment = G1Affine::new(x_fq, y_fq);
 ```
 
-First we obtain the coeff commitment from the BlobInfo’s blob header and compare it to the commitment calculated with the BlobData
+First we obtain the commitment from the BlobInfo’s blob header
 
 ```rust
-let eval_commitment = kzg.commit_eval_form(&blob.to_polynomial_eval_form(), &srs)?;
+    // Calculate the polynomial in evaluation form
+    let poly_coeff = blob.to_polynomial_coeff_form();
+    let poly_eval = poly_coeff.to_eval_form()?;
 
-let proof = kzg.compute_blob_proof(&blob, &eval_commitment, &srs)?;
+    let evaluation_challenge = compute_challenge(&blob, &cert_commitment)?;
+
+    // Compute the proof that the commitment corresponds to the given blob
+    let proof = kzg.compute_proof(&poly_eval,&evaluation_challenge,&srs)?;
 ```
 
-We then calculate the eval commitment and the proof for that commitment
+We then calculate the eval polynomial, the evaluation challenge and the proof for that commitment
 
-Outputs: Proof, eval commitment
+Output: Proof
 
 Guest:
 
-Inputs: **BlobData**, Proof, eval commitment
+Inputs: **BlobData**, Proof, BlobInfo (commitment)
 
 ```rust
-let verified = verify_blob_kzg_proof(&blob, &eval_commitment.g1, &proof.g1).unwrap();
+    // Calculate the polynomial in evaluation form
+    let poly_coeff = blob.to_polynomial_coeff_form();
+    let poly_eval = poly_coeff.to_eval_form().unwrap();
+
+    // Get the commitment from blob info
+    let x_fq = Fq::from(num_bigint::BigUint::from_bytes_be(&blob_info.blob_header.commitment.x));
+    let y_fq = Fq::from(num_bigint::BigUint::from_bytes_be(&blob_info.blob_header.commitment.y));
+
+    let cert_commitment = G1Affine::new(x_fq, y_fq);
+
+    // Compute evaluation challenge
+    let evaluation_challenge = compute_challenge(&blob, &cert_commitment).unwrap();
+
+    // Evaluate the polynomial at the evaluation challenge
+    let y = evaluate_polynomial_in_evaluation_form(&poly_eval, &evaluation_challenge).unwrap();
+
+    let evaled_y = eval(poly_coeff.coeffs(), evaluation_challenge);
+
+    // Assert that the evaluation of the polynomial at the evaluation challenge is equal to the y value
+    assert_eq!(y, evaled_y);
+
+    // Verification of the kzg proof for the given commitment, evaluation and evaluation challenge
+    let verified = verify_proof(cert_commitment, proof.g1, y, evaluation_challenge).unwrap();
+    assert!(verified);
 ```
 
-It verifies the proof generated on the host
+We recalculate the evaluation polynomial, the cert commitment from the blob info and the evaluation challenge.
+Then we get the evaluation at the challenge point and compare it to the one we calculate using horner's rule.
+Then we verify the proof for the commitment at that challenge point
 
 Output: **Risc0Proof**
 
