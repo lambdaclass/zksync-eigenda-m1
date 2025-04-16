@@ -504,6 +504,12 @@ Then on zksync’s EigenDAL1Validator, we check that hash against the one obtain
 
 The idea of this check is to make sure that the blob we verified on the guest is the same blob we dispersed on zksync
 
+### Data Flow
+
+This diagram shows how data flows through each point of the solution
+
+![Data Flow](images/data-flow.png)
+
 ### How
 
 ![Flow Chart](images/flow-chart.png)
