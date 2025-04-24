@@ -1,8 +1,9 @@
+use alloy_primitives::Uint;
 use ark_bn254::{G1Affine, G2Affine};
-use ark_ff::{Fp, Fp2};
+use ark_ff::{AdditiveGroup, BigInteger, Fp, Fp2, PrimeField};
 use ark_serialize::CanonicalSerialize;
 use serde::ser::Error;
-use crate::verify_blob::{BlobCommitment as BlobCommitmentsContract, BlobHeaderV2 as BlobHeaderV2Contract, BlobCertificate as BlobCertificateContract, BlobInclusionInfo as BlobInclusionInfoContract, BatchHeaderV2 as BatchHeaderV2Contract, NonSignerStakesAndSignature as NonSignerStakesAndSignatureContract, Attestation as AttestationContract};
+use crate::verify_blob::{BlobCommitment as BlobCommitmentsContract, BlobHeaderV2 as BlobHeaderV2Contract, BlobCertificate as BlobCertificateContract, BlobInclusionInfo as BlobInclusionInfoContract, BatchHeaderV2 as BatchHeaderV2Contract, NonSignerStakesAndSignature as NonSignerStakesAndSignatureContract, G2Point as G2PointContract, G1Point as G1PointContract};
 use rust_kzg_bn254_primitives::helpers::{lexicographically_largest, read_g1_point_from_bytes_be};
 use ark_ff::Zero;
 
@@ -87,7 +88,7 @@ impl From<BlobCommitments> for BlobCommitmentsContract {
 pub struct BlobHeader {
     pub(crate) version: u16,
     pub(crate) quorum_numbers: Vec<u8>,
-    pub(crate) commitment: BlobCommitments,
+    pub commitment: BlobCommitments,
     pub(crate) payment_header_hash: [u8; 32],
 }
 
@@ -97,7 +98,7 @@ impl From<BlobHeader> for BlobHeaderV2Contract {
             version: value.version,
             quorumNumbers: value.quorum_numbers.clone().into(),
             commitment: value.commitment.clone().into(),
-            paymentHeaderHash: value.payment_header_hash,
+            paymentHeaderHash: alloy_primitives::FixedBytes(value.payment_header_hash),
         }
     }
 }
@@ -150,7 +151,7 @@ pub struct BatchHeaderV2 {
 impl From<BatchHeaderV2> for BatchHeaderV2Contract {
     fn from(value: BatchHeaderV2) -> Self {
         Self {
-            batchRoot: value.batch_root,
+            batchRoot: alloy_primitives::FixedBytes(value.batch_root),
             referenceBlockNumber: value.reference_block_number,
         }
     }
@@ -272,35 +273,6 @@ impl<'de> serde::Deserialize<'de> for NonSignerStakesAndSignature {
     {
         let helper = NonSignerStakesAndSignatureHelper::deserialize(deserializer)?;
         Self::try_from(helper).map_err(serde::de::Error::custom)
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Attestation {
-    pub non_signer_pubkeys: Vec<G1Affine>,
-    pub quorum_apks: Vec<G1Affine>,
-    pub sigma: G1Affine,
-    pub apk_g2: G2Affine,
-    pub quorum_numbers: Vec<u32>,
-}
-
-impl From<Attestation> for AttestationContract {
-    fn from(value: Attestation) -> Self {
-        Self {
-            non_signer_pubkeys: value
-                .non_signer_pubkeys
-                .iter()
-                .map(g1_contract_point_from_g1_affine)
-                .collect::<Vec<_>>(),
-            quorum_apks: value
-                .quorum_apks
-                .iter()
-                .map(g1_contract_point_from_g1_affine)
-                .collect::<Vec<_>>(),
-            sigma: g1_contract_point_from_g1_affine(&value.sigma),
-            apk_g2: g2_contract_point_from_g2_affine(&value.apk_g2),
-            quorum_numbers: value.quorum_numbers,
-        }
     }
 }
 
@@ -439,13 +411,13 @@ fn g2_contract_point_from_g2_affine(g2_affine: &G2Affine) -> G2PointContract {
     let x = g2_affine.x;
     let y = g2_affine.y;
     G2PointContract {
-        x: [
-            U256::from_big_endian(&x.c1.into_bigint().to_bytes_be()),
-            U256::from_big_endian(&x.c0.into_bigint().to_bytes_be()),
+        X: [
+            Uint::from_be_bytes::<32>(x.c1.into_bigint().to_bytes_be().try_into().unwrap()),
+            Uint::from_be_bytes::<32>(x.c0.into_bigint().to_bytes_be().try_into().unwrap()),
         ],
-        y: [
-            U256::from_big_endian(&y.c1.into_bigint().to_bytes_be()),
-            U256::from_big_endian(&y.c0.into_bigint().to_bytes_be()),
+        Y: [
+            Uint::from_be_bytes::<32>(y.c1.into_bigint().to_bytes_be().try_into().unwrap()),
+            Uint::from_be_bytes::<32>(y.c0.into_bigint().to_bytes_be().try_into().unwrap()),
         ],
     }
 }
@@ -454,64 +426,7 @@ fn g1_contract_point_from_g1_affine(g1_affine: &G1Affine) -> G1PointContract {
     let x = g1_affine.x;
     let y = g1_affine.y;
     G1PointContract {
-        x: U256::from_big_endian(&x.into_bigint().to_bytes_be()),
-        y: U256::from_big_endian(&y.into_bigint().to_bytes_be()),
+        X: Uint::from_be_bytes::<32>(x.into_bigint().to_bytes_be().try_into().unwrap()),
+        Y: Uint::from_be_bytes::<32>(y.into_bigint().to_bytes_be().try_into().unwrap()),
     }
-}
-
-fn g1_affine_from_g1_contract_point(
-    g1_point: &G1PointContract,
-) -> Result<G1Affine, ConversionError> {
-    let mut x_bytes = [0u8; 32];
-    g1_point.x.to_big_endian(&mut x_bytes);
-    let mut y_bytes = [0u8; 32];
-    g1_point.y.to_big_endian(&mut y_bytes);
-    let x = Fq::from_be_bytes_mod_order(&x_bytes);
-    let y = Fq::from_be_bytes_mod_order(&y_bytes);
-    let point = G1Affine::new_unchecked(x, y);
-    if !point.is_on_curve() {
-        return Err(ConversionError::G1Point(
-            "Point is not on curve".to_string(),
-        ));
-    }
-    if !point.is_in_correct_subgroup_assuming_on_curve() {
-        return Err(ConversionError::G1Point(
-            "Point is not on correct subgroup".to_string(),
-        ));
-    }
-    Ok(point)
-}
-
-fn g2_affine_from_g2_contract_point(
-    g2_point: &G2PointContract,
-) -> Result<G2Affine, ConversionError> {
-    let mut x1_bytes = [0u8; 32];
-    g2_point.x[1].to_big_endian(&mut x1_bytes);
-    let mut x0_bytes = [0u8; 32];
-    g2_point.x[0].to_big_endian(&mut x0_bytes);
-    let x = Fp2::new(
-        Fq::from_be_bytes_mod_order(&x1_bytes),
-        Fq::from_be_bytes_mod_order(&x0_bytes),
-    );
-    let mut y1_bytes = [0u8; 32];
-    g2_point.y[1].to_big_endian(&mut y1_bytes);
-    let mut y0_bytes = [0u8; 32];
-    g2_point.y[0].to_big_endian(&mut y0_bytes);
-    let y = Fp2::new(
-        Fq::from_be_bytes_mod_order(&y1_bytes),
-        Fq::from_be_bytes_mod_order(&y0_bytes),
-    );
-    let point = G2Affine::new_unchecked(x, y);
-    if !point.is_on_curve() {
-        return Err(ConversionError::G2Point(
-            "Point is not on curve".to_string(),
-        ));
-    }
-    if !point.is_in_correct_subgroup_assuming_on_curve() {
-        return Err(ConversionError::G2Point(
-            "Point is not on correct subgroup".to_string(),
-        ));
-    }
-
-    Ok(point)
 }

@@ -18,7 +18,7 @@
 use alloy_primitives::Address;
 use common::output::Output;
 use common::serializable_g1::SerializableG1;
-use guest::verify_blob::IVerifyBlob;
+use common::verify_blob::IVerifyBlob;
 use risc0_steel::{ethereum::EthEvmInput, Contract};
 use risc0_zkvm::guest::env;
 use rust_kzg_bn254_primitives::{blob::Blob, helpers::{compute_challenge, evaluate_polynomial_in_evaluation_form}};
@@ -26,7 +26,7 @@ use rust_kzg_bn254_verifier::verify::verify_proof;
 use tiny_keccak::{Hasher, Keccak};
 use ark_bn254::{Fq, G1Affine, Fr};
 use ark_serialize::CanonicalSerialize;
-use common::EigenDACert;
+use common::eigenda_cert::EigenDACert;
 
 risc0_zkvm::guest::entry!(main);
 
@@ -86,12 +86,8 @@ fn main() {
     let poly_coeff = blob.to_polynomial_coeff_form();
     let poly_eval = poly_coeff.to_eval_form().unwrap();
 
-    // Get the commitment from blob info
-    let x_fq = Fq::from(num_bigint::BigUint::from_bytes_be(&eigenda_cert.blob_inclusion_info.blob_certificate.blob_header.commitment.commitment.x));
-    let y_fq = Fq::from(num_bigint::BigUint::from_bytes_be(&eigenda_cert.blblob_inclusion_info.blob_certificate.blob_header.commitment.commitment.y));
-
-    let cert_commitment = G1Affine::new(x_fq, y_fq);
-
+    // Get the commitment from eigenda cert
+    let cert_commitment = eigenda_cert.blob_inclusion_info.blob_certificate.blob_header.commitment.commitment;
     // Compute evaluation challenge
     let evaluation_challenge = compute_challenge(&blob, &cert_commitment).unwrap();
 
