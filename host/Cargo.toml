@@ -26,7 +26,7 @@ prost = {workspace = true}
 common = {workspace = true}
 secrecy = {workspace = true}
 alloy = {workspace = true}
-rust-eigenda-client = {workspace = true}
+rust-eigenda-v2-client = {workspace = true}
 async-trait = { workspace = true }
 reqwest = {workspace = true}
 serde_json = {workspace = true}

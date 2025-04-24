@@ -34,7 +34,7 @@ common = {path = "common"}
 secrecy = "0.8.0"
 alloy = "0.11"
 ark-ff = "0.5"
-rust-eigenda-client = "0.1.4"
+rust-eigenda-v2-client = {git = "https://github.com/Layr-Labs/eigenda-client-rs.git", branch="relative-contracts"}
 async-trait = "0.1"
 reqwest = "0.12"
 serde_json = "1.0"

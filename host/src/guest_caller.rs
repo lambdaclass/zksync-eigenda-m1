@@ -8,6 +8,7 @@ use methods::GUEST_ELF;
 use risc0_steel::{ethereum::EthEvmEnv, Contract};
 use risc0_zkvm::ProveInfo;
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
+use rust_eigenda_v2_client::core::eigenda_cert::EigenDACert;
 use rust_kzg_bn254_primitives::blob::Blob;
 use rust_kzg_bn254_primitives::helpers::compute_challenge;
 use rust_kzg_bn254_prover::kzg::KZG;
@@ -15,16 +16,17 @@ use rust_kzg_bn254_prover::srs::SRS;
 use url::Url;
 
 pub async fn run_guest(
-    blob_header: BlobHeader,
-    blob_verification_proof: BlobVerificationProof,
+    eigenda_cert: &EigenDACert,
     srs: &SRS,
     data: Vec<u8>,
     rpc_url: Url,
     blob_verifier_wrapper_addr: Address,
 ) -> anyhow::Result<ProveInfo> {
-    let call = IVerifyBlob::verifyBlobV1Call {
-        blobHeader: blob_header.clone(),
-        blobVerificationProof: blob_verification_proof.clone(),
+    let call = IVerifyBlob::verifyDACertV2Call {
+        batchHeader: eigenda_cert.batch_header.clone(),
+        blobInclusionInfo: eigenda_cert.blob_inclusion_info.clone(),
+        nonSignerStakesAndSignature: eigenda_cert.non_signer_stakes_and_signature.clone(),
+        signedQuorumNumbers: eigenda_cert.signed_quorum_numbers.clone(),
     };
 
     // Create an EVM environment from an RPC endpoint defaulting to the latest block.
@@ -41,7 +43,7 @@ pub async fn run_guest(
         .await?;
     println!(
         "Call {} Function on {:#} returns: {}",
-        IVerifyBlob::verifyBlobV1Call::SIGNATURE,
+        IVerifyBlob::verifyDACertV2Call::SIGNATURE,
         blob_verifier_wrapper_addr,
         returns._0
     );
@@ -49,20 +51,14 @@ pub async fn run_guest(
     // Finally, construct the input from the environment.
     let input = env.into_input().await?;
 
-    // aka EigenDACert
-    let blob_info = common::blob_info::BlobInfo {
-        blob_header: blob_header.clone().into(),
-        blob_verification_proof: blob_verification_proof.clone().into(),
-    };
-
     let blob = Blob::from_raw_data(&data);
 
     let mut kzg = KZG::new();
 
     kzg.calculate_and_store_roots_of_unity(blob.len().try_into()?)?;
 
-    let x: [u8; 32] = blob_header.commitment.x.to_be_bytes();
-    let y: [u8; 32] = blob_header.commitment.y.to_be_bytes();
+    let x: [u8; 32] = eigenda_cert.blob_inclusion_info.blob_commitment.commitment.x.to_be_bytes();
+    let y: [u8; 32] = eigenda_cert.blob_inclusion_info.blob_commitment.commitment.y.to_be_bytes();
 
     let x_fq = Fq::from(num_bigint::BigUint::from_bytes_be(&x));
     let y_fq = Fq::from(num_bigint::BigUint::from_bytes_be(&y));
@@ -84,7 +80,7 @@ pub async fn run_guest(
     let session_info = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
         let env = ExecutorEnv::builder()
             .write(&input)?
-            .write(&blob_info)?
+            .write(&eigenda_cert)?
             .write(&data)?
             .write(&serializable_proof)?
             .write(&blob_verifier_wrapper_addr)?
