@@ -511,7 +511,7 @@ dependencies = [
  "cfg-if",
  "const-hex",
  "derive_more 0.99.20",
- "hex-literal 0.4.1",
+ "hex-literal",
  "itoa",
  "k256 0.13.4",
  "keccak-asm",
@@ -2232,6 +2232,7 @@ dependencies = [
  "ark-bn254 0.5.0",
  "ark-ff 0.5.0",
  "ark-serialize 0.5.0",
+ "rust-eigenda-v2-cert",
  "rust-kzg-bn254-primitives",
  "serde",
 ]
@@ -3870,12 +3871,6 @@ dependencies = [
 
 [[package]]
 name = "hex-literal"
-version = "0.3.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ebdb29d2ea9ed0083cd8cece49bbd968021bd99b0849edb4a9a7ee0fdf6a4e0"
-
-[[package]]
-name = "hex-literal"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6fe2267d4ed49bc07b63801559be28c718ea06c4738b7a03c94df7386d2cde46"
@@ -3919,6 +3914,7 @@ dependencies = [
  "reqwest 0.12.15",
  "risc0-steel",
  "risc0-zkvm",
+ "rust-eigenda-v2-cert",
  "rust-eigenda-v2-client",
  "rust-kzg-bn254-primitives",
  "rust-kzg-bn254-prover",
@@ -4441,15 +4437,6 @@ name = "itertools"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
-dependencies = [
- "either",
-]
-
-[[package]]
-name = "itertools"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
 dependencies = [
  "either",
 ]
@@ -5055,7 +5042,7 @@ version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af1844ef2428cc3e1cb900be36181049ef3d3193c63e43026cfe202983b27a56"
 dependencies = [
- "proc-macro-crate 3.3.0",
+ "proc-macro-crate 1.1.3",
  "proc-macro2",
  "quote",
  "syn 2.0.100",
@@ -5628,7 +5615,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "81bddcdb20abf9501610992b6759a4c888aef7d1a7247ef75e2404275ac24af1"
 dependencies = [
  "anyhow",
- "itertools 0.12.1",
+ "itertools 0.10.5",
  "proc-macro2",
  "quote",
  "syn 2.0.100",
@@ -6398,7 +6385,7 @@ dependencies = [
  "digest 0.10.7",
  "ff 0.13.1",
  "hex",
- "hex-literal 0.4.1",
+ "hex-literal",
  "metal",
  "ndarray",
  "parking_lot",
@@ -6536,9 +6523,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48fd7bd8a6377e15ad9d42a8ec25371b94ddc67abe7c8b9127bec79bebaaae18"
 
 [[package]]
+name = "rust-eigenda-v2-cert"
+version = "0.1.0"
+source = "git+https://github.com/Layr-Labs/eigenda-client-rs.git?branch=eigendacert_externalitazion#c37e56f3853136ac80a744717c15c38744db987b"
+dependencies = [
+ "ark-bn254 0.5.0",
+ "ark-ff 0.5.0",
+ "ark-serialize 0.5.0",
+ "bincode",
+ "rust-kzg-bn254-primitives",
+ "serde",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "rust-eigenda-v2-client"
 version = "0.1.0"
-source = "git+https://github.com/Layr-Labs/eigenda-client-rs.git#a083e45d5d7b2967bc09d16a6fe881971e1f2d69"
+source = "git+https://github.com/Layr-Labs/eigenda-client-rs.git?branch=eigendacert_externalitazion#c37e56f3853136ac80a744717c15c38744db987b"
 dependencies = [
  "ark-bn254 0.5.0",
  "ark-ec 0.5.0",
@@ -6554,15 +6555,13 @@ dependencies = [
  "ethereum-types",
  "ethers",
  "hex",
- "hex-literal 0.3.4",
  "num-bigint 0.4.6",
- "proptest",
  "prost 0.12.6",
  "rand 0.8.5",
  "reqwest 0.12.15",
+ "rust-eigenda-v2-cert",
  "rust-kzg-bn254-primitives",
  "rust-kzg-bn254-prover",
- "rust-kzg-bn254-verifier",
  "secp256k1 0.27.0",
  "secrecy",
  "serde",
@@ -6609,19 +6608,6 @@ dependencies = [
  "num-traits",
  "num_cpus",
  "rayon",
- "rust-kzg-bn254-primitives",
-]
-
-[[package]]
-name = "rust-kzg-bn254-verifier"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c401f8b5f0469e11607b4f39872ea2abe642961a7860705f02baeb4c029c6af9"
-dependencies = [
- "ark-bn254 0.5.0",
- "ark-ec 0.5.0",
- "ark-ff 0.5.0",
- "ark-serialize 0.5.0",
  "rust-kzg-bn254-primitives",
 ]
 

@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{str::FromStr, sync::Arc};
+use std::{str::FromStr, sync::Arc, time::Duration};
 
 use alloy_primitives::Address;
 use anyhow::Result;
 use clap::Parser;
 use common::output::Output;
+use ethabi::ethereum_types::H160;
 use host::blob_id::get_blob_id;
-use host::verify_blob::decode_blob_info;
 use methods::GUEST_ELF;
-use rust_eigenda_v2_client::{core::{eigenda_cert::EigenDACert, BlobKey, Payload, PayloadForm}, payload_disperser::PayloadDisperserConfig, payloadretrieval::relay_payload_retriever::{RelayPayloadRetriever, RelayPayloadRetrieverConfig, SRSConfig}, relay_client::{RelayClient, RelayClientConfig}};
+use rust_eigenda_v2_cert::EigenDACert;
+use rust_eigenda_v2_client::{core::{BlobKey, Payload, PayloadForm}, payload_disperser::{PayloadDisperser, PayloadDisperserConfig}, payloadretrieval::relay_payload_retriever::{RelayPayloadRetriever, RelayPayloadRetrieverConfig, SRSConfig}, relay_client::{RelayClient, RelayClientConfig}, utils::{PrivateKey, SecretUrl}};
 use secrecy::{ExposeSecret, Secret};
-use std::error::Error;
 use tracing_subscriber::EnvFilter;
 
 use rust_kzg_bn254_prover::srs::SRS;
@@ -62,13 +62,13 @@ struct Args {
     payload_form: PayloadForm,
     /// Blob Version
     #[arg(short, long, env = "BLOB_VERSION")]
-    blob_version: u32,
+    blob_version: u16,
     /// Address of the EigenDA Cert Verifier
     #[arg(short, long, env = "CERT_VERIFIER_ADDR")]
-    eigenda_cert_verifier_addr: String,
+    eigenda_cert_verifier_addr: H160,
     /// Address of the EigenDA Relay Registry
     #[arg(short, long, env = "EIGENDA_RELAY_REGISTRY_ADDR")]
-    eigenda_relay_registry_addr: String,
+    eigenda_relay_registry_addr: H160,
     /// Relay client keys
     #[arg(short, long, env = "RELAY_CLIENT_KEYS")]
     relay_client_keys: Vec<u32>,
@@ -93,20 +93,20 @@ async fn main() -> Result<()> {
         polynomial_form: args.payload_form,
         blob_version: args.blob_version,
         cert_verifier_address: args.eigenda_cert_verifier_addr,
-        eth_rpc_url: SecretUrl::new(args.rpc_url),
+        eth_rpc_url: SecretUrl::new(args.rpc_url.clone()),
         disperser_rpc: args.disperser_rpc,
-        use_secure_grpc_flag: args.authenticated,
+        use_secure_grpc_flag: true,
     };
     let private_key = PrivateKey::from_str(disperser_pk)
         .map_err(|e| anyhow::anyhow!("Failed to parse private key: {}", e))?;
-    let payload_disperser = PayloadDisperser::new(payload_disperser_config, private_key)
+    let payload_disperser = PayloadDisperser::new(payload_disperser_config, private_key.clone())
         .await
         .map_err(|e| anyhow::anyhow!("Eigen client Error: {:?}", e))?;
 
 
     let retriever_config = RelayPayloadRetrieverConfig {
         payload_form: args.payload_form,
-        retrieval_timeout_secs: 60,
+        retrieval_timeout_secs: Duration::from_secs(60),
     };
     let srs_config = SRSConfig {
         source_path: "resources/g1.point".to_string(),
@@ -115,14 +115,14 @@ async fn main() -> Result<()> {
     };
 
     let relay_client_config = RelayClientConfig {
-        max_grpc_message_size: SRS_ORDER,
+        max_grpc_message_size: SRS_ORDER as usize,
         relay_clients_keys: args.relay_client_keys,
         relay_registry_address: args.eigenda_relay_registry_addr,
-        eth_rpc_url: args.rpc_url,
+        eth_rpc_url: SecretUrl::new(args.rpc_url.clone()),
     };
 
     let relay_client = RelayClient::new(relay_client_config, private_key).await?;
-    let retriever = RelayPayloadRetriever::new(retriever_config, srs_config, relay_client)?;
+    let mut retriever = RelayPayloadRetriever::new(retriever_config, srs_config, relay_client)?;
 
     let reqwest_client = Client::new();
 
@@ -144,18 +144,18 @@ async fn main() -> Result<()> {
         }
         
         // Raw bytes dispersed by zksync sequencer to EigenDA
-        let payload: Payload = retriever.get_payload(eigenda_cert)
+        let payload: Payload = retriever.get_payload(eigenda_cert.clone())
             .await
-            .ok_or(anyhow::anyhow!("Not blob data"))?;
+            .map_err(|_| anyhow::anyhow!("Not blob data"))?;
 
         let blob_data = payload.serialize();
 
         let result = host::guest_caller::run_guest(
-            &eigenda_cert,
+            eigenda_cert.clone(),
             &srs,
             blob_data,
             args.rpc_url.clone(),
-            args.blob_verifier_wrapper_addr.clone(),
+            args.cert_verifier_wrapper_addr.clone(),
         )
         .await?;
 
@@ -168,7 +168,7 @@ async fn main() -> Result<()> {
             args.rpc_url.clone(),
             args.eigenda_cert_and_blob_verifier_addr.clone(),
             output.hash,
-            eigenda_cert.to_bytes(),
+            eigenda_cert.to_bytes().map_err(|_| anyhow::anyhow!("Failed to serialize EigenDACert"))?,
         )
         .await?;
 

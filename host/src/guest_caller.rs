@@ -8,7 +8,7 @@ use methods::GUEST_ELF;
 use risc0_steel::{ethereum::EthEvmEnv, Contract};
 use risc0_zkvm::ProveInfo;
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
-use rust_eigenda_v2_client::core::eigenda_cert::EigenDACert;
+use rust_eigenda_v2_cert::EigenDACert;
 use rust_kzg_bn254_primitives::blob::Blob;
 use rust_kzg_bn254_primitives::helpers::compute_challenge;
 use rust_kzg_bn254_prover::kzg::KZG;
@@ -16,11 +16,11 @@ use rust_kzg_bn254_prover::srs::SRS;
 use url::Url;
 
 pub async fn run_guest(
-    eigenda_cert: &EigenDACert,
+    eigenda_cert: EigenDACert,
     srs: &SRS,
     data: Vec<u8>,
     rpc_url: Url,
-    blob_verifier_wrapper_addr: Address,
+    cert_verifier_wrapper_addr: Address,
 ) -> anyhow::Result<ProveInfo> {
     let call = IVerifyBlob::verifyDACertV2Call {
         batchHeader: eigenda_cert.batch_header.clone().into(),
@@ -36,7 +36,7 @@ pub async fn run_guest(
     // the guest without RPC access. It also returns the result of the call.
     // Risc0 steel creates an ethereum VM using revm, where it simulates the call to VerifyBlobV1.
     // So we need to make this preflight call to populate the VM environment with the current state of the chain
-    let mut contract = Contract::preflight(blob_verifier_wrapper_addr, &mut env);
+    let mut contract = Contract::preflight(cert_verifier_wrapper_addr, &mut env);
     let returns = contract
         .call_builder(&call)
         .call()
@@ -44,7 +44,7 @@ pub async fn run_guest(
     println!(
         "Call {} Function on {:#} returns: {}",
         IVerifyBlob::verifyDACertV2Call::SIGNATURE,
-        blob_verifier_wrapper_addr,
+        cert_verifier_wrapper_addr,
         returns._0
     );
 
@@ -57,13 +57,7 @@ pub async fn run_guest(
 
     kzg.calculate_and_store_roots_of_unity(blob.len().try_into()?)?;
 
-    let x: [u8; 32] = eigenda_cert.blob_inclusion_info.blob_certificate.blob_header.commitment.commitment.x.to_be_bytes();
-    let y: [u8; 32] = eigenda_cert.blob_inclusion_info.blob_certificate.blob_header.commitment.commitment.y.to_be_bytes();
-
-    let x_fq = Fq::from(num_bigint::BigUint::from_bytes_be(&x));
-    let y_fq = Fq::from(num_bigint::BigUint::from_bytes_be(&y));
-
-    let cert_commitment = G1Affine::new(x_fq, y_fq);
+    let cert_commitment = eigenda_cert.blob_inclusion_info.blob_certificate.blob_header.commitment.commitment;
 
     // Calculate the polynomial in evaluation form
     let poly_coeff = blob.to_polynomial_coeff_form();
@@ -83,7 +77,7 @@ pub async fn run_guest(
             .write(&eigenda_cert)?
             .write(&data)?
             .write(&serializable_proof)?
-            .write(&blob_verifier_wrapper_addr)?
+            .write(&cert_verifier_wrapper_addr)?
             .build()?;
         let exec = default_prover();
         exec.prove_with_ctx(
