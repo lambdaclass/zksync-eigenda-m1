@@ -112,7 +112,7 @@ fn main() {
     let output = Output {
         hash: hash.to_vec(),
         env_commitment: env.commitment().abi_encode(),
-        inclusion_data: eigenda_cert.to_bytes(),
+        inclusion_data: vec![], //todo
         proof: proof_bytes,
     };
 

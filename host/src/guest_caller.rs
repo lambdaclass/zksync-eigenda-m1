@@ -1,4 +1,4 @@
-use crate::verify_blob::{BlobHeader, BlobVerificationProof, IVerifyBlob};
+use common::verify_blob::IVerifyBlob;
 use alloy_primitives::Address;
 use alloy_sol_types::SolCall;
 use anyhow::Context;
@@ -23,10 +23,10 @@ pub async fn run_guest(
     blob_verifier_wrapper_addr: Address,
 ) -> anyhow::Result<ProveInfo> {
     let call = IVerifyBlob::verifyDACertV2Call {
-        batchHeader: eigenda_cert.batch_header.clone(),
-        blobInclusionInfo: eigenda_cert.blob_inclusion_info.clone(),
-        nonSignerStakesAndSignature: eigenda_cert.non_signer_stakes_and_signature.clone(),
-        signedQuorumNumbers: eigenda_cert.signed_quorum_numbers.clone(),
+        batchHeader: eigenda_cert.batch_header.clone().into(),
+        blobInclusionInfo: eigenda_cert.blob_inclusion_info.clone().into(),
+        nonSignerStakesAndSignature: eigenda_cert.non_signer_stakes_and_signature.clone().into(),
+        signedQuorumNumbers: eigenda_cert.signed_quorum_numbers.clone().into(),
     };
 
     // Create an EVM environment from an RPC endpoint defaulting to the latest block.
@@ -57,8 +57,8 @@ pub async fn run_guest(
 
     kzg.calculate_and_store_roots_of_unity(blob.len().try_into()?)?;
 
-    let x: [u8; 32] = eigenda_cert.blob_inclusion_info.blob_commitment.commitment.x.to_be_bytes();
-    let y: [u8; 32] = eigenda_cert.blob_inclusion_info.blob_commitment.commitment.y.to_be_bytes();
+    let x: [u8; 32] = eigenda_cert.blob_inclusion_info.blob_certificate.blob_header.commitment.commitment.x.to_be_bytes();
+    let y: [u8; 32] = eigenda_cert.blob_inclusion_info.blob_certificate.blob_header.commitment.commitment.y.to_be_bytes();
 
     let x_fq = Fq::from(num_bigint::BigUint::from_bytes_be(&x));
     let y_fq = Fq::from(num_bigint::BigUint::from_bytes_be(&y));

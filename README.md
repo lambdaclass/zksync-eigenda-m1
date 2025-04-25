@@ -1,11 +1,10 @@
 # ZKSYNC-EIGENDA M1
 **Warning: This sidecar only works on a x86 machine with cuda support**
 
-**The EigenDA sidecar where risc0-steel is used in order to generate a proof for the call of the VerifyBlobV1 function of EigenDA's BlobVerifier contract, which performs the necessary checks to make sure a given blob is present.**
+**The EigenDA sidecar where risc0-steel is used in order to generate a proof for the call of the VerifyDACertV2 function of EigenDA's CertVerifier contract, which performs the necessary checks to make sure a given blob is present.**
 **As well as performing the proof of equivalence verifying a proof that the EigenDA commitment commits to the given Blob.**
-**Finally it sends the Risc0 Proof to verify to the EigenDA Registry contract, which stores whether it was correctly verified.**
+**Finally it sends the Risc0 Proof to verify to the EigenDA Cert and Blob Verifier contract, which stores whether it was correctly verified.**
 
-Note: `verifyBlobV1` will be replaced by the V2 API once the `EigenDAv2` Client is ready
 ## Prerequisites
 
 To get started, you need to have Rust installed.
@@ -23,79 +22,6 @@ sudo ./<file>.run
 
 ## Run the sidecar
 
-### First run the eigenda devnet:
-
-Install devnet: 
-
-Clone [avs-devnet](https://github.com/Layr-Labs/avs-devnet) repository and install the `avs-devnet` tool by running
-
-```bash
-make deps      # installs dependencies
-make install   # installs the project
-```
-
-Go to [Avs-Devnet repo](https://github.com/Layr-Labs/avs-devnet/blob/main/examples/eigenda.yaml) and follow the steps to run the EigenDA devnet, before running `avs-devnet start`:
-
-Add the following line on `contracts/script/SetUpEigenDA.s.sol` on eigenda:
-
-Line 214: `vm.serializeAddress(output,"blobVerifier", address(eigenDABlobVerifier));`
-
-Replace line 28 on `avs-devnet/kurtosis_package/keys.star` for
-
-`shared_utils.send_funds(plan, context, info["address"], "10000ether")`
-
-Add
-
-```yaml
-- name: zksync_rich_1
-  address: "0x36615Cf349d7F6344891B1e7CA7C72883F5dc049"
-- name: zksync_rich_2
-  address: "0xa61464658AfeAf65CccaaFD3a512b69A83B77618"
-- name: zksync_rich_3
-  address: "0x0D43eB5B8a47bA8900d84AA36656c92024e9772e"
-- name: zksync_rich_4
-  address: "0xA13c10C0D5bd6f79041B9835c63f91de35A15883"
-- name: zksync_rich_5
-  address: "0x8002cD98Cfb563492A6fB3E7C8243b7B9Ad4cc92"
-- name: zksync_rich_6
-  address: "0x4F9133D1d3F50011A6859807C837bdCB31Aaab13"
-- name: zksync_rich_7
-  address: "0xbd29A1B981925B94eEc5c4F1125AF02a2Ec4d1cA"
-- name: zksync_rich_8
-  address: "0xedB6F5B4aab3dD95C7806Af42881FF12BE7e9daa"
-- name: zksync_rich_9
-  address: "0xe706e60ab5Dc512C36A4646D719b889F398cbBcB"
-- name: zksync_rich_10
-  address: "0xE90E12261CCb0F3F7976Ae611A29e84a6A85f424"
-```
-
-To `keys:` section of `devnet.yaml`
-
-And replace `ethereum-package` section for
-
-```yaml
-# ethereum-package configuration
-ethereum_package:
-  additional_services:
-    - blockscout
-  network_params:
-    # NOTE: turning this to 1s causes "referenceBlockNumber is in future" errors
-    seconds_per_slot: 3
-    network_id: "9"
-```
-
-
-After runnning the devnet run
-
-```bash
-avs-devnet get-ports
-avs-devnet get-address eigenda_addresses: 
-```
-
-Save ports for `el-1-besu-lighthouse: rpc` and `disperser: grpc`
-
-Save addresses of `blobVerifier` and `eigenDAServiceManager`
-
 ### Deployment steps (On this repo):
 
 Compile the contracts
@@ -107,12 +33,15 @@ make build_contracts
 
 Export the needed variables (rpcs should have http://, private keys and addresses should have 0x)
 ```bash
-export PRIVATE_KEY=<your_private_key> #The private key you want to use to deploy contracts and call to VerifyBlobV1
+export PRIVATE_KEY=<your_private_key> #The private key you want to use to deploy contracts and call to VerifyDACertV2
 export DISPERSER_PRIVATE_KEY=<your_disperser_private_key> #The private key you want to use with the eigenda disperser
-export BLOB_VERIFIER_ADDRESS=<your_blob_verifier_address> #On avs-devnet addresses
-export RPC_URL=<your_rpc> #On avs-devnet ports
-export DISPERSER_RPC=<your_rpc> #On avs-devnet ports
-export SVC_MANAGER_ADDR=<your_address> #On avs-devnet addresses
+export CERT_VERIFIER_ADDRESS=<your_cert_verifier_address> #Contract that has the VerifyDACertV2 function
+export RPC_URL=<your_rpc> #RPC URL of your node
+export DISPERSER_RPC=<your_rpc> #RPC of the eigenda disperser
+export PAYLOAD_FORM=<your_payload_form> #Either Coeff or Eval (On EigenDA Holesky use Coeff)
+export BLOB_VERSION=0 #Blob version used by EigenDA
+export EIGENDA_RELAY_REGISTRY_ADDRESS=<your_relay_registry_addr> #Address of the EigenDA relay registry
+export RELAY_CLIENT_KEYS=<your_relay_client_keys> #Keys of the relay client (currently [0,1,2] on Holesky)
 ```
 
 Deploy the contracts:
@@ -121,15 +50,15 @@ Deploy the contracts:
 forge script contracts/script/ContractsDeployer.s.sol:ContractsDeployer --rpc-url $RPC_URL --broadcast -vvvv
 ```
 
-Save the address under `BlobVerifierWrapper deployed at: <address>`
+Save the address under `EigenDACertVerifierWrapper deployed at: <address>`
 Save the address under `CertAndBlobVerifier Proxy deployed at: <address>`
 
 ```bash
-export BLOB_VERIFIER_WRAPPER_ADDR=<your_address>
+export CERT_VERIFIER_WRAPPER_ADDR=<your_address>
 export EIGENDA_CERT_AND_BLOB_VERIFIER_ADDR=<your_address>
 ```
 
-### Run zksync-era (m1-eigenda branch on lambdaclass fork):
+### Run zksync-era (eigenda-v2 branch on lambdaclass fork):
 
 Install zkstack:
 
@@ -160,17 +89,14 @@ Modify `etc/env/file_based/overrides/validium.yaml`:
 ```yaml
 da_client:
   eigen:
-    disperser_rpc: http://<disperser: grpc> #On avs-devnet ports
-    settlement_layer_confirmation_depth: 0
-    eigenda_eth_rpc: http://<el-1-besu-lighthouse: rpc> #On avs-devnet ports
-    eigenda_svc_manager_address: <eigenDAServiceManager> #On avs-devnet addresses
-    wait_for_finalization: false
-    authenticated: false
-    points_source_path: ./resources
-    eigenda_cert_and_blob_verifier_addr: <CertAndBlobVerifier> #Under CERT_AND_BLOB_VERIFIER_ADDR env variable
+    disperser_rpc: <your_disperser_rpc> #Under DISPERSER_RPC env variable
+    eigenda_eth_rpc: <your_eth_rpc> #Under RPC_URL env variable
+    authenticated: true
+    cert_verifier_addr: <your_cert_verifier_address> #Under CERT_VERIFIER_ADDRESS env variable
+    blob_version: <your_blob_version> #Under BLOB_VERSION env variable
+    polynomial_form: <your_polynomial_form> #Either COEFF or EVAL
+    eigenda_cert_and_blob_verifier_addr: <your_cert_and_blob_verifier> #Under CERT_AND_BLOB_VERIFIER_ADDR env variable
 ```
-
-**Copy the resources folder inside eigenda to zksync-era root**
 
 Modify `etc/env/file_based/secrets.yaml`:
 
@@ -200,7 +126,7 @@ zkstack ecosystem init \
           --deploy-paymaster true \
           --deploy-erc20 true \
           --deploy-ecosystem true \
-          --l1-rpc-url http://127.0.0.1:<your_l1_rpc> \
+          --l1-rpc-url <your_l1_rpc> \
           --server-db-url=postgres://postgres:notsecurepassword@localhost:5432 \
           --server-db-name=zksync_server_localhost_eigenda \
           --chain eigenda \
@@ -287,20 +213,20 @@ The important components are marked in **bold**
 ![Step 1](images/step1.png)
 
 1. Zksync's sequencer finishes a batch and wants to disperse its content (**Blob Data**).
-2. Zksync's sequencer sends the blob to be dispersed to EigenDA, EigenDA returns the **Blob ID**.
-3. Zksync's sequencer stores the **Blob ID** in its database
+2. Zksync's sequencer sends the blob to be dispersed to EigenDA, EigenDA returns the **Blob Key**.
+3. Zksync's sequencer stores the **Blob Key** in its database
 
 #### Step 2 Proof generation (Marked in Red)
 
 ![Step 2](images/step2.png)
 
-4. Zksync’s sequencer asks for **Inlcusion Data** (abi encoded **Blob Info**) to EigenDA
+4. Zksync’s sequencer asks for **Inlcusion Data** (encoded **EigenDACert**) to EigenDA
 5. Zksync’s sequencer starts waiting for batch to be verified.
-6. Sidecar asks zksync’s sequencer for **Blob ID**.
-7. Sidecar asks EigenDA for **BlobInfo** (EigenDACert) and **Blob Data**
+6. Sidecar asks zksync’s sequencer for **Blob Key**.
+7. Sidecar asks EigenDA for **EigenDACert** and **Blob Data**
 8. Sidecar executes Risc0, doing 3 things
 
-    a. Call to VerifyBlobV1 *
+    a. Call to VerifyDACertV2 *
 
     b. Proof of Equivalence *
 
@@ -308,8 +234,8 @@ The important components are marked in **bold**
     
     And generates a **Risc0 Proof** of those 3 things
     
-9. Sidecar calls the EigenDARegistry verify function on Ethereum
-10. EigenDARegistry verifies the **Risc0 Proof** and stores in its mappings:
+9. Sidecar calls the EigenDACertAndBlobVerifier verify function on Ethereum
+10. EigenDACertAndBlobVerifier verifies the **Risc0 Proof** and stores in its mappings:
 
     a. finishedBatches: **Inclusion Data** → true (meaning the proof generation for the given **Inclusion Data** finished)
 
@@ -334,7 +260,7 @@ Everything here runs on Ethereum
     
     * **stateDiffHash**  is the hash of the states diffs, calculated on EigenDAL2Validator and sent to L1 through L2→L1 Logs
     
-14. EigenDAL1Validator calls EigenDARegistry isVerified function with **Inclusion Data** as parameter, which returns whether it was correctly verified along with the **EigenDAHash**
+14. EigenDAL1Validator calls EigenDACertAndBlobVerifier isVerified function with **Inclusion Data** as parameter, which returns whether it was correctly verified along with the **EigenDAHash**
 15. EigenDAL1Validator checks if keccak(**stateDiffHash** + **EigenDAHash**) equals **l2DAValidatorOutputHash** (meaning that if not, **EigenDAHash** was not correctly calculated by the sidecar)
 
 ### What does the Guest do?
@@ -345,6 +271,7 @@ There are 3 things we want to achieve with the Risc0 guest. Each one of them is 
 2. We want to check that the commitment commits to that blob. 8.b
 3. We want to check that the blob is the same we dispersed on zksync. 8.c
 
+# TODO: Update to V2
 #### * Call to VerifyBlobV1 (8.a)
 
 On the host:
@@ -503,6 +430,8 @@ We then send that hash to the EigenDARegistry contract, which stores it in its m
 Then on zksync’s EigenDAL1Validator, we check that hash against the one obtained through L2→L1 Logs.
 
 The idea of this check is to make sure that the blob we verified on the guest is the same blob we dispersed on zksync
+
+### OLD DOCUMENTATION
 
 ### Data Flow
 

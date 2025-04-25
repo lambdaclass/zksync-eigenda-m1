@@ -1,15 +1,6 @@
-use alloy_primitives::U256;
-use alloy_sol_types::sol;
-use anyhow::anyhow;
-use common::blob_info::G1Commitment;
-use ethabi::{ParamType, Token};
-
-use crate::utils::{
-    extract_array, extract_bytes, extract_fixed_bytes, extract_tuple, extract_uint32, extract_uint8,
-};
-
-sol! {
-    struct G1Point {
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+struct G1Point {
         uint256 X;
         uint256 Y;
     }
@@ -80,14 +71,33 @@ sol! {
         uint32[] totalStakeIndices;
         uint32[][] nonSignerStakeIndices;
     }
-    
-    /// VerifyBlobV1 function signature.
-    /// This must match the signature in the guest.
-    interface IVerifyBlob {
-        function verifyDACertV2(BatchHeaderV2 calldata batchHeader,
-            BlobInclusionInfo calldata blobInclusionInfo,
-            NonSignerStakesAndSignature calldata nonSignerStakesAndSignature,
-            bytes memory signedQuorumNumbers)
-        external view returns (bool);
+        
+
+interface IEigenDACertVerifier {
+    function verifyDACertV2(
+        BatchHeaderV2 calldata batchHeader,
+        BlobInclusionInfo calldata blobInclusionInfo,
+        NonSignerStakesAndSignature calldata nonSignerStakesAndSignature,
+        bytes memory signedQuorumNumbers
+    ) external view;
+}
+
+// This is necessary because risc0 steel does not support proving for functions that do not return a vaule
+contract EigenDACertVerifierWrapper {
+    address public certVerifier;
+
+    constructor(address _certVerifier) {
+        certVerifier = _certVerifier;
+    }
+
+    // Wrapps the verifyDACertV2 function of the EigenDA cert verifier contract, since we need it to return a value
+    function verifyDACertV2(
+        BatchHeaderV2 calldata batchHeader,
+        BlobInclusionInfo calldata blobInclusionInfo,
+        NonSignerStakesAndSignature calldata nonSignerStakesAndSignature,
+        bytes memory signedQuorumNumbers
+    ) external view returns (bool) {
+        IEigenDACertVerifier(certVerifier).verifyDACertV2(batchHeader, blobInclusionInfo,nonSignerStakesAndSignature,signedQuorumNumbers);
+        return true;
     }
 }

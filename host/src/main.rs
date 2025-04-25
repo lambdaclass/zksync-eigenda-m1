@@ -48,18 +48,30 @@ struct Args {
     /// Rpc of the eigenda Disperser
     #[arg(short, long, env = "DISPERSER_RPC")]
     disperser_rpc: String,
-    /// Service Manager Address
-    #[arg(short, long, env = "SVC_MANAGER_ADDR")]
-    svc_manager_addr: String,
     /// Blob Verifier Wrapper Contract Address
-    #[arg(short, long, env = "BLOB_VERIFIER_WRAPPER_ADDR")]
-    blob_verifier_wrapper_addr: Address,
+    #[arg(short, long, env = "CERT_VERIFIER_WRAPPER_ADDR")]
+    cert_verifier_wrapper_addr: Address,
     /// Url of the zksync's json api
     #[arg(short, long, env = "API_URL")]
     api_url: String,
     /// Batch number where verification should start
     #[arg(short, long, env = "START_BATCH", value_parser = clap::value_parser!(u64).range(1..))]
     start_batch: u64,
+    /// Payload Form of the dispersed blobs
+    #[arg(short, long, env = "PAYLOAD_FORM")]
+    payload_form: PayloadForm,
+    /// Blob Version
+    #[arg(short, long, env = "BLOB_VERSION")]
+    blob_version: u32,
+    /// Address of the EigenDA Cert Verifier
+    #[arg(short, long, env = "CERT_VERIFIER_ADDR")]
+    eigenda_cert_verifier_addr: String,
+    /// Address of the EigenDA Relay Registry
+    #[arg(short, long, env = "EIGENDA_RELAY_REGISTRY_ADDR")]
+    eigenda_relay_registry_addr: String,
+    /// Relay client keys
+    #[arg(short, long, env = "RELAY_CLIENT_KEYS")]
+    relay_client_keys: Vec<u32>,
 }
 
 const SRS_ORDER: u32 = 268435456;
@@ -78,9 +90,9 @@ async fn main() -> Result<()> {
     let disperser_pk = args.disperser_private_key.expose_secret();
 
     let payload_disperser_config = PayloadDisperserConfig {
-        polynomial_form: PayloadForm::Coeff, //todo
-        blob_version: 0, //todo
-        cert_verifier_address: "", // todo
+        polynomial_form: args.payload_form,
+        blob_version: args.blob_version,
+        cert_verifier_address: args.eigenda_cert_verifier_addr,
         eth_rpc_url: SecretUrl::new(args.rpc_url),
         disperser_rpc: args.disperser_rpc,
         use_secure_grpc_flag: args.authenticated,
@@ -93,7 +105,7 @@ async fn main() -> Result<()> {
 
 
     let retriever_config = RelayPayloadRetrieverConfig {
-        payload_form: PayloadForm::Coeff, // todo
+        payload_form: args.payload_form,
         retrieval_timeout_secs: 60,
     };
     let srs_config = SRSConfig {
@@ -104,8 +116,8 @@ async fn main() -> Result<()> {
 
     let relay_client_config = RelayClientConfig {
         max_grpc_message_size: SRS_ORDER,
-        relay_clients_keys: vec![0,1,2],
-        relay_registry_address: "", //todo
+        relay_clients_keys: args.relay_client_keys,
+        relay_registry_address: args.eigenda_relay_registry_addr,
         eth_rpc_url: args.rpc_url,
     };
 
