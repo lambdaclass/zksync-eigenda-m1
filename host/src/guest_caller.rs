@@ -1,8 +1,8 @@
-use common::verify_blob::IVerifyBlob;
 use alloy_primitives::Address;
 use alloy_sol_types::SolCall;
 use anyhow::Context;
 use common::serializable_g1::SerializableG1;
+use common::verify_blob::IVerifyBlob;
 use methods::GUEST_ELF;
 use risc0_steel::{ethereum::EthEvmEnv, Contract};
 use risc0_zkvm::ProveInfo;
@@ -36,10 +36,7 @@ pub async fn run_guest(
     // Risc0 steel creates an ethereum VM using revm, where it simulates the call to VerifyBlobV1.
     // So we need to make this preflight call to populate the VM environment with the current state of the chain
     let mut contract = Contract::preflight(cert_verifier_wrapper_addr, &mut env);
-    let returns = contract
-        .call_builder(&call)
-        .call()
-        .await?;
+    let returns = contract.call_builder(&call).call().await?;
     println!(
         "Call {} Function on {:#} returns: {}",
         IVerifyBlob::verifyDACertV2Call::SIGNATURE,
@@ -57,7 +54,12 @@ pub async fn run_guest(
 
     kzg.calculate_and_store_roots_of_unity(blob.len().try_into()?)?;
 
-    let cert_commitment = eigenda_cert.blob_inclusion_info.blob_certificate.blob_header.commitment.commitment;
+    let cert_commitment = eigenda_cert
+        .blob_inclusion_info
+        .blob_certificate
+        .blob_header
+        .commitment
+        .commitment;
 
     // Calculate the polynomial in evaluation form
     let poly_coeff = blob.to_polynomial_coeff_form();
@@ -66,7 +68,7 @@ pub async fn run_guest(
     let evaluation_challenge = compute_challenge(&blob, &cert_commitment)?;
 
     // Compute the proof that the commitment corresponds to the given blob
-    let proof = kzg.compute_proof(&poly_eval,&evaluation_challenge,&srs)?;
+    let proof = kzg.compute_proof(&poly_eval, &evaluation_challenge, &srs)?;
 
     let serializable_proof = SerializableG1 { g1: proof };
 

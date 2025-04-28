@@ -21,19 +21,27 @@ use common::output::Output;
 use ethabi::ethereum_types::H160;
 use host::blob_id::get_blob_id;
 use methods::GUEST_ELF;
+use rust_eigenda_v2_client::{
+    core::BlobKey,
+    payload_disperser::{PayloadDisperser, PayloadDisperserConfig},
+    payloadretrieval::relay_payload_retriever::{
+        RelayPayloadRetriever, RelayPayloadRetrieverConfig, SRSConfig,
+    },
+    relay_client::{RelayClient, RelayClientConfig},
+    utils::{PrivateKey, SecretUrl},
+};
 use rust_eigenda_v2_common::{EigenDACert, Payload, PayloadForm};
-use rust_eigenda_v2_client::{core::BlobKey, payload_disperser::{PayloadDisperser, PayloadDisperserConfig}, payloadretrieval::relay_payload_retriever::{RelayPayloadRetriever, RelayPayloadRetrieverConfig, SRSConfig}, relay_client::{RelayClient, RelayClientConfig}, utils::{PrivateKey, SecretUrl}};
 use secrecy::{ExposeSecret, Secret};
 use tracing_subscriber::EnvFilter;
 
-use rust_kzg_bn254_prover::srs::SRS;
 use reqwest::Client;
+use rust_kzg_bn254_prover::srs::SRS;
 use url::Url;
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 enum PolynomialForm {
     Eval,
-    Coeff
+    Coeff,
 }
 
 #[derive(Parser, Debug)]
@@ -111,7 +119,6 @@ async fn main() -> Result<()> {
         .await
         .map_err(|e| anyhow::anyhow!("Eigen client Error: {:?}", e))?;
 
-
     let retriever_config = RelayPayloadRetrieverConfig {
         payload_form: payload_form,
         retrieval_timeout_secs: Duration::from_secs(60),
@@ -119,12 +126,12 @@ async fn main() -> Result<()> {
     let srs_config = SRSConfig {
         source_path: "resources/g1.point".to_string(),
         order: SRS_ORDER,
-        points_to_load: SRS_POINTS_TO_LOAD
+        points_to_load: SRS_POINTS_TO_LOAD,
     };
 
     let relay_client_config = RelayClientConfig {
         max_grpc_message_size: SRS_ORDER as usize,
-        relay_clients_keys: vec![0,1,2],
+        relay_clients_keys: vec![0, 1, 2],
         relay_registry_address: args.eigenda_relay_registry_addr,
         eth_rpc_url: SecretUrl::new(args.rpc_url.clone()),
     };
@@ -137,7 +144,8 @@ async fn main() -> Result<()> {
     let mut current_batch = args.start_batch;
 
     loop {
-        let blob_id: String = get_blob_id(current_batch, args.api_url.clone(), &reqwest_client).await?;
+        let blob_id: String =
+            get_blob_id(current_batch, args.api_url.clone(), &reqwest_client).await?;
         // Abi encoded BlobInfo (EigenDACert)
         let eigenda_cert: EigenDACert;
 
@@ -150,9 +158,10 @@ async fn main() -> Result<()> {
             }
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
-        
+
         // Raw bytes dispersed by zksync sequencer to EigenDA
-        let payload: Payload = retriever.get_payload(eigenda_cert.clone())
+        let payload: Payload = retriever
+            .get_payload(eigenda_cert.clone())
             .await
             .map_err(|_| anyhow::anyhow!("Not blob data"))?;
 
@@ -176,7 +185,9 @@ async fn main() -> Result<()> {
             args.rpc_url.clone(),
             args.eigenda_cert_and_blob_verifier_addr.clone(),
             output.hash,
-            eigenda_cert.to_bytes().map_err(|_| anyhow::anyhow!("Failed to serialize EigenDACert"))?,
+            eigenda_cert
+                .to_bytes()
+                .map_err(|_| anyhow::anyhow!("Failed to serialize EigenDACert"))?,
         )
         .await?;
 

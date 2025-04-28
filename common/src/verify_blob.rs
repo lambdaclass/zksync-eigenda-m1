@@ -1,12 +1,12 @@
 use alloy_primitives::Uint;
 use alloy_sol_types::sol;
 use ark_bn254::{G1Affine, G2Affine};
-use ark_ff::PrimeField;
 use ark_ff::BigInteger;
-use rust_eigenda_v2_common::BlobCommitments as BlobCommitmentsClient;
-use rust_eigenda_v2_common::BlobCertificate as BlobCertificateClient;
-use rust_eigenda_v2_common::BlobHeader as BlobHeaderClient;
+use ark_ff::PrimeField;
 use rust_eigenda_v2_common::BatchHeaderV2 as BatchHeaderV2Client;
+use rust_eigenda_v2_common::BlobCertificate as BlobCertificateClient;
+use rust_eigenda_v2_common::BlobCommitments as BlobCommitmentsClient;
+use rust_eigenda_v2_common::BlobHeader as BlobHeaderClient;
 use rust_eigenda_v2_common::BlobInclusionInfo as BlobInclusionInfoClient;
 use rust_eigenda_v2_common::NonSignerStakesAndSignature as NonSignerStakesAndSignatureClient;
 
@@ -26,47 +26,47 @@ sol! {
         uint32 numChunks;
         uint8 codingRate;
     }
-    
+
     struct SecurityThresholds {
         uint8 confirmationThreshold;
         uint8 adversaryThreshold;
     }
-    
+
     struct RelayInfo {
         address relayAddress;
         string relayURL;
     }
-    
+
     struct DisperserInfo {
         address disperserAddress;
     }
-    
+
     struct BlobInclusionInfo {
         BlobCertificate blobCertificate;
         uint32 blobIndex;
         bytes inclusionProof;
     }
-    
+
     struct BlobCertificate {
         BlobHeaderV2 blobHeader;
         bytes signature;
         uint32[] relayKeys;
     }
-    
+
     struct BlobHeaderV2 {
         uint16 version;
         bytes quorumNumbers;
         BlobCommitment commitment;
         bytes32 paymentHeaderHash;
     }
-    
+
     struct BlobCommitment {
         G1Point commitment;
         G2Point lengthCommitment;
         G2Point lengthProof;
         uint32 length;
     }
-    
+
     struct BatchHeaderV2 {
         bytes32 batchRoot;
         uint32 referenceBlockNumber;
@@ -82,7 +82,7 @@ sol! {
         uint32[] totalStakeIndices;
         uint32[][] nonSignerStakeIndices;
     }
-    
+
     /// VerifyBlobV1 function signature.
     /// This must match the signature in the guest.
     interface IVerifyBlob {
@@ -178,12 +178,12 @@ impl From<NonSignerStakesAndSignatureClient> for NonSignerStakesAndSignature {
                 .iter()
                 .map(g1_contract_point_from_g1_affine)
                 .collect(),
-                quorumApks: value
+            quorumApks: value
                 .quorum_apks
                 .iter()
                 .map(g1_contract_point_from_g1_affine)
                 .collect(),
-                apkG2: g2_contract_point_from_g2_affine(&value.apk_g2),
+            apkG2: g2_contract_point_from_g2_affine(&value.apk_g2),
             sigma: g1_contract_point_from_g1_affine(&value.sigma),
             quorumApkIndices: value.quorum_apk_indices.clone(),
             totalStakeIndices: value.total_stake_indices.clone(),
