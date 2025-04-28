@@ -2232,7 +2232,7 @@ dependencies = [
  "ark-bn254 0.5.0",
  "ark-ff 0.5.0",
  "ark-serialize 0.5.0",
- "rust-eigenda-v2-cert",
+ "rust-eigenda-v2-common",
  "rust-kzg-bn254-primitives",
  "serde",
 ]
@@ -3914,8 +3914,8 @@ dependencies = [
  "reqwest 0.12.15",
  "risc0-steel",
  "risc0-zkvm",
- "rust-eigenda-v2-cert",
  "rust-eigenda-v2-client",
+ "rust-eigenda-v2-common",
  "rust-kzg-bn254-primitives",
  "rust-kzg-bn254-prover",
  "secrecy",
@@ -4437,6 +4437,15 @@ name = "itertools"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
 dependencies = [
  "either",
 ]
@@ -5042,7 +5051,7 @@ version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af1844ef2428cc3e1cb900be36181049ef3d3193c63e43026cfe202983b27a56"
 dependencies = [
- "proc-macro-crate 1.1.3",
+ "proc-macro-crate 3.3.0",
  "proc-macro2",
  "quote",
  "syn 2.0.100",
@@ -5615,7 +5624,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "81bddcdb20abf9501610992b6759a4c888aef7d1a7247ef75e2404275ac24af1"
 dependencies = [
  "anyhow",
- "itertools 0.10.5",
+ "itertools 0.12.1",
  "proc-macro2",
  "quote",
  "syn 2.0.100",
@@ -6523,23 +6532,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48fd7bd8a6377e15ad9d42a8ec25371b94ddc67abe7c8b9127bec79bebaaae18"
 
 [[package]]
-name = "rust-eigenda-v2-cert"
-version = "0.1.0"
-source = "git+https://github.com/Layr-Labs/eigenda-client-rs.git?branch=eigendacert_externalitazion#c37e56f3853136ac80a744717c15c38744db987b"
-dependencies = [
- "ark-bn254 0.5.0",
- "ark-ff 0.5.0",
- "ark-serialize 0.5.0",
- "bincode",
- "rust-kzg-bn254-primitives",
- "serde",
- "thiserror 1.0.69",
-]
-
-[[package]]
 name = "rust-eigenda-v2-client"
 version = "0.1.0"
-source = "git+https://github.com/Layr-Labs/eigenda-client-rs.git?branch=eigendacert_externalitazion#c37e56f3853136ac80a744717c15c38744db987b"
+source = "git+https://github.com/Layr-Labs/eigenda-client-rs.git?branch=payload_externalization#2a7834efa30c1a84ed413b6dd40fa95d618b8bfe"
 dependencies = [
  "ark-bn254 0.5.0",
  "ark-ec 0.5.0",
@@ -6559,7 +6554,7 @@ dependencies = [
  "prost 0.12.6",
  "rand 0.8.5",
  "reqwest 0.12.15",
- "rust-eigenda-v2-cert",
+ "rust-eigenda-v2-common",
  "rust-kzg-bn254-primitives",
  "rust-kzg-bn254-prover",
  "secp256k1 0.27.0",
@@ -6574,6 +6569,21 @@ dependencies = [
  "tokio-stream",
  "tonic 0.11.0",
  "url",
+]
+
+[[package]]
+name = "rust-eigenda-v2-common"
+version = "0.1.0"
+source = "git+https://github.com/Layr-Labs/eigenda-client-rs.git?branch=payload_externalization#2a7834efa30c1a84ed413b6dd40fa95d618b8bfe"
+dependencies = [
+ "ark-bn254 0.5.0",
+ "ark-ff 0.5.0",
+ "ark-poly 0.5.0",
+ "ark-serialize 0.5.0",
+ "bincode",
+ "rust-kzg-bn254-primitives",
+ "serde",
+ "thiserror 1.0.69",
 ]
 
 [[package]]

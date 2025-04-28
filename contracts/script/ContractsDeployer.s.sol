@@ -11,7 +11,7 @@ import {ControlID, RiscZeroGroth16Verifier} from "risc0-ethereum/groth16/RiscZer
 
 contract ContractsDeployer is Script {
     // Environment variable name for the BlobVerifier address
-    string constant CERT_VERIFIER_ENV_VAR = "CERT_VERIFIER_ADDRESS";
+    string constant CERT_VERIFIER_ENV_VAR = "CERT_VERIFIER_ADDR";
 
     function run() external {
         // Get deployer's private key from env

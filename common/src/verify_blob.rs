@@ -1,14 +1,14 @@
-use alloy_primitives::{Bytes, FixedBytes, Uint, U256};
+use alloy_primitives::Uint;
 use alloy_sol_types::sol;
 use ark_bn254::{G1Affine, G2Affine};
 use ark_ff::PrimeField;
 use ark_ff::BigInteger;
-use rust_eigenda_v2_cert::BlobCommitments as BlobCommitmentsClient;
-use rust_eigenda_v2_cert::BlobCertificate as BlobCertificateClient;
-use rust_eigenda_v2_cert::BlobHeader as BlobHeaderClient;
-use rust_eigenda_v2_cert::BatchHeaderV2 as BatchHeaderV2Client;
-use rust_eigenda_v2_cert::BlobInclusionInfo as BlobInclusionInfoClient;
-use rust_eigenda_v2_cert::NonSignerStakesAndSignature as NonSignerStakesAndSignatureClient;
+use rust_eigenda_v2_common::BlobCommitments as BlobCommitmentsClient;
+use rust_eigenda_v2_common::BlobCertificate as BlobCertificateClient;
+use rust_eigenda_v2_common::BlobHeader as BlobHeaderClient;
+use rust_eigenda_v2_common::BatchHeaderV2 as BatchHeaderV2Client;
+use rust_eigenda_v2_common::BlobInclusionInfo as BlobInclusionInfoClient;
+use rust_eigenda_v2_common::NonSignerStakesAndSignature as NonSignerStakesAndSignatureClient;
 
 sol! {
     struct G1Point {

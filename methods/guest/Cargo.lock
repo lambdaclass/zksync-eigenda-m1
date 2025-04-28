@@ -818,7 +818,7 @@ dependencies = [
  "ark-bn254 0.5.0",
  "ark-ff 0.5.0",
  "ark-serialize 0.5.0",
- "rust-eigenda-v2-cert",
+ "rust-eigenda-v2-common",
  "rust-kzg-bn254-primitives",
  "serde",
 ]
@@ -1284,7 +1284,7 @@ dependencies = [
  "risc0-steel",
  "risc0-zkvm",
  "risc0-zkvm-platform",
- "rust-eigenda-v2-cert",
+ "rust-eigenda-v2-common",
  "rust-kzg-bn254-primitives",
  "rust-kzg-bn254-verifier",
  "tiny-keccak",
@@ -2142,12 +2142,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48fd7bd8a6377e15ad9d42a8ec25371b94ddc67abe7c8b9127bec79bebaaae18"
 
 [[package]]
-name = "rust-eigenda-v2-cert"
+name = "rust-eigenda-v2-common"
 version = "0.1.0"
-source = "git+https://github.com/Layr-Labs/eigenda-client-rs.git?branch=eigendacert_externalitazion#c37e56f3853136ac80a744717c15c38744db987b"
+source = "git+https://github.com/Layr-Labs/eigenda-client-rs.git?branch=payload_externalization#2a7834efa30c1a84ed413b6dd40fa95d618b8bfe"
 dependencies = [
  "ark-bn254 0.5.0",
  "ark-ff 0.5.0",
+ "ark-poly 0.5.0",
  "ark-serialize 0.5.0",
  "bincode",
  "rust-kzg-bn254-primitives",

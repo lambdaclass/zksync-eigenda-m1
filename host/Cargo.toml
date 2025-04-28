@@ -27,7 +27,7 @@ common = {workspace = true}
 secrecy = {workspace = true}
 alloy = {workspace = true}
 rust-eigenda-v2-client = {workspace = true}
-rust-eigenda-v2-cert = {workspace = true}
+rust-eigenda-v2-common = {workspace = true}
 async-trait = { workspace = true }
 reqwest = {workspace = true}
 serde_json = {workspace = true}

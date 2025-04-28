@@ -24,9 +24,9 @@ use risc0_zkvm::guest::env;
 use rust_kzg_bn254_primitives::{blob::Blob, helpers::{compute_challenge, evaluate_polynomial_in_evaluation_form}};
 use rust_kzg_bn254_verifier::verify::verify_proof;
 use tiny_keccak::{Hasher, Keccak};
-use ark_bn254::{Fq, G1Affine, Fr};
+use ark_bn254::Fr;
 use ark_serialize::CanonicalSerialize;
-use rust_eigenda_v2_cert::EigenDACert;
+use rust_eigenda_v2_common::{EigenDACert, Payload, PayloadForm};
 
 risc0_zkvm::guest::entry!(main);
 
@@ -63,9 +63,11 @@ fn main() {
     let data: Vec<u8> = env::read();
     // Proof that the given commitment commits to the blob
     let proof: SerializableG1 = env::read();
+    // Address that is used to call the VerifyDACertV2 function
     let cert_verifier_wrapper_addr: Address = env::read();
-    // Address that is used to call the VerifyBlobV1 function
-    let blob = Blob::from_raw_data(&data);
+
+    let payload = Payload::new(data.clone());
+    let blob = Blob::from_raw_data(&payload.to_blob(PayloadForm::Coeff).unwrap().serialize()); // todo payload form input
 
     // Converts the input into a `EvmEnv` for execution.
     let env = input.into_env();

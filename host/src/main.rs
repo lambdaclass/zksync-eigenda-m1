@@ -12,23 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{str::FromStr, sync::Arc, time::Duration};
+use std::{str::FromStr, time::Duration};
 
 use alloy_primitives::Address;
 use anyhow::Result;
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use common::output::Output;
 use ethabi::ethereum_types::H160;
 use host::blob_id::get_blob_id;
 use methods::GUEST_ELF;
-use rust_eigenda_v2_cert::EigenDACert;
-use rust_eigenda_v2_client::{core::{BlobKey, Payload, PayloadForm}, payload_disperser::{PayloadDisperser, PayloadDisperserConfig}, payloadretrieval::relay_payload_retriever::{RelayPayloadRetriever, RelayPayloadRetrieverConfig, SRSConfig}, relay_client::{RelayClient, RelayClientConfig}, utils::{PrivateKey, SecretUrl}};
+use rust_eigenda_v2_common::{EigenDACert, Payload, PayloadForm};
+use rust_eigenda_v2_client::{core::BlobKey, payload_disperser::{PayloadDisperser, PayloadDisperserConfig}, payloadretrieval::relay_payload_retriever::{RelayPayloadRetriever, RelayPayloadRetrieverConfig, SRSConfig}, relay_client::{RelayClient, RelayClientConfig}, utils::{PrivateKey, SecretUrl}};
 use secrecy::{ExposeSecret, Secret};
 use tracing_subscriber::EnvFilter;
 
 use rust_kzg_bn254_prover::srs::SRS;
 use reqwest::Client;
 use url::Url;
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum PolynomialForm {
+    Eval,
+    Coeff
+}
 
 #[derive(Parser, Debug)]
 #[command(about, long_about = None)]
@@ -58,8 +64,8 @@ struct Args {
     #[arg(short, long, env = "START_BATCH", value_parser = clap::value_parser!(u64).range(1..))]
     start_batch: u64,
     /// Payload Form of the dispersed blobs
-    #[arg(short, long, env = "PAYLOAD_FORM")]
-    payload_form: PayloadForm,
+    #[arg(value_enum, env = "PAYLOAD_FORM")]
+    payload_form: PolynomialForm,
     /// Blob Version
     #[arg(short, long, env = "BLOB_VERSION")]
     blob_version: u16,
@@ -69,9 +75,6 @@ struct Args {
     /// Address of the EigenDA Relay Registry
     #[arg(short, long, env = "EIGENDA_RELAY_REGISTRY_ADDR")]
     eigenda_relay_registry_addr: H160,
-    /// Relay client keys
-    #[arg(short, long, env = "RELAY_CLIENT_KEYS")]
-    relay_client_keys: Vec<u32>,
 }
 
 const SRS_ORDER: u32 = 268435456;
@@ -89,8 +92,13 @@ async fn main() -> Result<()> {
 
     let disperser_pk = args.disperser_private_key.expose_secret();
 
+    let payload_form = match args.payload_form {
+        PolynomialForm::Eval => PayloadForm::Eval,
+        PolynomialForm::Coeff => PayloadForm::Coeff,
+    };
+
     let payload_disperser_config = PayloadDisperserConfig {
-        polynomial_form: args.payload_form,
+        polynomial_form: payload_form,
         blob_version: args.blob_version,
         cert_verifier_address: args.eigenda_cert_verifier_addr,
         eth_rpc_url: SecretUrl::new(args.rpc_url.clone()),
@@ -105,7 +113,7 @@ async fn main() -> Result<()> {
 
 
     let retriever_config = RelayPayloadRetrieverConfig {
-        payload_form: args.payload_form,
+        payload_form: payload_form,
         retrieval_timeout_secs: Duration::from_secs(60),
     };
     let srs_config = SRSConfig {
@@ -116,7 +124,7 @@ async fn main() -> Result<()> {
 
     let relay_client_config = RelayClientConfig {
         max_grpc_message_size: SRS_ORDER as usize,
-        relay_clients_keys: args.relay_client_keys,
+        relay_clients_keys: vec![0,1,2],
         relay_registry_address: args.eigenda_relay_registry_addr,
         eth_rpc_url: SecretUrl::new(args.rpc_url.clone()),
     };

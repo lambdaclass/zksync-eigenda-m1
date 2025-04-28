@@ -2,13 +2,12 @@ use common::verify_blob::IVerifyBlob;
 use alloy_primitives::Address;
 use alloy_sol_types::SolCall;
 use anyhow::Context;
-use ark_bn254::{Fq, G1Affine};
 use common::serializable_g1::SerializableG1;
 use methods::GUEST_ELF;
 use risc0_steel::{ethereum::EthEvmEnv, Contract};
 use risc0_zkvm::ProveInfo;
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
-use rust_eigenda_v2_cert::EigenDACert;
+use rust_eigenda_v2_common::{EigenDACert, Payload, PayloadForm};
 use rust_kzg_bn254_primitives::blob::Blob;
 use rust_kzg_bn254_primitives::helpers::compute_challenge;
 use rust_kzg_bn254_prover::kzg::KZG;
@@ -51,7 +50,8 @@ pub async fn run_guest(
     // Finally, construct the input from the environment.
     let input = env.into_input().await?;
 
-    let blob = Blob::from_raw_data(&data);
+    let payload = Payload::new(data.clone());
+    let blob = Blob::from_raw_data(&payload.to_blob(PayloadForm::Coeff)?.serialize()); // todo payload form input
 
     let mut kzg = KZG::new();
 
