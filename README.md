@@ -41,6 +41,7 @@ export DISPERSER_RPC=<your_rpc> #RPC of the eigenda disperser
 export PAYLOAD_FORM=<your_payload_form> #Either coeff or eval (On EigenDA Holesky use coeff)
 export BLOB_VERSION=0 #Blob version used by EigenDA
 export EIGENDA_RELAY_REGISTRY_ADDR=<your_relay_registry_addr> #Address of the EigenDA relay registry
+export RELAY_CLIENT_KEYS=<your_relay_client_keys> #Keys of the relay client, separated by commas ("0,1,2")
 ```
 
 Deploy the contracts:

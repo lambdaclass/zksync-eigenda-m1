@@ -16,7 +16,7 @@ use std::{str::FromStr, time::Duration};
 
 use alloy_primitives::Address;
 use anyhow::Result;
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use common::{output::Output, polynomial_form::PolynomialForm};
 use ethabi::ethereum_types::H160;
 use host::blob_id::get_blob_id;
@@ -77,6 +77,9 @@ struct Args {
     /// Address of the EigenDA Relay Registry
     #[arg(short, long, env = "EIGENDA_RELAY_REGISTRY_ADDR")]
     eigenda_relay_registry_addr: H160,
+    /// Keys of the relay client
+    #[arg(short, long, env = "RELAY_CLIENT_KEYS", value_delimiter = ',')]
+    relay_client_keys: Vec<u32>,
 }
 
 const SRS_ORDER: u32 = 268435456;
@@ -125,7 +128,7 @@ async fn main() -> Result<()> {
 
     let relay_client_config = RelayClientConfig {
         max_grpc_message_size: SRS_ORDER as usize,
-        relay_clients_keys: vec![0, 1, 2],
+        relay_clients_keys: args.relay_client_keys,
         relay_registry_address: args.eigenda_relay_registry_addr,
         eth_rpc_url: SecretUrl::new(args.rpc_url.clone()),
     };
