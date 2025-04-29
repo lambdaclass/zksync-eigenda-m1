@@ -1,6 +1,7 @@
 use alloy_primitives::Address;
 use alloy_sol_types::SolCall;
 use anyhow::Context;
+use common::polynomial_form::PolynomialForm;
 use common::serializable_g1::SerializableG1;
 use common::verify_blob::IVerifyBlob;
 use methods::GUEST_ELF;
@@ -20,6 +21,7 @@ pub async fn run_guest(
     data: Vec<u8>,
     rpc_url: Url,
     cert_verifier_wrapper_addr: Address,
+    payload_form: PayloadForm,
 ) -> anyhow::Result<ProveInfo> {
     let call = IVerifyBlob::verifyDACertV2Call {
         batchHeader: eigenda_cert.batch_header.clone().into(),
@@ -48,8 +50,8 @@ pub async fn run_guest(
     let input = env.into_input().await?;
 
     let payload = Payload::new(data.clone());
-    let encoded_data = payload.to_blob(PayloadForm::Coeff)?.serialize();
-    let blob = Blob::new(&encoded_data); // todo payload form input
+    let encoded_data = payload.to_blob(payload_form)?.serialize();
+    let blob = Blob::new(&encoded_data); 
 
     let mut kzg = KZG::new();
 
@@ -73,6 +75,12 @@ pub async fn run_guest(
 
     let serializable_proof = SerializableG1 { g1: proof };
 
+    let polynomial_form = match payload_form {
+        PayloadForm::Coeff => PolynomialForm::Coeff,
+        PayloadForm::Eval => PolynomialForm::Eval
+    };
+    
+
     println!("Running the guest with the constructed input...");
     let session_info = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
         let env = ExecutorEnv::builder()
@@ -81,6 +89,7 @@ pub async fn run_guest(
             .write(&data)?
             .write(&serializable_proof)?
             .write(&cert_verifier_wrapper_addr)?
+            .write(&polynomial_form)?
             .build()?;
         let exec = default_prover();
         exec.prove_with_ctx(

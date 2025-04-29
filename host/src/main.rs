@@ -17,7 +17,7 @@ use std::{str::FromStr, time::Duration};
 use alloy_primitives::Address;
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
-use common::output::Output;
+use common::{output::Output, polynomial_form::PolynomialForm};
 use ethabi::ethereum_types::H160;
 use host::blob_id::get_blob_id;
 use methods::GUEST_ELF;
@@ -37,12 +37,6 @@ use tracing_subscriber::EnvFilter;
 use reqwest::Client;
 use rust_kzg_bn254_prover::srs::SRS;
 use url::Url;
-
-#[derive(Debug, Clone, Copy, ValueEnum)]
-enum PolynomialForm {
-    Eval,
-    Coeff,
-}
 
 #[derive(Parser, Debug)]
 #[command(about, long_about = None)]
@@ -120,7 +114,7 @@ async fn main() -> Result<()> {
         .map_err(|e| anyhow::anyhow!("Eigen client Error: {:?}", e))?;
 
     let retriever_config = RelayPayloadRetrieverConfig {
-        payload_form: payload_form,
+        payload_form,
         retrieval_timeout_secs: Duration::from_secs(60),
     };
     let srs_config = SRSConfig {
@@ -146,7 +140,6 @@ async fn main() -> Result<()> {
     loop {
         let blob_id: String =
             get_blob_id(current_batch, args.api_url.clone(), &reqwest_client).await?;
-        // Abi encoded BlobInfo (EigenDACert)
         let eigenda_cert: EigenDACert;
 
         loop {
@@ -173,6 +166,7 @@ async fn main() -> Result<()> {
             blob_data,
             args.rpc_url.clone(),
             args.cert_verifier_wrapper_addr.clone(),
+            payload_form,
         )
         .await?;
 

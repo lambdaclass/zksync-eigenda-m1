@@ -2232,6 +2232,7 @@ dependencies = [
  "ark-bn254 0.5.0",
  "ark-ff 0.5.0",
  "ark-serialize 0.5.0",
+ "clap",
  "rust-eigenda-v2-common",
  "rust-kzg-bn254-primitives",
  "serde",

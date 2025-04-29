@@ -19,6 +19,7 @@ use alloy_primitives::Address;
 use common::output::Output;
 use common::serializable_g1::SerializableG1;
 use common::verify_blob::IVerifyBlob;
+use common::polynomial_form::PolynomialForm;
 use risc0_steel::{ethereum::EthEvmInput, Contract};
 use risc0_zkvm::guest::env;
 use rust_kzg_bn254_primitives::{blob::Blob, helpers::{compute_challenge, evaluate_polynomial_in_evaluation_form}};
@@ -66,8 +67,15 @@ fn main() {
     // Address that is used to call the VerifyDACertV2 function
     let cert_verifier_wrapper_addr: Address = env::read();
 
+    let polynomial_form: PolynomialForm = env::read();
+    
+    let payload_form = match polynomial_form {
+        PolynomialForm::Coeff => PayloadForm::Coeff,
+        PolynomialForm::Eval => PayloadForm::Eval,
+    };
+
     let payload = Payload::new(data.clone());
-    let blob = Blob::new(&payload.to_blob(PayloadForm::Coeff).unwrap().serialize()); // todo payload form input
+    let blob = Blob::new(&payload.to_blob(payload_form).unwrap().serialize());
 
     // Converts the input into a `EvmEnv` for execution.
     let env = input.into_env();
