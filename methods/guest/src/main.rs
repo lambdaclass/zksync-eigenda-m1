@@ -67,7 +67,7 @@ fn main() {
     let cert_verifier_wrapper_addr: Address = env::read();
 
     let payload = Payload::new(data.clone());
-    let blob = Blob::from_raw_data(&payload.to_blob(PayloadForm::Coeff).unwrap().serialize()); // todo payload form input
+    let blob = Blob::new(&payload.to_blob(PayloadForm::Coeff).unwrap().serialize()); // todo payload form input
 
     // Converts the input into a `EvmEnv` for execution.
     let env = input.into_env();

@@ -48,7 +48,8 @@ pub async fn run_guest(
     let input = env.into_input().await?;
 
     let payload = Payload::new(data.clone());
-    let blob = Blob::from_raw_data(&payload.to_blob(PayloadForm::Coeff)?.serialize()); // todo payload form input
+    let encoded_data = payload.to_blob(PayloadForm::Coeff)?.serialize();
+    let blob = Blob::new(&encoded_data); // todo payload form input
 
     let mut kzg = KZG::new();
 
