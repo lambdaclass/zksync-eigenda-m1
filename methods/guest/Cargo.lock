@@ -2247,7 +2247,8 @@ checksum = "48fd7bd8a6377e15ad9d42a8ec25371b94ddc67abe7c8b9127bec79bebaaae18"
 [[package]]
 name = "rust-eigenda-v2-common"
 version = "0.1.0"
-source = "git+https://github.com/Layr-Labs/eigenda-client-rs.git?branch=payload_externalization#2a7834efa30c1a84ed413b6dd40fa95d618b8bfe"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7eaeac008882924ddd0c67e43969776b356b89d866f8065c06a491d0ba738237"
 dependencies = [
  "ark-bn254 0.5.0",
  "ark-ff 0.5.0",

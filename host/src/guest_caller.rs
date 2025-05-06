@@ -51,7 +51,7 @@ pub async fn run_guest(
 
     let payload = Payload::new(data.clone());
     let encoded_data = payload.to_blob(payload_form)?.serialize();
-    let blob = Blob::new(&encoded_data); 
+    let blob = Blob::new(&encoded_data);
 
     let mut kzg = KZG::new();
 
@@ -77,9 +77,8 @@ pub async fn run_guest(
 
     let polynomial_form = match payload_form {
         PayloadForm::Coeff => PolynomialForm::Coeff,
-        PayloadForm::Eval => PolynomialForm::Eval
+        PayloadForm::Eval => PolynomialForm::Eval,
     };
-    
 
     println!("Running the guest with the constructed input...");
     let session_info = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {

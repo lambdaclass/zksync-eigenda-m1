@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{str::FromStr, time::Duration};
+use std::time::Duration;
 
 use alloy_primitives::Address;
 use anyhow::Result;
@@ -24,11 +24,10 @@ use methods::GUEST_ELF;
 use rust_eigenda_v2_client::{
     core::BlobKey,
     payload_disperser::{PayloadDisperser, PayloadDisperserConfig},
-    payloadretrieval::relay_payload_retriever::{
-        RelayPayloadRetriever, RelayPayloadRetrieverConfig, SRSConfig,
-    },
     relay_client::{RelayClient, RelayClientConfig},
-    utils::{PrivateKey, SecretUrl},
+    relay_payload_retriever::{RelayPayloadRetriever, RelayPayloadRetrieverConfig, SRSConfig},
+    rust_eigenda_signers::signers::private_key::Signer,
+    utils::SecretUrl,
 };
 use rust_eigenda_v2_common::{EigenDACert, Payload, PayloadForm};
 use secrecy::{ExposeSecret, Secret};
@@ -110,9 +109,11 @@ async fn main() -> Result<()> {
         disperser_rpc: args.disperser_rpc,
         use_secure_grpc_flag: true,
     };
-    let private_key = PrivateKey::from_str(disperser_pk)
+    let private_key = disperser_pk
+        .parse()
         .map_err(|e| anyhow::anyhow!("Failed to parse private key: {}", e))?;
-    let payload_disperser = PayloadDisperser::new(payload_disperser_config, private_key.clone())
+    let signer = Signer::new(private_key);
+    let payload_disperser = PayloadDisperser::new(payload_disperser_config, signer.clone())
         .await
         .map_err(|e| anyhow::anyhow!("Eigen client Error: {:?}", e))?;
 
@@ -133,7 +134,7 @@ async fn main() -> Result<()> {
         eth_rpc_url: SecretUrl::new(args.rpc_url.clone()),
     };
 
-    let relay_client = RelayClient::new(relay_client_config, private_key).await?;
+    let relay_client = RelayClient::new(relay_client_config, signer).await?;
     let mut retriever = RelayPayloadRetriever::new(retriever_config, srs_config, relay_client)?;
 
     let reqwest_client = Client::new();

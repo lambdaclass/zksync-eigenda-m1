@@ -18,7 +18,7 @@ tiny-keccak = { version = "2.0", features = ["keccak"] }
 num-bigint = "0.4.6"
 ark-bn254 = "0.5"
 ark-serialize = "0.5"
-rust-eigenda-v2-common = {git = "https://github.com/Layr-Labs/eigenda-client-rs.git", branch="payload_externalization"}
+rust-eigenda-v2-common = "0.1.0"
 
 [patch.crates-io]
 # use optimized risc0 circuit
