@@ -2,7 +2,11 @@ use reqwest::Client;
 use serde_json::{json, Value};
 
 /// Gets the blob id for the given batch number
-pub async fn get_blob_id(batch_number: u64, url: String, client: &Client) -> anyhow::Result<String> {
+pub async fn get_blob_id(
+    batch_number: u64,
+    url: String,
+    client: &Client,
+) -> anyhow::Result<String> {
     loop {
         // The unstable_getDataAvailabilityDetails is an unstable method that could be deleted later
         // Here is the code in the zksync-era repository were it is defined, there is no other documentation
@@ -37,10 +41,8 @@ pub async fn get_blob_id(batch_number: u64, url: String, client: &Client) -> any
             continue;
         }
         let blob_id = blob_id.to_string();
-        let blob_id = blob_id
-            .strip_prefix("\"")
-            .unwrap_or(&blob_id);
+        let blob_id = blob_id.strip_prefix("\"").unwrap_or(&blob_id);
         let blob_id = blob_id.strip_suffix("\"").unwrap_or(blob_id);
-        return Ok(blob_id.to_string())
+        return Ok(blob_id.to_string());
     }
 }

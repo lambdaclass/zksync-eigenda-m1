@@ -55,9 +55,7 @@ pub async fn prove_risc0_proof(
     let pk = "0x".to_owned() + pk.strip_prefix("0x").unwrap_or(pk);
     let signer: PrivateKeySigner = pk.parse()?;
     let wallet = EthereumWallet::from(signer);
-    let provider = ProviderBuilder::new()
-        .wallet(wallet)
-        .on_http(eth_rpc);
+    let provider = ProviderBuilder::new().wallet(wallet).on_http(eth_rpc);
 
     let eigenda_cert_and_blob_verifier_addr: Address = eigenda_cert_and_blob_verifier_addr
         .parse()
