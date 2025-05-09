@@ -18,10 +18,11 @@ use alloy_primitives::Address;
 use anyhow::Result;
 use clap::Parser;
 use common::{output::Output, polynomial_form::PolynomialForm};
-use ethabi::ethereum_types::H160;
+use ethabi::{ethereum_types::H160, Token};
 use jsonrpc_core::{IoHandler, Params};
 use jsonrpc_http_server::ServerBuilder;
 use methods::GUEST_ELF;
+use risc0_zkvm::{compute_image_id, sha::Digestible};
 use rust_eigenda_v2_client::{
     core::BlobKey,
     payload_disperser::{PayloadDisperser, PayloadDisperserConfig},
@@ -48,15 +49,9 @@ struct Args {
     /// URL of the RPC endpoint
     #[arg(short, long, env = "RPC_URL")]
     rpc_url: Url,
-    /// Private key used to submit an ethereum transaction that verifys the proof
-    #[arg(short, long, env = "VERIFICATION_PRIVATE_KEY")]
-    verification_private_key: Secret<String>,
     /// Private key used to get inclusion data from the disperser
     #[arg(short, long, env = "DISPERSER_PRIVATE_KEY")]
     disperser_private_key: Secret<String>,
-    /// Address of the EigenDA Registry
-    #[arg(short, long, env = "EIGENDA_CERT_AND_BLOB_VERIFIER_ADDR")]
-    eigenda_cert_and_blob_verifier_addr: String,
     /// Rpc of the eigenda Disperser
     #[arg(short, long, env = "DISPERSER_RPC")]
     disperser_rpc: String,
@@ -78,6 +73,9 @@ struct Args {
     /// Keys of the relay client
     #[arg(short, long, env = "RELAY_CLIENT_KEYS", value_delimiter = ',')]
     relay_client_keys: Vec<u32>,
+    /// URL where this sidecar should run
+    #[arg(short, long, env = "SIDECAR_URL")]
+    sidecar_url: String,
 }
 
 const SRS_ORDER: u32 = 268435456;
@@ -96,6 +94,7 @@ enum BlobIdProofStatus {
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
+    let sidecar_url = args.sidecar_url.clone();
     let srs = SRS::new("resources/g1.point", SRS_ORDER, SRS_POINTS_TO_LOAD)?;
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
@@ -191,18 +190,37 @@ async fn main() -> Result<()> {
 
             let output: Output = result.receipt.journal.decode()?;
 
-            host::prove_risc0::prove_risc0_proof(
-                result,
-                GUEST_ELF,
-                args.verification_private_key.clone(),
-                args.rpc_url.clone(),
-                args.eigenda_cert_and_blob_verifier_addr.clone(),
-                output.hash,
-                eigenda_cert
-                    .to_bytes()
-                    .map_err(|_| anyhow::anyhow!("Failed to serialize EigenDACert"))?,
-            )
-            .await?;
+            let image_id = compute_image_id(GUEST_ELF)?;
+            let image_id: risc0_zkvm::sha::Digest = image_id.into();
+            let image_id = image_id.as_bytes().to_vec();
+
+            let block_proof = match result.receipt.inner.groth16() {
+                Ok(inner) => {
+                    // The SELECTOR is used to perform an extra check inside the groth16 verifier contract.
+                    let mut selector = hex::encode(
+                        inner
+                            .verifier_parameters
+                            .as_bytes()
+                            .get(..4)
+                            .ok_or(anyhow::anyhow!("verifier parameters too short"))?,
+                    );
+                    let seal = hex::encode(inner.clone().seal);
+                    selector.push_str(&seal);
+                    hex::decode(selector)?
+                }
+                Err(_) => vec![0u8; 4],
+            };
+
+            let journal_digest = Digestible::digest(&result.receipt.journal)
+                .as_bytes()
+                .to_vec();
+
+            let proof = ethabi::encode(&[Token::Tuple(vec![
+                Token::Bytes(block_proof),
+                Token::FixedBytes(image_id),
+                Token::FixedBytes(journal_digest),
+                Token::FixedBytes(output.hash),
+            ])]);
 
             println!(
                 "Proof gen thread: finished generating proof for Blob Id {}",
@@ -211,15 +229,16 @@ async fn main() -> Result<()> {
             requests
                 .lock()
                 .await
-                .insert(blob_id, BlobIdProofStatus::Finished("PROOF".to_string()));
+                .insert(blob_id, BlobIdProofStatus::Finished(hex::encode(proof)));
         }
     });
 
-    let json_rpc_server_thread = tokio::spawn(async {
+    let json_rpc_server_thread = tokio::spawn(async move {
         let mut io = IoHandler::new();
+        let new_requests = requests.clone();
         io.add_method("generate_proof", move |params: Params| {
             let tx = tx.clone();
-            let requests = requests.clone();
+            let requests = new_requests.clone();
             async move {
                 let parsed: GenerateProofParams = params.parse().map_err(|_| {
                     jsonrpc_core::Error::invalid_params(
@@ -230,19 +249,10 @@ async fn main() -> Result<()> {
 
                 let mut requests_lock = requests.lock().await;
                 match requests_lock.get(&blob_id) {
-                    Some(req) => match req {
-                        BlobIdProofStatus::Finished(proof) => {
-                            return Ok(jsonrpc_core::Value::String(format!(
-                                "Blob Id {} proved: {}",
-                                blob_id, proof
-                            )))
-                        }
-                        BlobIdProofStatus::Queued => {
-                            return Ok(jsonrpc_core::Value::String(format!(
-                                "Blob Id {} already submitted",
-                                blob_id
-                            )))
-                        }
+                    Some(_) => {
+                        return Err(jsonrpc_core::Error::invalid_params(
+                            "Blob ID already submitted",
+                        ));
                     },
                     None => {
                         requests_lock.insert(blob_id.clone(), BlobIdProofStatus::Queued);
@@ -261,8 +271,36 @@ async fn main() -> Result<()> {
             }
         });
 
+        io.add_method("get_proof", move |params: Params| {
+            let requests = requests.clone();
+            async move {
+                let parsed: GenerateProofParams = params.parse().map_err(|_| {
+                    jsonrpc_core::Error::invalid_params(
+                        "Expected a single string parameter 'blob_id'",
+                    )
+                })?;
+                let blob_id = parsed.blob_id;
+
+                let requests_lock = requests.lock().await;
+                match requests_lock.get(&blob_id) {
+                    Some(req) => match req {
+                        BlobIdProofStatus::Finished(proof) => {
+                            return Ok(jsonrpc_core::Value::String(proof.clone()))
+                        }
+                        BlobIdProofStatus::Queued => {
+                            return Err(jsonrpc_core::Error::internal_error())
+                        }
+                    },
+                    None => {
+                        println!("Blob ID {} not found", blob_id);
+                        Err(jsonrpc_core::Error::internal_error())
+                    }
+                }
+            }
+        });
+
         let server = ServerBuilder::new(io)
-            .start_http(&"127.0.0.1:3030".parse().unwrap()) // TODO: make custom?
+            .start_http(&sidecar_url.clone().parse().unwrap())
             .expect("Unable to start server");
         println!("Running JSON RPC server");
         server.wait();

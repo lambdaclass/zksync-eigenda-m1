@@ -33,7 +33,7 @@ make build_contracts
 
 Export the needed variables (rpcs should have http://, private keys and addresses should have 0x)
 ```bash
-export PRIVATE_KEY=<your_private_key> #The private key you want to use to deploy contracts and call to VerifyDACertV2
+export PRIVATE_KEY=<your_private_key> #The private key you want to use to deploy contracts
 export DISPERSER_PRIVATE_KEY=<your_disperser_private_key> #The private key you want to use with the eigenda disperser
 export CERT_VERIFIER_ADDR=<your_cert_verifier_address> #Contract that has the VerifyDACertV2 function
 export RPC_URL=<your_rpc> #RPC URL of your node
@@ -42,6 +42,7 @@ export PAYLOAD_FORM=<your_payload_form> #Either coeff or eval (On EigenDA Holesk
 export BLOB_VERSION=0 #Blob version used by EigenDA
 export EIGENDA_RELAY_REGISTRY_ADDR=<your_relay_registry_addr> #Address of the EigenDA relay registry
 export RELAY_CLIENT_KEYS=<your_relay_client_keys> #Keys of the relay client, separated by commas ("0,1,2")
+export SIDECAR_URL=<your_sidecar_url> #URL you want this sidecar to run on
 ```
 
 Deploy the contracts:
@@ -51,11 +52,11 @@ forge script contracts/script/ContractsDeployer.s.sol:ContractsDeployer --rpc-ur
 ```
 
 Save the address under `EigenDACertVerifierWrapper deployed at: <address>`
-Save the address under `CertAndBlobVerifier Proxy deployed at: <address>`
+Save the address under `RiscZeroVerifier deployed at: <address>`
 
 ```bash
 export CERT_VERIFIER_WRAPPER_ADDR=<your_address>
-export EIGENDA_CERT_AND_BLOB_VERIFIER_ADDR=<your_address>
+export RISC_ZERO_VERIFIER_ADDR=<you_address>
 ```
 
 ### Run zksync-era (eigenda-v2 branch on lambdaclass fork):
@@ -69,7 +70,7 @@ cd ./zkstack_cli/zkstackup
 
 On `zksync-era/zkstack_cli/crates/types/src/l1_network.rs`
 
-Modify the address for `eigenda_cert_and_blob_verifier` for your address (the one under `EIGENDA_CERT_AND_BLOB_VERIFIER_ADDR` env variable).
+Modify the address for `risc_zero_verifier` for your address (the one under `RISC_ZERO_VERIFIER_ADDR` env variable).
 
 Reload your terminal, and run on zksync-era root:
 
@@ -95,7 +96,7 @@ da_client:
     cert_verifier_addr: <your_cert_verifier_address> #Under CERT_VERIFIER_ADDRESS env variable
     blob_version: <your_blob_version> #Under BLOB_VERSION env variable
     polynomial_form: <your_polynomial_form> #Either COEFF or EVAL
-    eigenda_cert_and_blob_verifier_addr: <your_cert_and_blob_verifier> #Under CERT_AND_BLOB_VERIFIER_ADDR env variable
+    eigenda_sidecar_url: <your_sidecar_url> #Under SIDECAR_URL env variable
 ```
 
 Modify `etc/env/file_based/secrets.yaml`:
@@ -141,15 +142,7 @@ zkstack server --chain eigenda
 ### Run the sidecar (On this repo)
 
 ```bash
-VERIFICATION_PRIVATE_KEY=$PRIVATE_KEY API_URL=<your_url> START_BATCH=1 RUST_LOG=info cargo run --release
-```
-
-For a local server, you can get your api url under `chains/<your_chain>/configs/general.yaml` on the `zksync-era` repository
-
-```yaml
-api:
-  web3_json_rpc:
-    http_url:
+RUST_LOG=info cargo run --release
 ```
 
 On zksync-era you should see blobs being dispatched:
