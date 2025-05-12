@@ -253,7 +253,7 @@ async fn main() -> Result<()> {
                         return Err(jsonrpc_core::Error::invalid_params(
                             "Blob ID already submitted",
                         ));
-                    },
+                    }
                     None => {
                         requests_lock.insert(blob_id.clone(), BlobIdProofStatus::Queued);
                     }
