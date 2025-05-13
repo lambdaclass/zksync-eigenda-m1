@@ -231,7 +231,7 @@ There are 3 things we want to achieve with the Risc0 guest. Each one of them is 
 
 # TODO: Update to V2
 
-#### \* Call to VerifyBlobV2 (8.a)
+#### \* Call to verifyDACertV2 (8.a)
 
 On the host:
 
@@ -250,7 +250,7 @@ Inputs: `rpc_url`, `cert_verifier_wrapper_addr`
 
     // Preflight the call to prepare the input that is required to execute the function in
     // the guest without RPC access. It also returns the result of the call.
-    // Risc0 steel creates an ethereum VM using revm, where it simulates the call to VerifyBlobV1.
+    // Risc0 steel creates an ethereum VM using revm, where it simulates the call to verifyDACertV2.
     // So we need to make this preflight call to populate the VM environment with the current state of the chain
     let mut contract = Contract::preflight(cert_verifier_wrapper_addr, &mut env);
     let returns = contract.call_builder(&call).call().await?;
@@ -301,7 +301,7 @@ Outputs: **Risc0Proof**
 
 On the host:
 
-Inputs: **BlobInfo, BlobData,** SRSPoints
+Inputs: **EigenDACert, BlobData,** SRSPoints
 
 ```rust
     let blob = Blob::new(&encoded_data);
@@ -318,7 +318,7 @@ Inputs: **BlobInfo, BlobData,** SRSPoints
         .commitment;
 ```
 
-First we obtain the commitment from the BlobInfo’s blob header:
+First we obtain the commitment from the EigenDACert’s blob header:
 
 ```rust
     // Calculate the polynomial in evaluation form
@@ -337,7 +337,7 @@ Output: Proof
 
 Guest:
 
-Inputs: **BlobData**, Proof, BlobInfo (commitment)
+Inputs: **BlobData**, Proof, EigenDACert (commitment)
 
 ```rust
     // Calculate the polynomial in evaluation form
