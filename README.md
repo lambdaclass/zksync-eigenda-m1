@@ -1,4 +1,5 @@
 # ZKSYNC-EIGENDA M1
+
 **Warning: This sidecar only works on a x86 machine with cuda support**
 
 **The EigenDA sidecar where risc0-steel is used in order to generate a proof for the call of the VerifyDACertV2 function of EigenDA's CertVerifier contract, which performs the necessary checks to make sure a given blob is present.**
@@ -32,6 +33,7 @@ make build_contracts
 ```
 
 Export the needed variables (rpcs should have http://, private keys and addresses should have 0x)
+
 ```bash
 export PRIVATE_KEY=<your_private_key> #The private key you want to use to deploy contracts
 export DISPERSER_PRIVATE_KEY=<your_disperser_private_key> #The private key you want to use with the eigenda disperser
@@ -141,6 +143,7 @@ zkstack ecosystem init \
 ```
 
 Then run
+
 ```bash
 zkstack server --chain eigenda
 ```
@@ -160,8 +163,8 @@ On zksync-era you should see blobs being dispatched:
 On the sidecar you should see blobs being verified:
 
 ```
-2025-05-12T15:01:47.816223Z  INFO risc0_steel::host::builder: Environment initialized with block 3824984 (0xd89eb96bd9a54e77a0b6baa20d95503cef30b575d20b9b4af65c98a21013b853)    
-2025-05-12T15:01:47.816263Z  INFO risc0_steel::contract::host: Executing preflight calling 'verifyDACertV2((bytes32,uint32),(((uint16,bytes,((uint256,uint256),(uint256[2],uint256[2]),(uint256[2],uint256[2]),uint32),bytes32),bytes,uint32[]),uint32,bytes),(uint32[],(uint256,uint256)[],(uint256,uint256)[],(uint256[2],uint256[2]),(uint256,uint256),uint32[],uint32[],uint32[][]),bytes)' on 0x18c7De1E82513c3F48dFcCa85c64056C637104fb    
+2025-05-12T15:01:47.816223Z  INFO risc0_steel::host::builder: Environment initialized with block 3824984 (0xd89eb96bd9a54e77a0b6baa20d95503cef30b575d20b9b4af65c98a21013b853)
+2025-05-12T15:01:47.816263Z  INFO risc0_steel::contract::host: Executing preflight calling 'verifyDACertV2((bytes32,uint32),(((uint16,bytes,((uint256,uint256),(uint256[2],uint256[2]),(uint256[2],uint256[2]),uint32),bytes32),bytes,uint32[]),uint32,bytes),(uint32[],(uint256,uint256)[],(uint256,uint256)[],(uint256[2],uint256[2]),(uint256,uint256),uint32[],uint32[],uint32[][]),bytes)' on 0x18c7De1E82513c3F48dFcCa85c64056C637104fb
 Blob ID 3ea66c8be61022411895da814c4de8196252dbb5d7d064eb62f245606bef97ca is still being processed
 Call verifyDACertV2((bytes32,uint32),(((uint16,bytes,((uint256,uint256),(uint256[2],uint256[2]),(uint256[2],uint256[2]),uint32),bytes32),bytes,uint32[]),uint32,bytes),(uint32[],(uint256,uint256)[],(uint256,uint256)[],(uint256[2],uint256[2]),(uint256,uint256),uint32[],uint32[],uint32[][]),bytes) Function on 0x18c7…04fb returns: true
 Running the guest with the constructed input...
@@ -177,60 +180,46 @@ M1 consists of checking the inclusion of the blob and verifying that the data th
 
 The important components are marked in **bold**
 
-#### Step 1 Dispersal (Marked in Blue)
+#### Step 1: Sequencer Dispersal and Inclusion data retrieval (Marked in Blue) & Sidecar Proof Generation (Marked in red)
 
 ![Step 1](images/step1.png)
 
 1. Zksync's sequencer finishes a batch and wants to disperse its content (**Blob Data**).
 2. Zksync's sequencer sends the blob to be dispersed to EigenDA, EigenDA returns the **Blob Key**.
-3. Zksync's sequencer stores the **Blob Key** in its database
+3. Zksync's sequencer sends the **Blob key** to the Sidecar
+4. Zksync's sequencer stores the **Blob Key** in its database.
+5. Zksync’s sequencer asks for **Inlcusion Data** (encoded **EigenDACert**) to EigenDA
+6. Zksync’s sequencer starts waiting for Sidecar **Blob Key** proof to be generated.
+7. Sidecar asks EigenDA for **EigenDACert** and **Blob Data** (this step runs parallel to step 4)
+8. Sidecar executes Risc0, doing 3 things:
 
-#### Step 2 Proof generation (Marked in Red)
+   a. Call to VerifyDACertV2
+
+   b. Proof of Equivalence
+
+   c. Calculation of **EigenDAHash** (keccak of _BlobData_)
+
+   And generates a **Risc0 Proof** of those 3 things.
+
+9. Zksync’s sequencer finishes waiting for proof (step 6), storing the retrieved proof in its database. It then calls the Commit Batches function of Executor (zksync’s DiamondProxy implementation)on Ethereum.
+
+#### Step 2 Commit Batches (Marked in Green)
 
 ![Step 2](images/step2.png)
 
-4. Zksync’s sequencer asks for **Inlcusion Data** (encoded **EigenDACert**) to EigenDA
-5. Zksync’s sequencer starts waiting for batch to be verified.
-6. Sidecar asks zksync’s sequencer for **Blob Key**.
-7. Sidecar asks EigenDA for **EigenDACert** and **Blob Data**
-8. Sidecar executes Risc0, doing 3 things
-
-    a. Call to VerifyDACertV2 *
-
-    b. Proof of Equivalence *
-
-    c. Calculation of **EigenDAHash** (keccak of **BlobData**) *
-    
-    And generates a **Risc0 Proof** of those 3 things
-    
-9. Sidecar calls the EigenDACertAndBlobVerifier verify function on Ethereum
-10. EigenDACertAndBlobVerifier verifies the **Risc0 Proof** and stores in its mappings:
-
-    a. finishedBatches: **Inclusion Data** → true (meaning the proof generation for the given **Inclusion Data** finished)
-
-    b. verifiedBatches: **Inclusion Data** → true (meaning the proof was correctly verified)
-
-    c. hashes: **Inclusion Data** → **EigenDAHash**
-
-11. Zksync’s sequencer finishes waiting for batch to be verified by checking EigenDARegistry verifiedBatches mapping on Ethereum, with **Inclusion Data** as key, and stores the **Inclusion Data** in its database, and calls the Commit Batches function of Executor (zksync’s DiamondProxy implementation)on Ethereum.
-
-#### Step 3 Commit Batches (Marked in Green)
-
-![Step 3](images/step3.png)
-
 Everything here runs on Ethereum
 
-12. Executor starts commit batches function
-13. Executor calls the EigenDAL1Validator checkDA function with **l2DAValidatorOutputHash** and **operatorDAInput** as parameters
+10. Executor starts commit batches function
+11. Executor calls the EigenDAL1Validator checkDA function with **l2DAValidatorOutputHash** and **operatorDAInput** as parameters
 
     a. **l2DAValidatorOutputHash**: keccak(**stateDiffHash** + **EigenDAHash**)
 
-    b. **operatorDAInput**: **StateDiffHash** + **Inclusion Data**
-    
-    * **stateDiffHash**  is the hash of the states diffs, calculated on EigenDAL2Validator and sent to L1 through L2→L1 Logs
-    
-14. EigenDAL1Validator calls EigenDACertAndBlobVerifier isVerified function with **Inclusion Data** as parameter, which returns whether it was correctly verified along with the **EigenDAHash**
-15. EigenDAL1Validator checks if keccak(**stateDiffHash** + **EigenDAHash**) equals **l2DAValidatorOutputHash** (meaning that if not, **EigenDAHash** was not correctly calculated by the sidecar)
+    b. **operatorDAInput**: **StateDiffHash** + **Inclusion Data** (seal + imageId + journalDigest + eigenDAHash)
+
+    - **stateDiffHash** is the hash of the states diffs, calculated on EigenDAL2Validator and sent to L1 through L2→L1 Logs
+
+12. EigenDAL1Validator calls risc0Verifier `verify` function with **inclusionData.seal**, **inclusionData.imageId**, **inclusionData.journalDigest** as parameters, which is expected to **not revert** upon succesful verification.
+13. EigenDAL1Validator checks if keccak(**stateDiffHash** + **inclusionData.EigenDAHash**) equals **l2DAValidatorOutputHash** (meaning that if not, **EigenDAHash** was not correctly calculated by the sidecar)
 
 ### What does the Guest do?
 
@@ -241,7 +230,8 @@ There are 3 things we want to achieve with the Risc0 guest. Each one of them is 
 3. We want to check that the blob is the same we dispersed on zksync. 8.c
 
 # TODO: Update to V2
-#### * Call to VerifyBlobV1 (8.a)
+
+#### \* Call to VerifyBlobV1 (8.a)
 
 On the host:
 
@@ -259,13 +249,13 @@ Inputs: `rpc_url`, `blob_verifier_wrapper_addr`
     // Preflight the call to prepare the input that is required to execute the function in
     // the guest without RPC access. It also returns the result of the call.
     let mut contract = Contract::preflight(blob_verifier_wrapper_addr, &mut env);
-    
+
     let returns = contract
         .call_builder(&call)
         .from(caller_addr)
         .call()
         .await?;
-        
+
     let input = env.into_input().await?;
 ```
 
@@ -282,8 +272,8 @@ Inputs: input
 
   // Converts the input into a `EvmEnv` for execution.
   let env = input.into_env();
- 
- 
+
+
   // Execute the view call; it returns the result in the type generated by the `sol!` macro.
   let contract = Contract::new(blob_verifier_wrapper_addr, &env);
 	let call = IVerifyBlob::verifyBlobV1Call {
@@ -291,7 +281,7 @@ Inputs: input
 	    blobVerificationProof: blob_info.blob_verification_proof.into(),
 		};
 	let returns = contract.call_builder(&call).from(caller_addr).call();
-	assert!(returns._0); 
+	assert!(returns._0);
 ```
 
 Here we make the call to verifyBlobV1 inside the risc0 steel VM.
@@ -304,7 +294,7 @@ We then assert the result of that call being true.
 
 Outputs: **Risc0Proof**
 
-#### * Proof Of Equivalence (8.b)
+#### \* Proof Of Equivalence (8.b)
 
 On the host:
 
@@ -380,7 +370,7 @@ Then we verify the proof for the commitment at that challenge point
 
 Output: **Risc0Proof**
 
-#### * EigenDAHash (8.c)
+#### \* EigenDAHash (8.c)
 
 In the guest we also calculate the eigenDAHash
 
@@ -421,18 +411,18 @@ Note: `verifyBlobV1` will be replaced by the V2 API once the `EigenDAv2` Client 
 #### Key points
 
 - The sidecar uses [risc0 steel](https://github.com/risc0/risc0-ethereum/tree/main/crates/steel), a prover capable of running EVM code offchain, which consists of two entities:
-    - [The host](https://dev.risczero.com/terminology#host-program), which communicates with the “outside world”:
-        - With the `Zksync Era Web API` in order to retrieve the latests blob which inclusion data is still to be proven.
-        - With `Ethereum:`
-            - To make a preflight call, which constructs the EVM environment needed by the guest executed secondly, by collecting the necessary state and merkle storage proofs neeed.
-            - To verify the proof generated by the guest on chain.
-        - With `EigenDA` to get the `BlobInfo` and `BlobData`
-    - [The guest](https://dev.risczero.com/terminology#guest-program), which is responsible for generating the proof:
-        - The guest program executed first verifies the bn254 proof generated from calculating the proof of equivalence **in the host**.
-        - The guest program executed second makes a “view call” to query EVM state, as stated above, the data needed for this query is passed from the host, as `input`.
+  - [The host](https://dev.risczero.com/terminology#host-program), which communicates with the “outside world”:
+    - With the `Zksync Era Web API` in order to retrieve the latests blob which inclusion data is still to be proven.
+    - With `Ethereum:`
+      - To make a preflight call, which constructs the EVM environment needed by the guest executed secondly, by collecting the necessary state and merkle storage proofs neeed.
+      - To verify the proof generated by the guest on chain.
+    - With `EigenDA` to get the `BlobInfo` and `BlobData`
+  - [The guest](https://dev.risczero.com/terminology#guest-program), which is responsible for generating the proof:
+    - The guest program executed first verifies the bn254 proof generated from calculating the proof of equivalence **in the host**.
+    - The guest program executed second makes a “view call” to query EVM state, as stated above, the data needed for this query is passed from the host, as `input`.
 - We compute the proof of equivalence outside the guest program to greatly reduce computation costs (otherwise each proof takes around fifty hours to generate).
 - The `zksync-era` chain Web API is periodically queried by our sidecar to check for new blobs which inclusion data is still unverified.
-- We create a *Blob Verifier Wrapper* Contract because steel mandates that we query a “view call” that returns a value of *some* type (in this cases `external view returns (bool)`).
+- We create a _Blob Verifier Wrapper_ Contract because steel mandates that we query a “view call” that returns a value of _some_ type (in this cases `external view returns (bool)`).
 
 ### M1 Full Flow
 
