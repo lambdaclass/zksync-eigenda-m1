@@ -10,7 +10,8 @@ anyhow = { workspace = true }
 clap = { workspace = true }
 methods = { workspace = true }
 risc0-steel = { workspace = true, features = ["host"] }
-risc0-zkvm = { workspace = true, features = ["client", "cuda"] }
+# risc0-zkvm = { workspace = true, features = ["client", "cuda"] }
+risc0-zkvm = { workspace = true, features = ["client"] }
 tokio = { workspace = true, features = ["time"] }
 tracing-subscriber = { workspace = true }
 url = { workspace = true }
@@ -34,3 +35,4 @@ serde_json = { workspace = true }
 serde = { workspace = true }
 jsonrpc-core = { workspace = true }
 jsonrpc-http-server = { workspace = true }
+sqlx = { workspace = true }
