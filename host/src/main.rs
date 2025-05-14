@@ -91,6 +91,14 @@ enum BlobIdProofStatus {
     Finished(String),
 }
 
+async fn flatten(handle: JoinHandle<Result<()>>) -> Result<()> {
+    match handle.await {
+        Ok(Ok(result)) => Ok(result),
+        Ok(Err(err)) => Err(err),
+        Err(_) => Err(anyhow::anyhow!("handling failed")),
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
@@ -233,7 +241,7 @@ async fn main() -> Result<()> {
         }
     });
 
-    let json_rpc_server_thread = tokio::spawn(async move {
+    let json_rpc_server_thread: JoinHandle<Result<()>> = tokio::spawn(async move {
         let mut io = IoHandler::new();
         let new_requests = requests.clone();
         io.add_method("generate_proof", move |params: Params| {
@@ -304,9 +312,16 @@ async fn main() -> Result<()> {
             .expect("Unable to start server");
         println!("Running JSON RPC server");
         server.wait();
+        Ok(())
     });
 
-    let res = tokio::try_join!(proof_gen_thread, json_rpc_server_thread)?;
-    res.0?; // TODO: this looks clumsy
+    match tokio::try_join!(flatten(proof_gen_thread), flatten(json_rpc_server_thread)) {
+        Ok(_) => {
+            println!("Threads finished successfully");
+        }
+        Err(e) => {
+            println!("Error in threads: {:?}", e);
+        }
+    }
     Ok(())
 }
