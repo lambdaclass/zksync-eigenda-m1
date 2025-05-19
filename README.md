@@ -4,7 +4,9 @@
 
 **The EigenDA sidecar where risc0-steel is used in order to generate a proof for the call of the VerifyDACertV2 function of EigenDA's CertVerifier contract, which performs the necessary checks to make sure a given blob is present.**
 **As well as performing the proof of equivalence verifying a proof that the EigenDA commitment commits to the given Blob.**
-**Finally it sends the Risc0 Proof to verify to the EigenDA Cert and Blob Verifier contract, which stores whether it was correctly verified.**
+**The sidecar consists of 2 Endpoints:**
+**generate_proof: Which given the blobKey begins the proof generation process**
+**get_proof: Which given the blobKey it returns the generated proof or an error in case it hasn't finished**
 
 ## Prerequisites
 
@@ -163,13 +165,15 @@ On zksync-era you should see blobs being dispatched:
 On the sidecar you should see blobs being verified:
 
 ```
-2025-05-12T15:01:47.816223Z  INFO risc0_steel::host::builder: Environment initialized with block 3824984 (0xd89eb96bd9a54e77a0b6baa20d95503cef30b575d20b9b4af65c98a21013b853)
-2025-05-12T15:01:47.816263Z  INFO risc0_steel::contract::host: Executing preflight calling 'verifyDACertV2((bytes32,uint32),(((uint16,bytes,((uint256,uint256),(uint256[2],uint256[2]),(uint256[2],uint256[2]),uint32),bytes32),bytes,uint32[]),uint32,bytes),(uint32[],(uint256,uint256)[],(uint256,uint256)[],(uint256[2],uint256[2]),(uint256,uint256),uint32[],uint32[],uint32[][]),bytes)' on 0x18c7De1E82513c3F48dFcCa85c64056C637104fb
-Blob ID 3ea66c8be61022411895da814c4de8196252dbb5d7d064eb62f245606bef97ca is still being processed
+Running JSON RPC server
+Running proof gen thread
+Proof gen thread: received request to prove: bdfef9b13ccd6648534267b80bea88b1b6c75ecfef4468299d32fd646c47c7b9
+2025-05-19T15:45:28.038452Z  INFO risc0_steel::host::builder: Environment initialized with block 3861957 (0x2283aafccd1976c63f9dced04f03106629a7b76baccc519c2f6d4bb61ae4b59c)    
+2025-05-19T15:45:28.038505Z  INFO risc0_steel::contract::host: Executing preflight calling 'verifyDACertV2((bytes32,uint32),(((uint16,bytes,((uint256,uint256),(uint256[2],uint256[2]),(uint256[2],uint256[2]),uint32),bytes32),bytes,uint32[]),uint32,bytes),(uint32[],(uint256,uint256)[],(uint256,uint256)[],(uint256[2],uint256[2]),(uint256,uint256),uint32[],uint32[],uint32[][]),bytes)' on 0x18c7De1E82513c3F48dFcCa85c64056C637104fb    
 Call verifyDACertV2((bytes32,uint32),(((uint16,bytes,((uint256,uint256),(uint256[2],uint256[2]),(uint256[2],uint256[2]),uint32),bytes32),bytes,uint32[]),uint32,bytes),(uint32[],(uint256,uint256)[],(uint256,uint256)[],(uint256[2],uint256[2]),(uint256,uint256),uint32[],uint32[],uint32[][]),bytes) Function on 0x18c7…04fb returns: true
 Running the guest with the constructed input...
-2025-03-27T18:24:41.214118Z  INFO risc0_zkvm::host::server::exec::executor: execution time: 18.679946759s
-Proof gen thread: finished generating proof for Blob Id 3ea66c8be61022411895da814c4de8196252dbb5d7d064eb62f245606bef97ca
+2025-05-19T15:46:27.505240Z  INFO risc0_zkvm::host::server::exec::executor: execution time: 17.890119705s
+Proof gen thread: finished generating proof for Blob Id bdfef9b13ccd6648534267b80bea88b1b6c75ecfef4468299d32fd646c47c7b9
 ```
 
 ## Design
