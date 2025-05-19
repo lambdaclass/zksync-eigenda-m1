@@ -34,7 +34,7 @@ use rust_eigenda_v2_client::{
 use rust_eigenda_v2_common::{EigenDACert, Payload, PayloadForm};
 use secrecy::{ExposeSecret, Secret};
 use serde::Deserialize;
-use sqlx::{PgPool, Pool, Postgres, Row};
+use sqlx::PgPool;
 use tokio::{
     sync::{mpsc, Mutex},
     task::JoinHandle,
@@ -43,6 +43,9 @@ use tracing_subscriber::EnvFilter;
 
 use rust_kzg_bn254_prover::srs::SRS;
 use url::Url;
+
+mod db;
+use db::*;
 
 #[derive(Parser, Debug)]
 #[command(about, long_about = None)]
@@ -90,72 +93,6 @@ struct GenerateProofParams {
     blob_id: String,
 }
 
-// Retrieves pending proofs from the database.
-// This function is useful for case the sidecar is restarted
-// some proof were left pending.
-async fn retrieve_db_pending_proofs(db_pool: Pool<Postgres>) -> Result<Vec<String>> {
-    let pending_proofs = sqlx::query(
-        r#"
-        SELECT BLOB_ID FROM BLOB_PROOFS WHERE PROOF IS NULL;
-        "#,
-    )
-    .fetch_all(&db_pool)
-    .await?;
-
-    let mut blob_ids = Vec::new();
-    for pending_proof in pending_proofs {
-        let blob_id: String = pending_proof.get("blob_id");
-        blob_ids.push(blob_id);
-    }
-    Ok(blob_ids)
-}
-
-// Persists the blob proof request in the database.
-async fn store_blob_proof_request(db_pool: Pool<Postgres>, blob_id: String) -> Result<()> {
-    sqlx::query(
-        r#"
-        INSERT INTO BLOB_PROOFS (BLOB_ID)
-        VALUES ($1)
-        "#,
-    )
-    .bind(blob_id)
-    .execute(&db_pool)
-    .await?;
-    Ok(())
-}
-
-// Stores the blob generated proof in the database.
-async fn store_blob_proof(db_pool: Pool<Postgres>, blob_id: String, proof: String) -> Result<()> {
-    sqlx::query(
-        r#"
-        UPDATE BLOB_PROOFS
-        SET PROOF = $1
-        WHERE BLOB_ID = $2
-        "#,
-    )
-    .bind(proof)
-    .bind(blob_id)
-    .execute(&db_pool)
-    .await?;
-    Ok(())
-}
-
-async fn retrieve_blob_id_proof(db_pool: Pool<Postgres>, blob_id: String) -> Option<String> {
-    let result = sqlx::query(
-        r#"
-            SELECT PROOF FROM BLOB_PROOFS
-            WHERE BLOB_ID = $1
-            "#,
-    )
-    .bind(blob_id)
-    .fetch_optional(&db_pool)
-    .await
-    .ok()?
-    .map(|row| row.get("proof"));
-
-    result
-}
-
 async fn flatten(handle: JoinHandle<Result<()>>) -> Result<()> {
     match handle.await {
         Ok(Ok(result)) => Ok(result),
@@ -170,10 +107,10 @@ async fn main() -> Result<()> {
     let sidecar_url = args.sidecar_url.clone();
     let database_url = args.database_url.clone();
 
-    // TODO: WRAP IN ARC/MUTEX
     let db_pool = PgPool::connect(&database_url)
         .await
         .map_err(|e| anyhow::anyhow!("Failed to connect to database: {}", e))?;
+    let db_pool = Arc::new(Mutex::new(db_pool));
 
     let srs = SRS::new("resources/g1.point", SRS_ORDER, SRS_POINTS_TO_LOAD)?;
     tracing_subscriber::fmt()

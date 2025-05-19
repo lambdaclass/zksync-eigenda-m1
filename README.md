@@ -41,12 +41,13 @@ export PRIVATE_KEY=<your_private_key> #The private key you want to use to deploy
 export DISPERSER_PRIVATE_KEY=<your_disperser_private_key> #The private key you want to use with the eigenda disperser
 export CERT_VERIFIER_ADDR=<your_cert_verifier_address> #Contract that has the VerifyDACertV2 function
 export RPC_URL=<your_rpc> #RPC URL of your node
-export DISPERSER_RPC=<your_rpc> #RPC of the eigenda disperser
+export DISPERSER_RPC=<your_rpc> #RPC of the eigenda **disperser**
 export PAYLOAD_FORM=<your_payload_form> #Either coeff or eval (On EigenDA Holesky use coeff)
 export BLOB_VERSION=0 #Blob version used by EigenDA
 export EIGENDA_RELAY_REGISTRY_ADDR=<your_relay_registry_addr> #Address of the EigenDA relay registry
 export RELAY_CLIENT_KEYS=<your_relay_client_keys> #Keys of the relay client, separated by commas ("0,1,2")
 export SIDECAR_URL=<your_sidecar_url> #URL you want this sidecar to run on
+export DATABASE_URL=<proof_database_url> #URL of the database where the proofs will be stored
 ```
 
 Deploy the contracts:
