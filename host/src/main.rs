@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{collections::HashSet, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use alloy_primitives::Address;
 use anyhow::Result;
@@ -20,7 +20,8 @@ use clap::Parser;
 use common::{output::Output, polynomial_form::PolynomialForm};
 use ethabi::{ethereum_types::H160, Token};
 use host::db::{
-    retrieve_blob_id_proof, retrieve_next_pending_proof, store_blob_proof, store_blob_proof_request,
+    proof_request_exists, retrieve_blob_id_proof, retrieve_next_pending_proof, store_blob_proof,
+    store_blob_proof_request,
 };
 use jsonrpc_core::{IoHandler, Params};
 use jsonrpc_http_server::ServerBuilder;
@@ -113,8 +114,6 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
-
-    let requests = Arc::new(Mutex::new(HashSet::new()));
 
     let db_pool_clone = db_pool.clone();
     let proof_gen_thread: JoinHandle<Result<()>> = tokio::spawn(async move {
@@ -254,10 +253,8 @@ async fn main() -> Result<()> {
     let db_pool_clone = db_pool_clone.clone();
     let json_rpc_server_thread: JoinHandle<Result<()>> = tokio::spawn(async move {
         let mut io = IoHandler::new();
-        let new_requests = requests.clone();
         let db_pool = db_pool_clone.clone();
         io.add_method("generate_proof", move |params: Params| {
-            let requests = new_requests.clone();
             let db_pool = db_pool.clone();
             async move {
                 let parsed: GenerateProofParams = params.parse().map_err(|_| {
@@ -267,16 +264,19 @@ async fn main() -> Result<()> {
                 })?;
                 let blob_id = parsed.blob_id;
 
-                let mut requests_lock = requests.lock().await;
-                match requests_lock.get(&blob_id) {
-                    Some(_) => {
-                        return Err(jsonrpc_core::Error::invalid_params(
-                            "Blob ID already submitted",
-                        ));
-                    }
-                    None => {
-                        requests_lock.insert(blob_id.clone());
-                    }
+                if proof_request_exists(db_pool.clone(), blob_id.clone())
+                    .await
+                    .map_err(|_| {
+                        println!(
+                            "Failed checking if Blob Id {} already has a proof request",
+                            blob_id
+                        );
+                        jsonrpc_core::Error::internal_error()
+                    })?
+                {
+                    return Err(jsonrpc_core::Error::invalid_params(
+                        "Blob ID already submitted",
+                    ));
                 }
 
                 // Persist request in database
@@ -308,7 +308,7 @@ async fn main() -> Result<()> {
                 match retrieve_blob_id_proof(db_pool.clone(), blob_id.clone()).await {
                     Some(proof) => return Ok(jsonrpc_core::Value::String(proof)),
                     None => {
-                        println!("Blob ID {} not found", blob_id);
+                        println!("proof for Blob ID {} not found", blob_id);
                         Err(jsonrpc_core::Error::internal_error())
                     }
                 }

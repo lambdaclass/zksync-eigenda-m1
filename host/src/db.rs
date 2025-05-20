@@ -64,6 +64,28 @@ pub async fn store_blob_proof_request(
     Ok(())
 }
 
+/// Checks if the blob proof request already exists in the database.
+pub async fn proof_request_exists(
+    db_pool: Arc<Mutex<Pool<Postgres>>>,
+    blob_id: String,
+) -> Result<bool> {
+    let db_lock = db_pool.lock().await;
+
+    let exists = sqlx::query(
+        r#"
+        SELECT EXISTS (
+            SELECT 1 FROM BLOB_PROOFS WHERE BLOB_ID = $1
+        )
+        "#,
+    )
+    .bind(blob_id)
+    .fetch_one(&*db_lock)
+    .await?
+    .get::<bool, _>("exists");
+
+    Ok(exists)
+}
+
 /// Stores the blob generated proof in the database.
 pub async fn store_blob_proof(
     db_pool: Arc<Mutex<Pool<Postgres>>>,
