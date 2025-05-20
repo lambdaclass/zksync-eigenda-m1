@@ -308,7 +308,7 @@ async fn main() -> Result<()> {
                 match retrieve_blob_id_proof(db_pool.clone(), blob_id.clone()).await {
                     Some(proof) => return Ok(jsonrpc_core::Value::String(proof)),
                     None => {
-                        println!("proof for Blob ID {} not found", blob_id);
+                        println!("Proof for Blob ID {} not found", blob_id);
                         Err(jsonrpc_core::Error::internal_error())
                     }
                 }

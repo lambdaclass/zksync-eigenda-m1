@@ -38,10 +38,7 @@ pub async fn retrieve_next_pending_proof(
     .fetch_optional(&*db_lock)
     .await?;
 
-    let blob_id = match pending_proof {
-        Some(row) => Some(row.get("blob_id")),
-        None => None,
-    };
+    let blob_id = pending_proof.map(|row| row.get("blob_id"));
     Ok(blob_id)
 }
 
