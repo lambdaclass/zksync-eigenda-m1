@@ -19,6 +19,9 @@ use anyhow::Result;
 use clap::Parser;
 use common::{output::Output, polynomial_form::PolynomialForm};
 use ethabi::{ethereum_types::H160, Token};
+use host::db::{
+    retrieve_blob_id_proof, retrieve_next_pending_proof, store_blob_proof, store_blob_proof_request,
+};
 use jsonrpc_core::{IoHandler, Params};
 use jsonrpc_http_server::ServerBuilder;
 use methods::GUEST_ELF;
@@ -35,17 +38,11 @@ use rust_eigenda_v2_common::{EigenDACert, Payload, PayloadForm};
 use secrecy::{ExposeSecret, Secret};
 use serde::Deserialize;
 use sqlx::PgPool;
-use tokio::{
-    sync::{mpsc, Mutex},
-    task::JoinHandle,
-};
+use tokio::{sync::Mutex, task::JoinHandle};
 use tracing_subscriber::EnvFilter;
 
 use rust_kzg_bn254_prover::srs::SRS;
 use url::Url;
-
-mod db;
-use db::*;
 
 #[derive(Parser, Debug)]
 #[command(about, long_about = None)]
@@ -118,14 +115,6 @@ async fn main() -> Result<()> {
         .init();
 
     let requests = Arc::new(Mutex::new(HashSet::new()));
-    let (tx, mut rx) = mpsc::channel(100);
-
-    // Retrieve from the database any proof that was left pending
-    let pending_proofs = retrieve_db_pending_proofs(db_pool.clone()).await?;
-    for pending_proof in pending_proofs {
-        // And pre-send them to the proof_gen_thread
-        tx.send(pending_proof).await?;
-    }
 
     let db_pool_clone = db_pool.clone();
     let proof_gen_thread: JoinHandle<Result<()>> = tokio::spawn(async move {
@@ -173,13 +162,21 @@ async fn main() -> Result<()> {
         let mut retriever = RelayPayloadRetriever::new(retriever_config, srs_config, relay_client)?;
 
         println!("Running proof gen thread");
+        let db_pool = db_pool.clone();
         loop {
-            let blob_id: String = match rx.recv().await {
-                Some(blob_id) => blob_id,
-                None => continue,
+            let blob_id = match retrieve_next_pending_proof(db_pool.clone()).await {
+                Ok(Some(blob_id)) => blob_id,
+                Ok(None) => {
+                    println!("No pending proofs found");
+                    continue;
+                }
+                Err(e) => {
+                    println!("Error retrieving pending proof: {}", e);
+                    continue;
+                }
             };
 
-            println!("Proof gen thread: received request to prove: {}", blob_id);
+            println!("Proof gen thread: retrieved request to prove: {}", blob_id);
 
             let eigenda_cert: EigenDACert;
             loop {
@@ -254,12 +251,12 @@ async fn main() -> Result<()> {
         }
     });
 
+    let db_pool_clone = db_pool_clone.clone();
     let json_rpc_server_thread: JoinHandle<Result<()>> = tokio::spawn(async move {
         let mut io = IoHandler::new();
         let new_requests = requests.clone();
         let db_pool = db_pool_clone.clone();
         io.add_method("generate_proof", move |params: Params| {
-            let tx = tx.clone();
             let requests = new_requests.clone();
             let db_pool = db_pool.clone();
             async move {
@@ -289,11 +286,6 @@ async fn main() -> Result<()> {
                         println!("Failed sending Blob Id {} to prover thread", blob_id);
                         jsonrpc_core::Error::internal_error()
                     })?;
-
-                tx.send(blob_id.clone()).await.map_err(|_| {
-                    println!("Failed sending Blob Id {} to prover thread", blob_id);
-                    jsonrpc_core::Error::internal_error()
-                })?;
 
                 Ok(jsonrpc_core::Value::String(format!(
                     "Generating Proof for {}",

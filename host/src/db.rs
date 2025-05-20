@@ -4,16 +4,14 @@ use anyhow::Result;
 use sqlx::{Pool, Postgres, Row};
 use tokio::sync::Mutex;
 
-// Retrieves pending proofs from the database.
-// This function is useful for case the sidecar is restarted
-// some proof were left pending.
-pub async fn retrieve_db_pending_proofs(
-    db_pool: Arc<Mutex<Pool<Postgres>>>,
-) -> Result<Vec<String>> {
+/// Retrieves pending proofs from the database.
+/// This function is useful for case the sidecar is restarted
+/// some proof were left pending.
+pub async fn retrieve_pending_proofs(db_pool: Arc<Mutex<Pool<Postgres>>>) -> Result<Vec<String>> {
     let db_lock = db_pool.lock().await;
     let pending_proofs = sqlx::query(
         r#"
-        SELECT BLOB_ID FROM BLOB_PROOFS WHERE PROOF IS NULL;
+        SELECT BLOB_ID FROM BLOB_PROOFS WHERE PROOF IS NULL ORDER BY ID ASC;
         "#,
     )
     .fetch_all(&*db_lock)
@@ -27,7 +25,27 @@ pub async fn retrieve_db_pending_proofs(
     Ok(blob_ids)
 }
 
-// Persists the blob proof request in the database.
+/// Retrieves the next pending proof from the database.
+pub async fn retrieve_next_pending_proof(
+    db_pool: Arc<Mutex<Pool<Postgres>>>,
+) -> Result<Option<String>> {
+    let db_lock = db_pool.lock().await;
+    let pending_proof = sqlx::query(
+        r#"
+        SELECT BLOB_ID FROM BLOB_PROOFS WHERE PROOF IS NULL ORDER BY ID ASC LIMIT 1;
+        "#,
+    )
+    .fetch_optional(&*db_lock)
+    .await?;
+
+    let blob_id = match pending_proof {
+        Some(row) => Some(row.get("blob_id")),
+        None => None,
+    };
+    Ok(blob_id)
+}
+
+/// Persists the blob proof request in the database.
 pub async fn store_blob_proof_request(
     db_pool: Arc<Mutex<Pool<Postgres>>>,
     blob_id: String,
@@ -46,7 +64,7 @@ pub async fn store_blob_proof_request(
     Ok(())
 }
 
-// Stores the blob generated proof in the database.
+/// Stores the blob generated proof in the database.
 pub async fn store_blob_proof(
     db_pool: Arc<Mutex<Pool<Postgres>>>,
     blob_id: String,
@@ -68,6 +86,7 @@ pub async fn store_blob_proof(
     Ok(())
 }
 
+/// Retrieves the blob proof from the database.
 pub async fn retrieve_blob_id_proof(
     db_pool: Arc<Mutex<Pool<Postgres>>>,
     blob_id: String,
@@ -84,7 +103,7 @@ pub async fn retrieve_blob_id_proof(
     .fetch_optional(&*db_lock)
     .await
     .ok()?
-    .map(|row| row.get("proof"));
+    .map(|row| row.get::<Option<String>, _>("proof"))?;
 
     result
 }

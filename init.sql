@@ -1,1 +1,5 @@
-CREATE TABLE IF NOT EXISTS BLOB_PROOFS (Blob_id TEXT PRIMARY KEY, proof TEXT);
+CREATE TABLE IF NOT EXISTS blob_proofs (
+    id SERIAL PRIMARY KEY,
+    blob_id TEXT,
+    proof TEXT
+);

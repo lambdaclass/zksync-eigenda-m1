@@ -9,3 +9,7 @@ database:
 
 build_contracts:
 	cd $(BUILD_DIR) && forge build
+
+clean:
+	cd $(BUILD_DIR) && forge clean
+	docker compose down
