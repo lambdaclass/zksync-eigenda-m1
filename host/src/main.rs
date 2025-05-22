@@ -115,30 +115,38 @@ async fn main() -> Result<()> {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
-    let db_pool_clone = db_pool.clone();
-    let proof_gen_thread: JoinHandle<Result<()>> = tokio::spawn(async move {
-        let disperser_pk = args.disperser_private_key.expose_secret();
+    let payload_form = match args.payload_form {
+        PolynomialForm::Eval => PayloadForm::Eval,
+        PolynomialForm::Coeff => PayloadForm::Coeff,
+    };
 
+    let payload_disperser_config = PayloadDisperserConfig {
+        polynomial_form: payload_form,
+        blob_version: args.blob_version,
+        cert_verifier_address: args.eigenda_cert_verifier_addr,
+        eth_rpc_url: SecretUrl::new(args.rpc_url.clone()),
+        disperser_rpc: args.disperser_rpc,
+        use_secure_grpc_flag: true,
+    };
+    let private_key = args
+        .disperser_private_key
+        .expose_secret()
+        .parse()
+        .map_err(|e| anyhow::anyhow!("Failed to parse private key: {}", e))?;
+    let signer = Signer::new(private_key);
+    let payload_disperser = Arc::new(
+        PayloadDisperser::new(payload_disperser_config, signer.clone())
+            .await
+            .map_err(|e| anyhow::anyhow!("Eigen client Error: {:?}", e))?,
+    );
+
+    let db_pool_clone = db_pool.clone();
+    let payload_disperser_clone = payload_disperser.clone();
+    let proof_gen_thread: JoinHandle<Result<()>> = tokio::spawn(async move {
         let payload_form = match args.payload_form {
             PolynomialForm::Eval => PayloadForm::Eval,
             PolynomialForm::Coeff => PayloadForm::Coeff,
         };
-
-        let payload_disperser_config = PayloadDisperserConfig {
-            polynomial_form: payload_form,
-            blob_version: args.blob_version,
-            cert_verifier_address: args.eigenda_cert_verifier_addr,
-            eth_rpc_url: SecretUrl::new(args.rpc_url.clone()),
-            disperser_rpc: args.disperser_rpc,
-            use_secure_grpc_flag: true,
-        };
-        let private_key = disperser_pk
-            .parse()
-            .map_err(|e| anyhow::anyhow!("Failed to parse private key: {}", e))?;
-        let signer = Signer::new(private_key);
-        let payload_disperser = PayloadDisperser::new(payload_disperser_config, signer.clone())
-            .await
-            .map_err(|e| anyhow::anyhow!("Eigen client Error: {:?}", e))?;
 
         let retriever_config = RelayPayloadRetrieverConfig {
             payload_form,
@@ -180,7 +188,9 @@ async fn main() -> Result<()> {
             let eigenda_cert: EigenDACert;
             loop {
                 let blob_key = BlobKey::from_hex(&blob_id)?;
-                let opt_eigenda_cert = payload_disperser.get_inclusion_data(&blob_key).await?;
+                let opt_eigenda_cert = payload_disperser_clone
+                    .get_inclusion_data(&blob_key)
+                    .await?;
                 if let Some(opt_eigenda_cert) = opt_eigenda_cert {
                     eigenda_cert = opt_eigenda_cert;
                     break;
@@ -250,12 +260,12 @@ async fn main() -> Result<()> {
         }
     });
 
-    let db_pool_clone = db_pool_clone.clone();
     let json_rpc_server_thread: JoinHandle<Result<()>> = tokio::spawn(async move {
         let mut io = IoHandler::new();
         let db_pool = db_pool_clone.clone();
         io.add_method("generate_proof", move |params: Params| {
             let db_pool = db_pool.clone();
+            let payload_disperser = payload_disperser.clone();
             async move {
                 let parsed: GenerateProofParams = params.parse().map_err(|_| {
                     jsonrpc_core::Error::invalid_params(
@@ -263,6 +273,18 @@ async fn main() -> Result<()> {
                     )
                 })?;
                 let blob_id = parsed.blob_id;
+
+                let blob_key = BlobKey::from_hex(&blob_id)
+                    .map_err(|_| jsonrpc_core::Error::invalid_params("Invalid blob ID"))?;
+                if payload_disperser
+                    .get_inclusion_data(&blob_key)
+                    .await
+                    .is_err()
+                {
+                    return Err(jsonrpc_core::Error::invalid_params(
+                        "Blob ID not found in EigenDA",
+                    ));
+                }
 
                 if proof_request_exists(db_pool.clone(), blob_id.clone())
                     .await
