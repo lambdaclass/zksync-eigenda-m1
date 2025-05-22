@@ -45,6 +45,20 @@ use tracing_subscriber::EnvFilter;
 use rust_kzg_bn254_prover::srs::SRS;
 use url::Url;
 
+use prometheus::{self, register_int_counter, Encoder, IntCounter, TextEncoder};
+
+// Prometheus metrics
+lazy_static::lazy_static! {
+static ref PROOF_GEN_REQ_COUNTER: IntCounter =
+    register_int_counter!("proof_requests", "Number of proof generation requests received").unwrap();
+
+    static ref PROOF_GEN_COUNTER: IntCounter =
+    register_int_counter!("proof_generations", "Number of proof generated").unwrap();
+
+    static ref PROOF_RET_REQ_COUNTER: IntCounter =
+    register_int_counter!("proof_retrievals", "Number of proof retrieval requests received").unwrap();
+}
+
 #[derive(Parser, Debug)]
 #[command(about, long_about = None)]
 struct Args {
@@ -247,6 +261,8 @@ async fn main() -> Result<()> {
 
             // Persist proof in database
             store_blob_proof(db_pool.clone(), blob_id, hex::encode(proof)).await?;
+
+            PROOF_GEN_COUNTER.inc();
         }
     });
 
@@ -257,6 +273,8 @@ async fn main() -> Result<()> {
         io.add_method("generate_proof", move |params: Params| {
             let db_pool = db_pool.clone();
             async move {
+                PROOF_GEN_REQ_COUNTER.inc();
+
                 let parsed: GenerateProofParams = params.parse().map_err(|_| {
                     jsonrpc_core::Error::invalid_params(
                         "Expected a single string parameter 'blob_id'",
@@ -296,6 +314,8 @@ async fn main() -> Result<()> {
 
         let db_pool = db_pool_clone.clone();
         io.add_method("get_proof", move |params: Params| {
+            PROOF_RET_REQ_COUNTER.inc();
+
             let db_pool = db_pool.clone();
             async move {
                 let parsed: GenerateProofParams = params.parse().map_err(|_| {
@@ -313,6 +333,18 @@ async fn main() -> Result<()> {
                     }
                 }
             }
+        });
+
+        io.add_method("metrics", async move |_| {
+            let mut buffer = Vec::new();
+            let encoder = TextEncoder::new();
+            let metric_families = prometheus::gather();
+            encoder
+                .encode(&metric_families, &mut buffer)
+                .map_err(|_| jsonrpc_core::Error::internal_error())?;
+            Ok(jsonrpc_core::Value::String(
+                String::from_utf8(buffer).unwrap(),
+            ))
         });
 
         let server = ServerBuilder::new(io)
