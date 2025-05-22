@@ -111,7 +111,7 @@ async fn main() -> Result<()> {
 
     let db_pool_clone = db_pool.clone();
     let mut proof_gen_thread: JoinHandle<Result<()>> = tokio::spawn(async move {
-        tokio::time::sleep(tokio::time::Duration::from_secs(15)).await;
+        let disperser_pk = args.disperser_private_key.expose_secret();
 
         let payload_form = match args.payload_form {
             PolynomialForm::Eval => PayloadForm::Eval,
@@ -246,7 +246,7 @@ async fn main() -> Result<()> {
 
     let db_pool_clone = db_pool_clone.clone();
     let mut json_rpc_server_thread: JoinHandle<Result<()>> = tokio::spawn(async move {
-        let server = RPCServer::builder().build(args.sidecar_url.parse::<SocketAddr>()?).await?;
+        let server = RPCServer::builder().build(sidecar_url.parse::<SocketAddr>()?).await?;
         let db_pool = db_pool_clone.clone();
         let mut module = RpcModule::new(());
         module.register_async_method("generate_proof", move |params, _ctx, _| {
