@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{sync::Arc, time::Duration};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use alloy_primitives::Address;
 use anyhow::Result;
@@ -23,8 +23,6 @@ use host::db::{
     proof_request_exists, retrieve_blob_id_proof, retrieve_next_pending_proof, store_blob_proof,
     store_blob_proof_request,
 };
-use jsonrpc_core::{IoHandler, Params};
-use jsonrpc_http_server::ServerBuilder;
 use methods::GUEST_ELF;
 use risc0_zkvm::{compute_image_id, sha::Digestible};
 use rust_eigenda_v2_client::{
@@ -44,6 +42,9 @@ use tracing_subscriber::EnvFilter;
 
 use rust_kzg_bn254_prover::srs::SRS;
 use url::Url;
+use tokio::sync::watch;
+use jsonrpsee::{server::{RpcModule, Server as RPCServer}, types::ErrorObject};
+
 
 #[derive(Parser, Debug)]
 #[command(about, long_about = None)]
@@ -91,16 +92,9 @@ struct GenerateProofParams {
     blob_id: String,
 }
 
-async fn flatten(handle: JoinHandle<Result<()>>) -> Result<()> {
-    match handle.await {
-        Ok(Ok(result)) => Ok(result),
-        Ok(Err(err)) => Err(err),
-        Err(_) => Err(anyhow::anyhow!("handling failed")),
-    }
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
+    let (shutdown_tx, mut shutdown_rx) = watch::channel(false);
     let args = Args::parse();
     let sidecar_url = args.sidecar_url.clone();
     let database_url = args.database_url.clone();
@@ -116,8 +110,8 @@ async fn main() -> Result<()> {
         .init();
 
     let db_pool_clone = db_pool.clone();
-    let proof_gen_thread: JoinHandle<Result<()>> = tokio::spawn(async move {
-        let disperser_pk = args.disperser_private_key.expose_secret();
+    let mut proof_gen_thread: JoinHandle<Result<()>> = tokio::spawn(async move {
+        tokio::time::sleep(tokio::time::Duration::from_secs(15)).await;
 
         let payload_form = match args.payload_form {
             PolynomialForm::Eval => PayloadForm::Eval,
@@ -251,31 +245,29 @@ async fn main() -> Result<()> {
     });
 
     let db_pool_clone = db_pool_clone.clone();
-    let json_rpc_server_thread: JoinHandle<Result<()>> = tokio::spawn(async move {
-        let mut io = IoHandler::new();
+    let mut json_rpc_server_thread: JoinHandle<Result<()>> = tokio::spawn(async move {
+        let server = RPCServer::builder().build(args.sidecar_url.parse::<SocketAddr>()?).await?;
         let db_pool = db_pool_clone.clone();
-        io.add_method("generate_proof", move |params: Params| {
+        let mut module = RpcModule::new(());
+        module.register_async_method("generate_proof", move |params, _ctx, _| {
             let db_pool = db_pool.clone();
             async move {
                 let parsed: GenerateProofParams = params.parse().map_err(|_| {
-                    jsonrpc_core::Error::invalid_params(
-                        "Expected a single string parameter 'blob_id'",
-                    )
+                    ErrorObject::owned(-32602, "Invalid params", Some("Expected 'blob_id'"))
                 })?;
                 let blob_id = parsed.blob_id;
 
                 if proof_request_exists(db_pool.clone(), blob_id.clone())
                     .await
                     .map_err(|_| {
-                        println!(
-                            "Failed checking if Blob Id {} already has a proof request",
-                            blob_id
-                        );
-                        jsonrpc_core::Error::internal_error()
+                        ErrorObject::owned(-32000, "Internal error", Some("Failed checking blob"))
                     })?
                 {
-                    return Err(jsonrpc_core::Error::invalid_params(
-                        "Blob ID already submitted",
+                    return Err(
+                        ErrorObject::owned(
+                            -32000,
+                            "Conflict",
+                            Some("Blob ID already submitted")
                     ));
                 }
 
@@ -283,52 +275,80 @@ async fn main() -> Result<()> {
                 store_blob_proof_request(db_pool.clone(), blob_id.clone())
                     .await
                     .map_err(|_| {
-                        println!("Failed sending Blob Id {} to prover thread", blob_id);
-                        jsonrpc_core::Error::internal_error()
+                        ErrorObject::owned(
+                            -32000,
+                            "Internal error",
+                            Some("Failed to store blob proof request"),
+                        )
                     })?;
 
-                Ok(jsonrpc_core::Value::String(format!(
+                Ok(format!(
                     "Generating Proof for {}",
                     blob_id
-                )))
+                ))
             }
-        });
-
+        })?;
         let db_pool = db_pool_clone.clone();
-        io.add_method("get_proof", move |params: Params| {
+        module.register_async_method("get_proof", move |params, _ctx, _| {
             let db_pool = db_pool.clone();
             async move {
                 let parsed: GenerateProofParams = params.parse().map_err(|_| {
-                    jsonrpc_core::Error::invalid_params(
-                        "Expected a single string parameter 'blob_id'",
-                    )
+                    ErrorObject::owned(-32602, "Invalid params", Some("Expected 'blob_id'"))
                 })?;
 
                 let blob_id = parsed.blob_id;
                 match retrieve_blob_id_proof(db_pool.clone(), blob_id.clone()).await {
-                    Some(proof) => return Ok(jsonrpc_core::Value::String(proof)),
+                    Some(proof) => return Ok(proof),
                     None => {
                         println!("Proof for Blob ID {} not found", blob_id);
-                        Err(jsonrpc_core::Error::internal_error())
+                        Err(ErrorObject::owned(
+                            -32000,
+                            "Proof not found",
+                            Some(format!("Proof for Blob ID {} not found", blob_id))))
                     }
                 }
             }
-        });
-
-        let server = ServerBuilder::new(io)
-            .start_http(&sidecar_url.clone().parse().unwrap())
-            .expect("Unable to start server");
-        println!("Running JSON RPC server");
-        server.wait();
+        })?;
+        let handle = server.start(module);
+        let handle_for_shutdown = handle.clone();
+        tokio::select! {
+            _ = handle.stopped() => {
+                println!("Server has stopped.");
+            }
+            _ = shutdown_rx.changed() => {
+                println!("Shutting down JSON-RPC server...");
+                handle_for_shutdown.stop()?;
+            }
+        }
         Ok(())
     });
 
-    match tokio::try_join!(flatten(proof_gen_thread), flatten(json_rpc_server_thread)) {
-        Ok(_) => {
-            println!("Threads finished successfully");
+    tokio::select! {
+        res = &mut proof_gen_thread => {
+            match res {
+                Ok(Ok(_)) => println!("Proof generation finished."),
+                Ok(Err(e)) => {
+                    println!("Error in proof generation: {:?}", e);
+                    shutdown_tx.send(true)?;
+                }
+                Err(e) => {
+                    println!("Error in proof generation: {:?}", e);
+                    shutdown_tx.send(true)?;
+                }
+            }
         }
-        Err(e) => {
-            println!("Error in threads: {:?}", e);
+        res = &mut json_rpc_server_thread => {
+            match res {
+                Ok(Ok(_)) => println!("JSON-RPC server finished."),
+                Ok(Err(e)) => {
+                    println!("Error in JSON-RPC server: {:?}", e);
+                    proof_gen_thread.abort();
+                }
+                Err(e) => {
+                    println!("Error in JSON-RPC server: {:?}", e);
+                    proof_gen_thread.abort();
+                }
+            }
         }
     }
     Ok(())

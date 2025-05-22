@@ -32,6 +32,5 @@ async-trait = { workspace = true }
 reqwest = { workspace = true }
 serde_json = { workspace = true }
 serde = { workspace = true }
-jsonrpc-core = { workspace = true }
-jsonrpc-http-server = { workspace = true }
 sqlx = { workspace = true }
+jsonrpsee = { workspace = true, features=["server"] }
