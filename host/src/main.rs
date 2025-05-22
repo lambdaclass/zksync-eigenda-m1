@@ -45,7 +45,9 @@ use tracing_subscriber::EnvFilter;
 use rust_kzg_bn254_prover::srs::SRS;
 use url::Url;
 
-use prometheus::{self, register_int_counter, Encoder, IntCounter, TextEncoder};
+use prometheus::{
+    self, register_histogram, register_int_counter, Encoder, Histogram, IntCounter, TextEncoder,
+};
 
 // Prometheus metrics
 lazy_static::lazy_static! {
@@ -57,6 +59,9 @@ static ref PROOF_GEN_REQ_COUNTER: IntCounter =
 
     static ref PROOF_RET_REQ_COUNTER: IntCounter =
     register_int_counter!("proof_retrievals", "Number of proof retrieval requests received").unwrap();
+
+    static ref PROOF_GEN_TIME_HISTOGRAM: Histogram =
+    register_histogram!("proof_generation_seconds", "Time taken to generate a proof in seconds").unwrap();
 }
 
 #[derive(Parser, Debug)]
@@ -189,6 +194,8 @@ async fn main() -> Result<()> {
                 }
             };
 
+            let timer = PROOF_GEN_TIME_HISTOGRAM.start_timer();
+
             println!("Proof gen thread: retrieved request to prove: {}", blob_id);
 
             let eigenda_cert: EigenDACert;
@@ -258,6 +265,8 @@ async fn main() -> Result<()> {
                 "Proof gen thread: finished generating proof for Blob Id {}",
                 blob_id
             );
+
+            timer.observe_duration();
 
             // Persist proof in database
             store_blob_proof(db_pool.clone(), blob_id, hex::encode(proof)).await?;
