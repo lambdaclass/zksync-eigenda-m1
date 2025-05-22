@@ -101,6 +101,10 @@ async fn flatten(handle: JoinHandle<Result<()>>) -> Result<()> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
+    tracing::info!("Starting EigenDA Sidecar");
     let args = Args::parse();
     let sidecar_url = args.sidecar_url.clone();
     let database_url = args.database_url.clone();
@@ -111,12 +115,10 @@ async fn main() -> Result<()> {
     let db_pool = Arc::new(Mutex::new(db_pool));
 
     let srs = SRS::new("resources/g1.point", SRS_ORDER, SRS_POINTS_TO_LOAD)?;
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env())
-        .init();
-
+    
     let db_pool_clone = db_pool.clone();
     let proof_gen_thread: JoinHandle<Result<()>> = tokio::spawn(async move {
+        tracing::info!("Starting proof generation thread");
         let disperser_pk = args.disperser_private_key.expose_secret();
 
         let payload_form = match args.payload_form {
@@ -160,22 +162,21 @@ async fn main() -> Result<()> {
         let relay_client = RelayClient::new(relay_client_config, signer).await?;
         let mut retriever = RelayPayloadRetriever::new(retriever_config, srs_config, relay_client)?;
 
-        println!("Running proof gen thread");
         let db_pool = db_pool.clone();
         loop {
             let blob_id = match retrieve_next_pending_proof(db_pool.clone()).await {
                 Ok(Some(blob_id)) => blob_id,
                 Ok(None) => {
-                    println!("No pending proofs found");
+                    tracing::debug!("No pending proofs found");
                     continue;
                 }
                 Err(e) => {
-                    println!("Error retrieving pending proof: {}", e);
+                    tracing::error!("Error retrieving pending proof: {}", e);
                     continue;
                 }
             };
 
-            println!("Proof gen thread: retrieved request to prove: {}", blob_id);
+            tracing::info!("Proof generation thread: retrieved request to prove: {}", blob_id);
 
             let eigenda_cert: EigenDACert;
             loop {
@@ -240,8 +241,8 @@ async fn main() -> Result<()> {
                 Token::FixedBytes(output.hash),
             ])]);
 
-            println!(
-                "Proof gen thread: finished generating proof for Blob Id {}",
+            tracing::info!(
+                "Proof generation thread: finished generating proof for Blob Id {}",
                 blob_id
             );
 
@@ -263,11 +264,12 @@ async fn main() -> Result<()> {
                     )
                 })?;
                 let blob_id = parsed.blob_id;
+                tracing::info!("Received request to generate proof for Blob Id {}", blob_id);
 
                 if proof_request_exists(db_pool.clone(), blob_id.clone())
                     .await
                     .map_err(|_| {
-                        println!(
+                        tracing::error!(
                             "Failed checking if Blob Id {} already has a proof request",
                             blob_id
                         );
@@ -283,7 +285,7 @@ async fn main() -> Result<()> {
                 store_blob_proof_request(db_pool.clone(), blob_id.clone())
                     .await
                     .map_err(|_| {
-                        println!("Failed sending Blob Id {} to prover thread", blob_id);
+                        tracing::error!("Failed sending Blob Id {} to prover thread", blob_id);
                         jsonrpc_core::Error::internal_error()
                     })?;
 
@@ -305,10 +307,11 @@ async fn main() -> Result<()> {
                 })?;
 
                 let blob_id = parsed.blob_id;
+                tracing::info!("Received request to get proof for Blob Id {}", blob_id);
                 match retrieve_blob_id_proof(db_pool.clone(), blob_id.clone()).await {
                     Some(proof) => return Ok(jsonrpc_core::Value::String(proof)),
                     None => {
-                        println!("Proof for Blob ID {} not found", blob_id);
+                        tracing::debug!("Proof for Blob ID {} not found", blob_id);
                         Err(jsonrpc_core::Error::internal_error())
                     }
                 }
@@ -318,17 +321,17 @@ async fn main() -> Result<()> {
         let server = ServerBuilder::new(io)
             .start_http(&sidecar_url.clone().parse().unwrap())
             .expect("Unable to start server");
-        println!("Running JSON RPC server");
+        tracing::info!("Running JSON RPC server");
         server.wait();
         Ok(())
     });
 
     match tokio::try_join!(flatten(proof_gen_thread), flatten(json_rpc_server_thread)) {
         Ok(_) => {
-            println!("Threads finished successfully");
+            tracing::info!("Threads finished successfully");
         }
         Err(e) => {
-            println!("Error in threads: {:?}", e);
+            tracing::error!("Error in threads: {:?}", e);
         }
     }
     Ok(())

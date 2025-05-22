@@ -4046,6 +4046,7 @@ dependencies = [
  "sqlx",
  "tokio",
  "tonic 0.12.3",
+ "tracing",
  "tracing-subscriber 0.3.19",
  "url",
 ]
