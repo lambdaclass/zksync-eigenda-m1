@@ -12,13 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use alloy_primitives::Address;
 use anyhow::Result;
 use clap::Parser;
 use common::{output::Output, polynomial_form::PolynomialForm};
 use ethabi::{ethereum_types::H160, Token};
+use host::db::{
+    proof_request_exists, retrieve_blob_id_proof, retrieve_next_pending_proof, store_blob_proof,
+    store_blob_proof_request,
+};
 use jsonrpc_core::{IoHandler, Params};
 use jsonrpc_http_server::ServerBuilder;
 use methods::GUEST_ELF;
@@ -34,10 +38,8 @@ use rust_eigenda_v2_client::{
 use rust_eigenda_v2_common::{EigenDACert, Payload, PayloadForm};
 use secrecy::{ExposeSecret, Secret};
 use serde::Deserialize;
-use tokio::{
-    sync::{mpsc, Mutex},
-    task::JoinHandle,
-};
+use sqlx::PgPool;
+use tokio::{sync::Mutex, task::JoinHandle};
 use tracing_subscriber::EnvFilter;
 
 use rust_kzg_bn254_prover::srs::SRS;
@@ -76,6 +78,9 @@ struct Args {
     /// URL where this sidecar should run
     #[arg(short, long, env = "SIDECAR_URL")]
     sidecar_url: String,
+    /// URL of the database
+    #[arg(short, long, env = "DATABASE_URL")]
+    database_url: String,
 }
 
 const SRS_ORDER: u32 = 268435456;
@@ -84,11 +89,6 @@ const SRS_POINTS_TO_LOAD: u32 = 1024 * 1024 * 2 / 32;
 #[derive(Deserialize)]
 struct GenerateProofParams {
     blob_id: String,
-}
-
-enum BlobIdProofStatus {
-    Queued,
-    Finished(String),
 }
 
 async fn flatten(handle: JoinHandle<Result<()>>) -> Result<()> {
@@ -103,18 +103,20 @@ async fn flatten(handle: JoinHandle<Result<()>>) -> Result<()> {
 async fn main() -> Result<()> {
     let args = Args::parse();
     let sidecar_url = args.sidecar_url.clone();
+    let database_url = args.database_url.clone();
+
+    let db_pool = PgPool::connect(&database_url)
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to connect to database: {}", e))?;
+    let db_pool = Arc::new(Mutex::new(db_pool));
+
     let srs = SRS::new("resources/g1.point", SRS_ORDER, SRS_POINTS_TO_LOAD)?;
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
-    let requests = Arc::new(Mutex::new(HashMap::new()));
-    let (tx, mut rx) = mpsc::channel(100);
-
-    let requests_clone = requests.clone();
+    let db_pool_clone = db_pool.clone();
     let proof_gen_thread: JoinHandle<Result<()>> = tokio::spawn(async move {
-        let requests = requests_clone;
-
         let disperser_pk = args.disperser_private_key.expose_secret();
 
         let payload_form = match args.payload_form {
@@ -159,13 +161,21 @@ async fn main() -> Result<()> {
         let mut retriever = RelayPayloadRetriever::new(retriever_config, srs_config, relay_client)?;
 
         println!("Running proof gen thread");
+        let db_pool = db_pool.clone();
         loop {
-            let blob_id: String = match rx.recv().await {
-                Some(blob_id) => blob_id,
-                None => continue,
+            let blob_id = match retrieve_next_pending_proof(db_pool.clone()).await {
+                Ok(Some(blob_id)) => blob_id,
+                Ok(None) => {
+                    println!("No pending proofs found");
+                    continue;
+                }
+                Err(e) => {
+                    println!("Error retrieving pending proof: {}", e);
+                    continue;
+                }
             };
 
-            println!("Proof gen thread: received request to prove: {}", blob_id);
+            println!("Proof gen thread: retrieved request to prove: {}", blob_id);
 
             let eigenda_cert: EigenDACert;
             loop {
@@ -234,19 +244,18 @@ async fn main() -> Result<()> {
                 "Proof gen thread: finished generating proof for Blob Id {}",
                 blob_id
             );
-            requests
-                .lock()
-                .await
-                .insert(blob_id, BlobIdProofStatus::Finished(hex::encode(proof)));
+
+            // Persist proof in database
+            store_blob_proof(db_pool.clone(), blob_id, hex::encode(proof)).await?;
         }
     });
 
+    let db_pool_clone = db_pool_clone.clone();
     let json_rpc_server_thread: JoinHandle<Result<()>> = tokio::spawn(async move {
         let mut io = IoHandler::new();
-        let new_requests = requests.clone();
+        let db_pool = db_pool_clone.clone();
         io.add_method("generate_proof", move |params: Params| {
-            let tx = tx.clone();
-            let requests = new_requests.clone();
+            let db_pool = db_pool.clone();
             async move {
                 let parsed: GenerateProofParams = params.parse().map_err(|_| {
                     jsonrpc_core::Error::invalid_params(
@@ -255,22 +264,28 @@ async fn main() -> Result<()> {
                 })?;
                 let blob_id = parsed.blob_id;
 
-                let mut requests_lock = requests.lock().await;
-                match requests_lock.get(&blob_id) {
-                    Some(_) => {
-                        return Err(jsonrpc_core::Error::invalid_params(
-                            "Blob ID already submitted",
-                        ));
-                    }
-                    None => {
-                        requests_lock.insert(blob_id.clone(), BlobIdProofStatus::Queued);
-                    }
+                if proof_request_exists(db_pool.clone(), blob_id.clone())
+                    .await
+                    .map_err(|_| {
+                        println!(
+                            "Failed checking if Blob Id {} already has a proof request",
+                            blob_id
+                        );
+                        jsonrpc_core::Error::internal_error()
+                    })?
+                {
+                    return Err(jsonrpc_core::Error::invalid_params(
+                        "Blob ID already submitted",
+                    ));
                 }
 
-                tx.send(blob_id.clone()).await.map_err(|_| {
-                    println!("Failed sending Blob Id {} to prover thread", blob_id);
-                    jsonrpc_core::Error::internal_error()
-                })?;
+                // Persist request in database
+                store_blob_proof_request(db_pool.clone(), blob_id.clone())
+                    .await
+                    .map_err(|_| {
+                        println!("Failed sending Blob Id {} to prover thread", blob_id);
+                        jsonrpc_core::Error::internal_error()
+                    })?;
 
                 Ok(jsonrpc_core::Value::String(format!(
                     "Generating Proof for {}",
@@ -279,28 +294,21 @@ async fn main() -> Result<()> {
             }
         });
 
+        let db_pool = db_pool_clone.clone();
         io.add_method("get_proof", move |params: Params| {
-            let requests = requests.clone();
+            let db_pool = db_pool.clone();
             async move {
                 let parsed: GenerateProofParams = params.parse().map_err(|_| {
                     jsonrpc_core::Error::invalid_params(
                         "Expected a single string parameter 'blob_id'",
                     )
                 })?;
-                let blob_id = parsed.blob_id;
 
-                let requests_lock = requests.lock().await;
-                match requests_lock.get(&blob_id) {
-                    Some(req) => match req {
-                        BlobIdProofStatus::Finished(proof) => {
-                            return Ok(jsonrpc_core::Value::String(proof.clone()))
-                        }
-                        BlobIdProofStatus::Queued => {
-                            return Err(jsonrpc_core::Error::internal_error())
-                        }
-                    },
+                let blob_id = parsed.blob_id;
+                match retrieve_blob_id_proof(db_pool.clone(), blob_id.clone()).await {
+                    Some(proof) => return Ok(jsonrpc_core::Value::String(proof)),
                     None => {
-                        println!("Blob ID {} not found", blob_id);
+                        println!("Proof for Blob ID {} not found", blob_id);
                         Err(jsonrpc_core::Error::internal_error())
                     }
                 }
