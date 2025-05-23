@@ -233,8 +233,6 @@ There are 3 things we want to achieve with the Risc0 guest. Each one of them is 
 2. We want to check that the commitment commits to that blob. 8.b
 3. We want to check that the blob is the same we dispersed on zksync. 8.c
 
-# TODO: Update to V2
-
 #### \* Call to verifyDACertV2 (8.a)
 
 On the host:
