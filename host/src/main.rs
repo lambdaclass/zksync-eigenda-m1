@@ -201,6 +201,8 @@ async fn main() -> Result<()> {
                     match payload_disperser_clone.get_inclusion_data(&blob_key).await {
                         Ok(opt_eigenda_cert) => opt_eigenda_cert,
                         Err(e) => {
+                            // Failing here means that either the blob ID is unknown to EigenDA
+                            // or it has failed. In either case, we should delete the request from the database.
                             println!("Error retrieving inclusion data: {}", e);
                             delete_blob_id_request(db_pool.clone(), blob_id.clone()).await?;
                             continue;
