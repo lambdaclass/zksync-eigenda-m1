@@ -1,4 +1,4 @@
-# ZKSYNC-EIGENDA M1
+# Zksync-EigenDA proving sidecar
 
 **Warning: This sidecar only works on a x86 machine with cuda support**
 
