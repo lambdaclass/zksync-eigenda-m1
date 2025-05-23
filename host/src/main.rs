@@ -46,7 +46,8 @@ use rust_kzg_bn254_prover::srs::SRS;
 use url::Url;
 
 use prometheus::{
-    self, register_histogram, register_int_counter, Encoder, Histogram, IntCounter, TextEncoder,
+    self, register_histogram_vec, register_int_counter, Encoder, HistogramVec, IntCounter,
+    TextEncoder,
 };
 
 // Prometheus metrics
@@ -60,9 +61,13 @@ static ref PROOF_GEN_REQ_COUNTER: IntCounter =
     static ref PROOF_RET_REQ_COUNTER: IntCounter =
     register_int_counter!("proof_retrievals", "Number of proof retrieval requests received").unwrap();
 
-    static ref PROOF_GEN_TIME_HISTOGRAM: Histogram =
-    register_histogram!("proof_generation_seconds", "Time taken to generate a proof in seconds").unwrap();
-}
+    static ref PROOF_GEN_TIME_HISTOGRAM: HistogramVec =
+        register_histogram_vec!(
+            "proof_generation_seconds",
+            "Time taken to generate a proof in seconds",
+            &["blob_id"]
+        ).unwrap();
+    }
 
 #[derive(Parser, Debug)]
 #[command(about, long_about = None)]
@@ -194,7 +199,9 @@ async fn main() -> Result<()> {
                 }
             };
 
-            let timer = PROOF_GEN_TIME_HISTOGRAM.start_timer();
+            let timer = PROOF_GEN_TIME_HISTOGRAM
+                .with_label_values(&[&blob_id])
+                .start_timer();
 
             println!("Proof gen thread: retrieved request to prove: {}", blob_id);
 
