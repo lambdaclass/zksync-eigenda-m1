@@ -35,3 +35,4 @@ serde = { workspace = true }
 jsonrpc-core = { workspace = true }
 jsonrpc-http-server = { workspace = true }
 sqlx = { workspace = true }
+tracing = { workspace = true }

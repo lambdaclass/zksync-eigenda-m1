@@ -39,7 +39,7 @@ pub async fn run_guest(
     // So we need to make this preflight call to populate the VM environment with the current state of the chain
     let mut contract = Contract::preflight(cert_verifier_wrapper_addr, &mut env);
     let returns = contract.call_builder(&call).call().await?;
-    println!(
+    tracing::info!(
         "Call {} Function on {:#} returns: {}",
         IVerifyBlob::verifyDACertV2Call::SIGNATURE,
         cert_verifier_wrapper_addr,
@@ -80,7 +80,7 @@ pub async fn run_guest(
         PayloadForm::Eval => PolynomialForm::Eval,
     };
 
-    println!("Running the guest with the constructed input...");
+    tracing::info!("Running the guest with the constructed input...");
     let session_info = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
         let env = ExecutorEnv::builder()
             .write(&input)?
