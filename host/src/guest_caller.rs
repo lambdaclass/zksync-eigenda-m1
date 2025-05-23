@@ -35,7 +35,7 @@ pub async fn run_guest(
 
     // Preflight the call to prepare the input that is required to execute the function in
     // the guest without RPC access. It also returns the result of the call.
-    // Risc0 steel creates an ethereum VM using revm, where it simulates the call to VerifyBlobV1.
+    // Risc0 steel creates an ethereum VM using revm, where it simulates the call to verifyDACertV2.
     // So we need to make this preflight call to populate the VM environment with the current state of the chain
     let mut contract = Contract::preflight(cert_verifier_wrapper_addr, &mut env);
     let returns = contract.call_builder(&call).call().await?;

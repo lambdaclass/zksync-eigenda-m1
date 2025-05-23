@@ -12,15 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::time::Duration;
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use alloy_primitives::Address;
 use anyhow::Result;
 use clap::Parser;
 use common::{output::Output, polynomial_form::PolynomialForm};
-use ethabi::ethereum_types::H160;
-use host::blob_id::get_blob_id;
+use ethabi::{ethereum_types::H160, Token};
+use jsonrpc_core::{IoHandler, Params};
+use jsonrpc_http_server::ServerBuilder;
 use methods::GUEST_ELF;
+use risc0_zkvm::{compute_image_id, sha::Digestible};
 use rust_eigenda_v2_client::{
     core::BlobKey,
     payload_disperser::{PayloadDisperser, PayloadDisperserConfig},
@@ -31,9 +33,13 @@ use rust_eigenda_v2_client::{
 };
 use rust_eigenda_v2_common::{EigenDACert, Payload, PayloadForm};
 use secrecy::{ExposeSecret, Secret};
+use serde::Deserialize;
+use tokio::{
+    sync::{mpsc, Mutex},
+    task::JoinHandle,
+};
 use tracing_subscriber::EnvFilter;
 
-use reqwest::Client;
 use rust_kzg_bn254_prover::srs::SRS;
 use url::Url;
 
@@ -43,27 +49,15 @@ struct Args {
     /// URL of the RPC endpoint
     #[arg(short, long, env = "RPC_URL")]
     rpc_url: Url,
-    /// Private key used to submit an ethereum transaction that verifys the proof
-    #[arg(short, long, env = "VERIFICATION_PRIVATE_KEY")]
-    verification_private_key: Secret<String>,
     /// Private key used to get inclusion data from the disperser
     #[arg(short, long, env = "DISPERSER_PRIVATE_KEY")]
     disperser_private_key: Secret<String>,
-    /// Address of the EigenDA Registry
-    #[arg(short, long, env = "EIGENDA_CERT_AND_BLOB_VERIFIER_ADDR")]
-    eigenda_cert_and_blob_verifier_addr: String,
     /// Rpc of the eigenda Disperser
     #[arg(short, long, env = "DISPERSER_RPC")]
     disperser_rpc: String,
     /// Blob Verifier Wrapper Contract Address
     #[arg(short, long, env = "CERT_VERIFIER_WRAPPER_ADDR")]
     cert_verifier_wrapper_addr: Address,
-    /// Url of the zksync's json api
-    #[arg(short, long, env = "API_URL")]
-    api_url: String,
-    /// Batch number where verification should start
-    #[arg(short, long, env = "START_BATCH", value_parser = clap::value_parser!(u64).range(1..))]
-    start_batch: u64,
     /// Payload Form of the dispersed blobs
     #[arg(value_enum, env = "PAYLOAD_FORM")]
     payload_form: PolynomialForm,
@@ -79,116 +73,255 @@ struct Args {
     /// Keys of the relay client
     #[arg(short, long, env = "RELAY_CLIENT_KEYS", value_delimiter = ',')]
     relay_client_keys: Vec<u32>,
+    /// URL where this sidecar should run
+    #[arg(short, long, env = "SIDECAR_URL")]
+    sidecar_url: String,
 }
 
 const SRS_ORDER: u32 = 268435456;
 const SRS_POINTS_TO_LOAD: u32 = 1024 * 1024 * 2 / 32;
 
+#[derive(Deserialize)]
+struct GenerateProofParams {
+    blob_id: String,
+}
+
+enum BlobIdProofStatus {
+    Queued,
+    Finished(String),
+}
+
+async fn flatten(handle: JoinHandle<Result<()>>) -> Result<()> {
+    match handle.await {
+        Ok(Ok(result)) => Ok(result),
+        Ok(Err(err)) => Err(err),
+        Err(_) => Err(anyhow::anyhow!("handling failed")),
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
+    let args = Args::parse();
+    let sidecar_url = args.sidecar_url.clone();
+    let srs = SRS::new("resources/g1.point", SRS_ORDER, SRS_POINTS_TO_LOAD)?;
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
-    let srs = SRS::new("resources/g1.point", SRS_ORDER, SRS_POINTS_TO_LOAD)?;
-    // Parse the command line arguments.
-    let args = Args::parse();
+    let requests = Arc::new(Mutex::new(HashMap::new()));
+    let (tx, mut rx) = mpsc::channel(100);
 
-    let disperser_pk = args.disperser_private_key.expose_secret();
+    let requests_clone = requests.clone();
+    let proof_gen_thread: JoinHandle<Result<()>> = tokio::spawn(async move {
+        let requests = requests_clone;
 
-    let payload_form = match args.payload_form {
-        PolynomialForm::Eval => PayloadForm::Eval,
-        PolynomialForm::Coeff => PayloadForm::Coeff,
-    };
+        let disperser_pk = args.disperser_private_key.expose_secret();
 
-    let payload_disperser_config = PayloadDisperserConfig {
-        polynomial_form: payload_form,
-        blob_version: args.blob_version,
-        cert_verifier_address: args.eigenda_cert_verifier_addr,
-        eth_rpc_url: SecretUrl::new(args.rpc_url.clone()),
-        disperser_rpc: args.disperser_rpc,
-        use_secure_grpc_flag: true,
-    };
-    let private_key = disperser_pk
-        .parse()
-        .map_err(|e| anyhow::anyhow!("Failed to parse private key: {}", e))?;
-    let signer = Signer::new(private_key);
-    let payload_disperser = PayloadDisperser::new(payload_disperser_config, signer.clone())
-        .await
-        .map_err(|e| anyhow::anyhow!("Eigen client Error: {:?}", e))?;
+        let payload_form = match args.payload_form {
+            PolynomialForm::Eval => PayloadForm::Eval,
+            PolynomialForm::Coeff => PayloadForm::Coeff,
+        };
 
-    let retriever_config = RelayPayloadRetrieverConfig {
-        payload_form,
-        retrieval_timeout_secs: Duration::from_secs(60),
-    };
-    let srs_config = SRSConfig {
-        source_path: "resources/g1.point".to_string(),
-        order: SRS_ORDER,
-        points_to_load: SRS_POINTS_TO_LOAD,
-    };
-
-    let relay_client_config = RelayClientConfig {
-        max_grpc_message_size: SRS_ORDER as usize,
-        relay_clients_keys: args.relay_client_keys,
-        relay_registry_address: args.eigenda_relay_registry_addr,
-        eth_rpc_url: SecretUrl::new(args.rpc_url.clone()),
-    };
-
-    let relay_client = RelayClient::new(relay_client_config, signer).await?;
-    let mut retriever = RelayPayloadRetriever::new(retriever_config, srs_config, relay_client)?;
-
-    let reqwest_client = Client::new();
-
-    let mut current_batch = args.start_batch;
-
-    loop {
-        let blob_id: String =
-            get_blob_id(current_batch, args.api_url.clone(), &reqwest_client).await?;
-        let eigenda_cert: EigenDACert;
-
-        loop {
-            let blob_key = BlobKey::from_hex(&blob_id)?;
-            let opt_eigenda_cert = payload_disperser.get_inclusion_data(&blob_key).await?;
-            if let Some(opt_eigenda_cert) = opt_eigenda_cert {
-                eigenda_cert = opt_eigenda_cert;
-                break;
-            }
-            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-        }
-
-        // Raw bytes dispersed by zksync sequencer to EigenDA
-        let payload: Payload = retriever
-            .get_payload(eigenda_cert.clone())
+        let payload_disperser_config = PayloadDisperserConfig {
+            polynomial_form: payload_form,
+            blob_version: args.blob_version,
+            cert_verifier_address: args.eigenda_cert_verifier_addr,
+            eth_rpc_url: SecretUrl::new(args.rpc_url.clone()),
+            disperser_rpc: args.disperser_rpc,
+            use_secure_grpc_flag: true,
+        };
+        let private_key = disperser_pk
+            .parse()
+            .map_err(|e| anyhow::anyhow!("Failed to parse private key: {}", e))?;
+        let signer = Signer::new(private_key);
+        let payload_disperser = PayloadDisperser::new(payload_disperser_config, signer.clone())
             .await
-            .map_err(|_| anyhow::anyhow!("Not blob data"))?;
+            .map_err(|e| anyhow::anyhow!("Eigen client Error: {:?}", e))?;
 
-        let blob_data = payload.serialize();
-
-        let result = host::guest_caller::run_guest(
-            eigenda_cert.clone(),
-            &srs,
-            blob_data,
-            args.rpc_url.clone(),
-            args.cert_verifier_wrapper_addr.clone(),
+        let retriever_config = RelayPayloadRetrieverConfig {
             payload_form,
-        )
-        .await?;
+            retrieval_timeout_secs: Duration::from_secs(60),
+        };
+        let srs_config = SRSConfig {
+            source_path: "resources/g1.point".to_string(),
+            order: SRS_ORDER,
+            points_to_load: SRS_POINTS_TO_LOAD,
+        };
 
-        let output: Output = result.receipt.journal.decode()?;
+        let relay_client_config = RelayClientConfig {
+            max_grpc_message_size: SRS_ORDER as usize,
+            relay_clients_keys: args.relay_client_keys,
+            relay_registry_address: args.eigenda_relay_registry_addr,
+            eth_rpc_url: SecretUrl::new(args.rpc_url.clone()),
+        };
 
-        host::prove_risc0::prove_risc0_proof(
-            result,
-            GUEST_ELF,
-            args.verification_private_key.clone(),
-            args.rpc_url.clone(),
-            args.eigenda_cert_and_blob_verifier_addr.clone(),
-            output.hash,
-            eigenda_cert
-                .to_bytes()
-                .map_err(|_| anyhow::anyhow!("Failed to serialize EigenDACert"))?,
-        )
-        .await?;
+        let relay_client = RelayClient::new(relay_client_config, signer).await?;
+        let mut retriever = RelayPayloadRetriever::new(retriever_config, srs_config, relay_client)?;
 
-        current_batch += 1;
+        println!("Running proof gen thread");
+        loop {
+            let blob_id: String = match rx.recv().await {
+                Some(blob_id) => blob_id,
+                None => continue,
+            };
+
+            println!("Proof gen thread: received request to prove: {}", blob_id);
+
+            let eigenda_cert: EigenDACert;
+            loop {
+                let blob_key = BlobKey::from_hex(&blob_id)?;
+                let opt_eigenda_cert = payload_disperser.get_inclusion_data(&blob_key).await?;
+                if let Some(opt_eigenda_cert) = opt_eigenda_cert {
+                    eigenda_cert = opt_eigenda_cert;
+                    break;
+                }
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+            }
+
+            // Raw bytes dispersed by zksync sequencer to EigenDA
+            let payload: Payload = retriever
+                .get_payload(eigenda_cert.clone())
+                .await
+                .map_err(|_| anyhow::anyhow!("Not blob data"))?;
+
+            let blob_data = payload.serialize();
+
+            let result = host::guest_caller::run_guest(
+                eigenda_cert.clone(),
+                &srs,
+                blob_data,
+                args.rpc_url.clone(),
+                args.cert_verifier_wrapper_addr.clone(),
+                payload_form,
+            )
+            .await?;
+
+            let output: Output = result.receipt.journal.decode()?;
+
+            let image_id = compute_image_id(GUEST_ELF)?;
+            let image_id: risc0_zkvm::sha::Digest = image_id.into();
+            let image_id = image_id.as_bytes().to_vec();
+
+            let block_proof = match result.receipt.inner.groth16() {
+                Ok(inner) => {
+                    // The SELECTOR is used to perform an extra check inside the groth16 verifier contract.
+                    let mut selector = hex::encode(
+                        inner
+                            .verifier_parameters
+                            .as_bytes()
+                            .get(..4)
+                            .ok_or(anyhow::anyhow!("verifier parameters too short"))?,
+                    );
+                    let seal = hex::encode(inner.clone().seal);
+                    selector.push_str(&seal);
+                    hex::decode(selector)?
+                }
+                Err(_) => vec![0u8; 4],
+            };
+
+            let journal_digest = Digestible::digest(&result.receipt.journal)
+                .as_bytes()
+                .to_vec();
+
+            let proof = ethabi::encode(&[Token::Tuple(vec![
+                Token::Bytes(block_proof),
+                Token::FixedBytes(image_id),
+                Token::FixedBytes(journal_digest),
+                Token::FixedBytes(output.hash),
+            ])]);
+
+            println!(
+                "Proof gen thread: finished generating proof for Blob Id {}",
+                blob_id
+            );
+            requests
+                .lock()
+                .await
+                .insert(blob_id, BlobIdProofStatus::Finished(hex::encode(proof)));
+        }
+    });
+
+    let json_rpc_server_thread: JoinHandle<Result<()>> = tokio::spawn(async move {
+        let mut io = IoHandler::new();
+        let new_requests = requests.clone();
+        io.add_method("generate_proof", move |params: Params| {
+            let tx = tx.clone();
+            let requests = new_requests.clone();
+            async move {
+                let parsed: GenerateProofParams = params.parse().map_err(|_| {
+                    jsonrpc_core::Error::invalid_params(
+                        "Expected a single string parameter 'blob_id'",
+                    )
+                })?;
+                let blob_id = parsed.blob_id;
+
+                let mut requests_lock = requests.lock().await;
+                match requests_lock.get(&blob_id) {
+                    Some(_) => {
+                        return Err(jsonrpc_core::Error::invalid_params(
+                            "Blob ID already submitted",
+                        ));
+                    }
+                    None => {
+                        requests_lock.insert(blob_id.clone(), BlobIdProofStatus::Queued);
+                    }
+                }
+
+                tx.send(blob_id.clone()).await.map_err(|_| {
+                    println!("Failed sending Blob Id {} to prover thread", blob_id);
+                    jsonrpc_core::Error::internal_error()
+                })?;
+
+                Ok(jsonrpc_core::Value::String(format!(
+                    "Generating Proof for {}",
+                    blob_id
+                )))
+            }
+        });
+
+        io.add_method("get_proof", move |params: Params| {
+            let requests = requests.clone();
+            async move {
+                let parsed: GenerateProofParams = params.parse().map_err(|_| {
+                    jsonrpc_core::Error::invalid_params(
+                        "Expected a single string parameter 'blob_id'",
+                    )
+                })?;
+                let blob_id = parsed.blob_id;
+
+                let requests_lock = requests.lock().await;
+                match requests_lock.get(&blob_id) {
+                    Some(req) => match req {
+                        BlobIdProofStatus::Finished(proof) => {
+                            return Ok(jsonrpc_core::Value::String(proof.clone()))
+                        }
+                        BlobIdProofStatus::Queued => {
+                            return Err(jsonrpc_core::Error::internal_error())
+                        }
+                    },
+                    None => {
+                        println!("Blob ID {} not found", blob_id);
+                        Err(jsonrpc_core::Error::internal_error())
+                    }
+                }
+            }
+        });
+
+        let server = ServerBuilder::new(io)
+            .start_http(&sidecar_url.clone().parse().unwrap())
+            .expect("Unable to start server");
+        println!("Running JSON RPC server");
+        server.wait();
+        Ok(())
+    });
+
+    match tokio::try_join!(flatten(proof_gen_thread), flatten(json_rpc_server_thread)) {
+        Ok(_) => {
+            println!("Threads finished successfully");
+        }
+        Err(e) => {
+            println!("Error in threads: {:?}", e);
+        }
     }
+    Ok(())
 }
