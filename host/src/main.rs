@@ -20,7 +20,7 @@ use clap::Parser;
 use common::{output::Output, polynomial_form::PolynomialForm};
 use ethabi::{ethereum_types::H160, Token};
 use host::db::{
-    mark_blob_proof_request_invalid, proof_request_exists, retrieve_blob_id_proof,
+    mark_blob_proof_request_failed, proof_request_exists, retrieve_blob_id_proof,
     retrieve_next_pending_proof, store_blob_proof, store_blob_proof_request,
 };
 use jsonrpc_core::{IoHandler, Params};
@@ -292,7 +292,7 @@ async fn main() -> Result<()> {
                         blob_id, e
                     );
                     // Mark the proof request as invalid in the database
-                    mark_blob_proof_request_invalid(db_pool.clone(), blob_id.clone()).await?;
+                    mark_blob_proof_request_failed(db_pool.clone(), blob_id.clone()).await?;
                 }
             };
         }
