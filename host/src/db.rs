@@ -4,27 +4,6 @@ use anyhow::Result;
 use sqlx::{Pool, Postgres, Row};
 use tokio::sync::Mutex;
 
-/// Retrieves pending proofs from the database.
-/// This function is useful for case the sidecar is restarted
-/// some proof were left pending.
-pub async fn retrieve_pending_proofs(db_pool: Arc<Mutex<Pool<Postgres>>>) -> Result<Vec<String>> {
-    let db_lock = db_pool.lock().await;
-    let pending_proofs = sqlx::query(
-        r#"
-        SELECT BLOB_ID FROM BLOB_PROOFS WHERE PROOF IS NULL ORDER BY ID ASC;
-        "#,
-    )
-    .fetch_all(&*db_lock)
-    .await?;
-
-    let mut blob_ids = Vec::new();
-    for pending_proof in pending_proofs {
-        let blob_id: String = pending_proof.get("blob_id");
-        blob_ids.push(blob_id);
-    }
-    Ok(blob_ids)
-}
-
 /// Retrieves the next pending proof from the database.
 pub async fn retrieve_next_pending_proof(
     db_pool: Arc<Mutex<Pool<Postgres>>>,
@@ -32,7 +11,10 @@ pub async fn retrieve_next_pending_proof(
     let db_lock = db_pool.lock().await;
     let pending_proof = sqlx::query(
         r#"
-        SELECT BLOB_ID FROM BLOB_PROOFS WHERE PROOF IS NULL ORDER BY ID ASC LIMIT 1;
+        SELECT BLOB_ID FROM BLOB_PROOFS 
+        WHERE PROOF IS NULL
+        AND FAILED IS NOT TRUE
+        ORDER BY ID ASC LIMIT 1;
         "#,
     )
     .fetch_optional(&*db_lock)
@@ -109,12 +91,12 @@ pub async fn store_blob_proof(
 pub async fn retrieve_blob_id_proof(
     db_pool: Arc<Mutex<Pool<Postgres>>>,
     blob_id: String,
-) -> Option<String> {
+) -> Option<(Option<String>, bool)> {
     let db_lock = db_pool.lock().await;
 
-    let result = sqlx::query(
+    sqlx::query(
         r#"
-            SELECT PROOF FROM BLOB_PROOFS
+            SELECT PROOF, FAILED FROM BLOB_PROOFS
             WHERE BLOB_ID = $1
             "#,
     )
@@ -122,7 +104,29 @@ pub async fn retrieve_blob_id_proof(
     .fetch_optional(&*db_lock)
     .await
     .ok()?
-    .map(|row| row.get::<Option<String>, _>("proof"))?;
+    .map(|row| {
+        let proof: Option<String> = row.get("proof");
+        let failed: bool = row.get("failed");
+        (proof, failed)
+    })
+}
 
-    result
+/// Marks a blob proof request as failed in the database.
+pub async fn mark_blob_proof_request_failed(
+    db_pool: Arc<Mutex<Pool<Postgres>>>,
+    blob_id: String,
+) -> Result<()> {
+    let db_lock = db_pool.lock().await;
+
+    sqlx::query(
+        r#"
+            UPDATE BLOB_PROOFS
+            SET FAILED = TRUE
+            WHERE BLOB_ID = $1
+            "#,
+    )
+    .bind(blob_id)
+    .execute(&*db_lock)
+    .await?;
+    Ok(())
 }
