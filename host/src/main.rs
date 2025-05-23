@@ -258,10 +258,12 @@ async fn main() -> Result<()> {
                 Ok(Some(blob_id)) => blob_id,
                 Ok(None) => {
                     println!("No pending proofs found");
+                    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                     continue;
                 }
                 Err(e) => {
                     println!("Error retrieving pending proof: {}", e);
+                    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                     continue;
                 }
             };
