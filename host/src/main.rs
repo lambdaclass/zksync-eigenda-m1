@@ -186,6 +186,7 @@ async fn main() -> Result<()> {
                     eigenda_cert = opt_eigenda_cert;
                     break;
                 }
+                tracing::debug!("{:?} still has no inclusion data available", blob_key);
                 tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             }
 
