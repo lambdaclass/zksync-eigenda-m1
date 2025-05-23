@@ -20,8 +20,8 @@ use clap::Parser;
 use common::{output::Output, polynomial_form::PolynomialForm};
 use ethabi::{ethereum_types::H160, Token};
 use host::db::{
-    proof_request_exists, retrieve_blob_id_proof, retrieve_next_pending_proof, store_blob_proof,
-    store_blob_proof_request,
+    delete_blob_id_request, proof_request_exists, retrieve_blob_id_proof,
+    retrieve_next_pending_proof, store_blob_proof, store_blob_proof_request,
 };
 use jsonrpc_core::{IoHandler, Params};
 use jsonrpc_http_server::ServerBuilder;
@@ -187,10 +187,25 @@ async fn main() -> Result<()> {
 
             let eigenda_cert: EigenDACert;
             loop {
-                let blob_key = BlobKey::from_hex(&blob_id)?;
-                let opt_eigenda_cert = payload_disperser_clone
-                    .get_inclusion_data(&blob_key)
-                    .await?;
+                let blob_key = match BlobKey::from_hex(&blob_id) {
+                    Ok(blob_key) => blob_key,
+                    Err(_) => {
+                        // This should not happen as the jsonrpc server should validate the input
+                        // before storing it in the database.
+                        println!("Invalid blob ID: {}", blob_id.clone());
+                        delete_blob_id_request(db_pool.clone(), blob_id.clone()).await?;
+                        continue;
+                    }
+                };
+                let opt_eigenda_cert =
+                    match payload_disperser_clone.get_inclusion_data(&blob_key).await {
+                        Ok(opt_eigenda_cert) => opt_eigenda_cert,
+                        Err(e) => {
+                            println!("Error retrieving inclusion data: {}", e);
+                            delete_blob_id_request(db_pool.clone(), blob_id.clone()).await?;
+                            continue;
+                        }
+                    };
                 if let Some(opt_eigenda_cert) = opt_eigenda_cert {
                     eigenda_cert = opt_eigenda_cert;
                     break;
@@ -199,10 +214,15 @@ async fn main() -> Result<()> {
             }
 
             // Raw bytes dispersed by zksync sequencer to EigenDA
-            let payload: Payload = retriever
-                .get_payload(eigenda_cert.clone())
-                .await
-                .map_err(|_| anyhow::anyhow!("Not blob data"))?;
+            let payload: Payload = match retriever.get_payload(eigenda_cert.clone()).await {
+                Ok(payload) => payload,
+                Err(_) => {
+                    // The requested blob ID is in EigenDA, but it is not blob data.
+                    println!("Blob ID {} is not blob data", blob_id);
+                    delete_blob_id_request(db_pool.clone(), blob_id.clone()).await?;
+                    continue;
+                }
+            };
 
             let blob_data = payload.serialize();
 

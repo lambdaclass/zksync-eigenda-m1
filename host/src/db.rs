@@ -126,3 +126,22 @@ pub async fn retrieve_blob_id_proof(
 
     result
 }
+
+/// Deletes a blob id request from the database.
+pub async fn delete_blob_id_request(
+    db_pool: Arc<Mutex<Pool<Postgres>>>,
+    blob_id: String,
+) -> Result<()> {
+    let db_lock = db_pool.lock().await;
+
+    sqlx::query(
+        r#"
+            DELETE FROM BLOB_PROOFS
+            WHERE BLOB_ID = $1
+            "#,
+    )
+    .bind(blob_id)
+    .execute(&*db_lock)
+    .await?;
+    Ok(())
+}
