@@ -20,7 +20,7 @@ use clap::Parser;
 use common::{output::Output, polynomial_form::PolynomialForm};
 use ethabi::{ethereum_types::H160, Token};
 use host::db::{
-    delete_blob_id_request, proof_request_exists, retrieve_blob_id_proof,
+    mark_blob_proof_request_invalid, proof_request_exists, retrieve_blob_id_proof,
     retrieve_next_pending_proof, store_blob_proof, store_blob_proof_request,
 };
 use jsonrpc_core::{IoHandler, Params};
@@ -99,6 +99,82 @@ async fn flatten(handle: JoinHandle<Result<()>>) -> Result<()> {
     }
 }
 
+async fn generate_proof(
+    blob_id: String,
+    payload_disperser: Arc<PayloadDisperser>,
+    retriever: Arc<Mutex<RelayPayloadRetriever>>,
+    srs: &SRS,
+    rpc_url: Url,
+    cert_verifier_wrapper_addr: Address,
+    payload_form: PayloadForm,
+) -> Result<Vec<u8>> {
+    let eigenda_cert: EigenDACert;
+    loop {
+        let blob_key = BlobKey::from_hex(&blob_id)?;
+        let opt_eigenda_cert = payload_disperser.get_inclusion_data(&blob_key).await?;
+        if let Some(opt_eigenda_cert) = opt_eigenda_cert {
+            eigenda_cert = opt_eigenda_cert;
+            break;
+        }
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    }
+
+    // Raw bytes dispersed by zksync sequencer to EigenDA
+    let payload: Payload = retriever
+        .lock()
+        .await
+        .get_payload(eigenda_cert.clone())
+        .await?;
+
+    let blob_data = payload.serialize();
+
+    let result = host::guest_caller::run_guest(
+        eigenda_cert.clone(),
+        srs,
+        blob_data,
+        rpc_url,
+        cert_verifier_wrapper_addr,
+        payload_form,
+    )
+    .await?;
+
+    let output: Output = result.receipt.journal.decode()?;
+
+    let image_id = compute_image_id(GUEST_ELF)?;
+    let image_id: risc0_zkvm::sha::Digest = image_id;
+    let image_id = image_id.as_bytes().to_vec();
+
+    let block_proof = match result.receipt.inner.groth16() {
+        Ok(inner) => {
+            // The SELECTOR is used to perform an extra check inside the groth16 verifier contract.
+            let mut selector = hex::encode(
+                inner
+                    .verifier_parameters
+                    .as_bytes()
+                    .get(..4)
+                    .ok_or(anyhow::anyhow!("verifier parameters too short"))?,
+            );
+            let seal = hex::encode(inner.clone().seal);
+            selector.push_str(&seal);
+            hex::decode(selector)?
+        }
+        Err(_) => vec![0u8; 4],
+    };
+
+    let journal_digest = Digestible::digest(&result.receipt.journal)
+        .as_bytes()
+        .to_vec();
+
+    let proof = ethabi::encode(&[Token::Tuple(vec![
+        Token::Bytes(block_proof),
+        Token::FixedBytes(image_id),
+        Token::FixedBytes(journal_digest),
+        Token::FixedBytes(output.hash),
+    ])]);
+
+    Ok(proof)
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
@@ -166,7 +242,14 @@ async fn main() -> Result<()> {
         };
 
         let relay_client = RelayClient::new(relay_client_config, signer).await?;
-        let mut retriever = RelayPayloadRetriever::new(retriever_config, srs_config, relay_client)?;
+        let retriever = Arc::new(Mutex::new(RelayPayloadRetriever::new(
+            retriever_config,
+            srs_config,
+            relay_client,
+        )?));
+
+        let rpc_url = args.rpc_url.clone();
+        let cert_verifier_wrapper_addr = args.cert_verifier_wrapper_addr;
 
         println!("Running proof gen thread");
         let db_pool = db_pool.clone();
@@ -185,106 +268,38 @@ async fn main() -> Result<()> {
 
             println!("Proof gen thread: retrieved request to prove: {}", blob_id);
 
-            let eigenda_cert: EigenDACert;
-            loop {
-                let blob_key = match BlobKey::from_hex(&blob_id) {
-                    Ok(blob_key) => blob_key,
-                    Err(_) => {
-                        // This should not happen as the jsonrpc server should validate the input
-                        // before storing it in the database.
-                        println!("Invalid blob ID: {}", blob_id.clone());
-                        delete_blob_id_request(db_pool.clone(), blob_id.clone()).await?;
-                        continue;
-                    }
-                };
-                let opt_eigenda_cert =
-                    match payload_disperser_clone.get_inclusion_data(&blob_key).await {
-                        Ok(opt_eigenda_cert) => opt_eigenda_cert,
-                        Err(e) => {
-                            // Failing here means that either the blob ID is unknown to EigenDA
-                            // or it has failed. In either case, we should delete the request from the database.
-                            println!("Error retrieving inclusion data: {}", e);
-                            delete_blob_id_request(db_pool.clone(), blob_id.clone()).await?;
-                            continue;
-                        }
-                    };
-                if let Some(opt_eigenda_cert) = opt_eigenda_cert {
-                    eigenda_cert = opt_eigenda_cert;
-                    break;
-                }
-                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-            }
-
-            // Raw bytes dispersed by zksync sequencer to EigenDA
-            let payload: Payload = match retriever.get_payload(eigenda_cert.clone()).await {
-                Ok(payload) => payload,
-                Err(_) => {
-                    // The requested blob ID is in EigenDA, but it is not blob data.
-                    println!("Blob ID {} is not blob data", blob_id);
-                    delete_blob_id_request(db_pool.clone(), blob_id.clone()).await?;
-                    continue;
-                }
-            };
-
-            let blob_data = payload.serialize();
-
-            let result = host::guest_caller::run_guest(
-                eigenda_cert.clone(),
+            match generate_proof(
+                blob_id.clone(),
+                payload_disperser.clone(),
+                retriever.clone(),
                 &srs,
-                blob_data,
-                args.rpc_url.clone(),
-                args.cert_verifier_wrapper_addr.clone(),
+                rpc_url.clone(),
+                cert_verifier_wrapper_addr,
                 payload_form,
             )
-            .await?;
-
-            let output: Output = result.receipt.journal.decode()?;
-
-            let image_id = compute_image_id(GUEST_ELF)?;
-            let image_id: risc0_zkvm::sha::Digest = image_id.into();
-            let image_id = image_id.as_bytes().to_vec();
-
-            let block_proof = match result.receipt.inner.groth16() {
-                Ok(inner) => {
-                    // The SELECTOR is used to perform an extra check inside the groth16 verifier contract.
-                    let mut selector = hex::encode(
-                        inner
-                            .verifier_parameters
-                            .as_bytes()
-                            .get(..4)
-                            .ok_or(anyhow::anyhow!("verifier parameters too short"))?,
-                    );
-                    let seal = hex::encode(inner.clone().seal);
-                    selector.push_str(&seal);
-                    hex::decode(selector)?
+            .await
+            {
+                Ok(proof) => {
+                    println!("Proof gen thread: generated proof for Blob Id {}", blob_id);
+                    // Persist proof in database
+                    store_blob_proof(db_pool.clone(), blob_id, hex::encode(proof)).await?;
                 }
-                Err(_) => vec![0u8; 4],
+                Err(e) => {
+                    println!(
+                        "Proof gen thread: error generating proof for Blob Id: {}, error: {}",
+                        blob_id, e
+                    );
+                    // Mark the proof request as invalid in the database
+                    mark_blob_proof_request_invalid(db_pool.clone(), blob_id.clone()).await?;
+                }
             };
-
-            let journal_digest = Digestible::digest(&result.receipt.journal)
-                .as_bytes()
-                .to_vec();
-
-            let proof = ethabi::encode(&[Token::Tuple(vec![
-                Token::Bytes(block_proof),
-                Token::FixedBytes(image_id),
-                Token::FixedBytes(journal_digest),
-                Token::FixedBytes(output.hash),
-            ])]);
-
-            println!(
-                "Proof gen thread: finished generating proof for Blob Id {}",
-                blob_id
-            );
-
-            // Persist proof in database
-            store_blob_proof(db_pool.clone(), blob_id, hex::encode(proof)).await?;
         }
     });
 
     let json_rpc_server_thread: JoinHandle<Result<()>> = tokio::spawn(async move {
         let mut io = IoHandler::new();
         let db_pool = db_pool_clone.clone();
+        let payload_disperser = payload_disperser_clone.clone();
         io.add_method("generate_proof", move |params: Params| {
             let db_pool = db_pool.clone();
             let payload_disperser = payload_disperser.clone();
@@ -350,7 +365,14 @@ async fn main() -> Result<()> {
 
                 let blob_id = parsed.blob_id;
                 match retrieve_blob_id_proof(db_pool.clone(), blob_id.clone()).await {
-                    Some(proof) => return Ok(jsonrpc_core::Value::String(proof)),
+                    Some((proof, valid)) => {
+                        if !valid {
+                            return Err(jsonrpc_core::Error::invalid_params(
+                                "Proof request for Blob ID was not valid",
+                            ));
+                        }
+                        Ok(jsonrpc_core::Value::String(proof))
+                    }
                     None => {
                         println!("Proof for Blob ID {} not found", blob_id);
                         Err(jsonrpc_core::Error::internal_error())
