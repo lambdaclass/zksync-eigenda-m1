@@ -56,7 +56,7 @@ static ref PROOF_GEN_REQ_COUNTER: IntCounter =
     register_int_counter!("proof_requests", "Number of proof generation requests received").unwrap();
 
     static ref PROOF_GEN_COUNTER: IntCounter =
-    register_int_counter!("proof_generations", "Number of proof generated").unwrap();
+    register_int_counter!("proof_generations", "Number of proofs generated").unwrap();
 
     static ref PROOF_RET_REQ_COUNTER: IntCounter =
     register_int_counter!("proof_retrievals", "Number of proof retrieval requests received").unwrap();
