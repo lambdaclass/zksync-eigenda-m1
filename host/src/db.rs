@@ -91,12 +91,12 @@ pub async fn store_blob_proof(
 pub async fn retrieve_blob_id_proof(
     db_pool: Arc<Mutex<Pool<Postgres>>>,
     blob_id: String,
-) -> Option<(String, bool)> {
+) -> Option<(Option<String>, bool)> {
     let db_lock = db_pool.lock().await;
 
     sqlx::query(
         r#"
-            SELECT (PROOF, FAILED) FROM BLOB_PROOFS
+            SELECT PROOF, FAILED FROM BLOB_PROOFS
             WHERE BLOB_ID = $1
             "#,
     )
@@ -104,7 +104,11 @@ pub async fn retrieve_blob_id_proof(
     .fetch_optional(&*db_lock)
     .await
     .ok()?
-    .map(|row| row.get::<Option<(String, bool)>, _>("proof"))?
+    .map(|row| {
+        let proof: Option<String> = row.get("proof");
+        let failed: bool = row.get("failed");
+        (proof, failed)
+    })
 }
 
 /// Deletes a blob id request from the database.

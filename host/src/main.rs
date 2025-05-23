@@ -367,17 +367,24 @@ async fn main() -> Result<()> {
 
                 let blob_id = parsed.blob_id;
                 match retrieve_blob_id_proof(db_pool.clone(), blob_id.clone()).await {
-                    Some((proof, valid)) => {
-                        if !valid {
+                    None => {
+                        println!("Proof for Blob ID {} not found", blob_id);
+                        Err(jsonrpc_core::Error::internal_error())
+                    }
+                    Some((proof, failed)) => {
+                        if failed {
                             return Err(jsonrpc_core::Error::invalid_params(
                                 "Proof request for Blob ID was not valid",
                             ));
                         }
-                        Ok(jsonrpc_core::Value::String(proof))
-                    }
-                    None => {
-                        println!("Proof for Blob ID {} not found", blob_id);
-                        Err(jsonrpc_core::Error::internal_error())
+
+                        match proof {
+                            None => {
+                                println!("Proof for Blob ID {} not found (still queued)", blob_id);
+                                Err(jsonrpc_core::Error::internal_error())
+                            }
+                            Some(proof) => Ok(jsonrpc_core::Value::String(proof)),
+                        }
                     }
                 }
             }
