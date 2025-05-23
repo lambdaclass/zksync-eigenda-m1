@@ -87,6 +87,9 @@ struct Args {
 const SRS_ORDER: u32 = 268435456;
 const SRS_POINTS_TO_LOAD: u32 = 1024 * 1024 * 2 / 32;
 
+const JSON_RPC_INVALID_PARAMS_ERROR_CODE: i32 = -32602;
+const JSON_RPC_INTERNAL_ERROR_ERROR_CODE: i32 = -32000;
+
 #[derive(Deserialize)]
 struct GenerateProofParams {
     blob_id: String,
@@ -253,14 +256,14 @@ async fn main() -> Result<()> {
             let db_pool = db_pool.clone();
             async move {
                 let parsed: GenerateProofParams = params.parse().map_err(|_| {
-                    ErrorObject::owned(-32602, "Invalid params", Some("Expected 'blob_id'"))
+                    ErrorObject::owned(JSON_RPC_INVALID_PARAMS_ERROR_CODE, "Invalid params", Some("Expected 'blob_id'"))
                 })?;
                 let blob_id = parsed.blob_id;
 
                 if proof_request_exists(db_pool.clone(), blob_id.clone())
                     .await
                     .map_err(|_| {
-                        ErrorObject::owned(-32000, "Internal error", Some("Failed checking blob"))
+                        ErrorObject::owned(JSON_RPC_INTERNAL_ERROR_ERROR_CODE, "Internal error", Some("Failed checking blob"))
                     })?
                 {
                     return Err(
@@ -276,7 +279,7 @@ async fn main() -> Result<()> {
                     .await
                     .map_err(|_| {
                         ErrorObject::owned(
-                            -32000,
+                            JSON_RPC_INTERNAL_ERROR_ERROR_CODE,
                             "Internal error",
                             Some("Failed to store blob proof request"),
                         )
@@ -293,7 +296,7 @@ async fn main() -> Result<()> {
             let db_pool = db_pool.clone();
             async move {
                 let parsed: GenerateProofParams = params.parse().map_err(|_| {
-                    ErrorObject::owned(-32602, "Invalid params", Some("Expected 'blob_id'"))
+                    ErrorObject::owned(JSON_RPC_INVALID_PARAMS_ERROR_CODE, "Invalid params", Some("Expected 'blob_id'"))
                 })?;
 
                 let blob_id = parsed.blob_id;
@@ -302,7 +305,7 @@ async fn main() -> Result<()> {
                     None => {
                         println!("Proof for Blob ID {} not found", blob_id);
                         Err(ErrorObject::owned(
-                            -32000,
+                            JSON_RPC_INTERNAL_ERROR_ERROR_CODE,
                             "Proof not found",
                             Some(format!("Proof for Blob ID {} not found", blob_id))))
                     }
