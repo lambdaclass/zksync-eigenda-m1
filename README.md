@@ -178,6 +178,14 @@ Running the guest with the constructed input...
 Proof gen thread: finished generating proof for Blob Id bdfef9b13ccd6648534267b80bea88b1b6c75ecfef4468299d32fd646c47c7b9
 ```
 
+### Clean the sidecar database
+
+If you want to clean the sidecar database over different executions (Mostly during development)
+
+```bash
+make clean
+```
+
 ## Design
 
 M1 consists of checking the inclusion of the blob and verifying that the data that is committed to is the correct one, this computations would be too heavy/costly to run directly on chain. An offchain implementation is needed in order to prevent this high costs. We resolve this by making a binary capable of running this checks in a provable way.
