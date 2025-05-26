@@ -88,13 +88,20 @@ pub async fn store_blob_proof(
 }
 
 /// Retrieves the blob proof from the database.
+/// Returns an Option wrapped by a `Result`
+/// that may contain:
+/// - `None` if the proof does not exist
+/// - `Some((proof, failed))` if the proof exists
+/// where proof is an optional `String`, existing only if the proof was generated,
+/// and failed is a boolean indicating if the proof generation failed.
+/// In case the query fails, it returns an `Err`.
 pub async fn retrieve_blob_id_proof(
     db_pool: Arc<Mutex<Pool<Postgres>>>,
     blob_id: String,
-) -> Option<(Option<String>, bool)> {
+) -> Result<Option<(Option<String>, bool)>> {
     let db_lock = db_pool.lock().await;
 
-    sqlx::query(
+    let row = sqlx::query(
         r#"
             SELECT PROOF, FAILED FROM BLOB_PROOFS
             WHERE BLOB_ID = $1
@@ -102,13 +109,15 @@ pub async fn retrieve_blob_id_proof(
     )
     .bind(blob_id)
     .fetch_optional(&*db_lock)
-    .await
-    .ok()?
-    .map(|row| {
+    .await?;
+
+    let result = row.map(|row| {
         let proof: Option<String> = row.get("proof");
         let failed: bool = row.get("failed");
         (proof, failed)
-    })
+    });
+
+    Ok(result)
 }
 
 /// Marks a blob proof request as failed in the database.

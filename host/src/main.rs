@@ -99,6 +99,8 @@ async fn flatten(handle: JoinHandle<Result<()>>) -> Result<()> {
     }
 }
 
+// Receives a blob ID with the arguments needed to generate its proof.
+// Returns the proof encoded as and ethabi Tuple.
 async fn generate_proof(
     blob_id: String,
     payload_disperser: Arc<PayloadDisperser>,
@@ -367,11 +369,11 @@ async fn main() -> Result<()> {
 
                 let blob_id = parsed.blob_id;
                 match retrieve_blob_id_proof(db_pool.clone(), blob_id.clone()).await {
-                    None => {
+                    Err(_) | Ok(None) => {
                         println!("Proof for Blob ID {} not found", blob_id);
                         Err(jsonrpc_core::Error::internal_error())
                     }
-                    Some((proof, failed)) => {
+                    Ok(Some((proof, failed))) => {
                         if failed {
                             return Err(jsonrpc_core::Error::invalid_params(
                                 "Proof request for Blob ID was not valid",
