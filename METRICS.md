@@ -2,7 +2,7 @@
 The JSON rpc server exposes Prometheus metrics at the `/metrics` endpoint, the returned metrics are returned in JSON format:
 
 ```bash
-curl -X POST http://127.0.0.1:5180 -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"metrics","params":[],"id":1}'
+curl -X POST http://127.0.0.1:3030 -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"metrics","params":[],"id":1}'
 ```
 
 The outputed metrics are in the Prometheus text format, you can use a crate like [`prometheus-parse`](https://crates.io/crates/prometheus-parse) to parse the output:
