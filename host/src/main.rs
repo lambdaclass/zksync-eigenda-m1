@@ -199,10 +199,6 @@ async fn main() -> Result<()> {
                 }
             };
 
-            let timer = PROOF_GEN_TIME_HISTOGRAM
-                .with_label_values(&[&blob_id])
-                .start_timer();
-
             println!("Proof gen thread: retrieved request to prove: {}", blob_id);
 
             let eigenda_cert: EigenDACert;
@@ -223,6 +219,10 @@ async fn main() -> Result<()> {
                 .map_err(|_| anyhow::anyhow!("Not blob data"))?;
 
             let blob_data = payload.serialize();
+
+            let timer = PROOF_GEN_TIME_HISTOGRAM
+                .with_label_values(&[&blob_id])
+                .start_timer();
 
             let result = host::guest_caller::run_guest(
                 eigenda_cert.clone(),
