@@ -41,13 +41,13 @@ use serde::Deserialize;
 use sqlx::PgPool;
 use tokio::{sync::Mutex, task::JoinHandle};
 use tracing_subscriber::EnvFilter;
+use tiny_http::{Header, Response, Server as MetricsServer};
 
 use rust_kzg_bn254_prover::srs::SRS;
 use url::Url;
 
 use prometheus::{
     self, register_histogram_vec, register_int_counter, Encoder, HistogramVec, IntCounter,
-    TextEncoder,
 };
 
 // Prometheus metrics
@@ -108,6 +108,9 @@ struct Args {
     /// URL of the database
     #[arg(short, long, env = "DATABASE_URL")]
     database_url: String,
+    /// URL where the metrics server should run
+    #[arg(short, long, env = "METRICS_URL")]
+    metrics_url: String,
 }
 
 const SRS_ORDER: u32 = 268435456;
@@ -213,6 +216,7 @@ async fn main() -> Result<()> {
     let args = Args::parse();
     let sidecar_url = args.sidecar_url.clone();
     let database_url = args.database_url.clone();
+    let metrics_url = args.metrics_url.clone();
 
     let db_pool = PgPool::connect(&database_url)
         .await
@@ -433,18 +437,6 @@ async fn main() -> Result<()> {
             }
         });
 
-        io.add_method("metrics", async move |_| {
-            let mut buffer = Vec::new();
-            let encoder = TextEncoder::new();
-            let metric_families = prometheus::gather();
-            encoder
-                .encode(&metric_families, &mut buffer)
-                .map_err(|_| jsonrpc_core::Error::internal_error())?;
-            Ok(jsonrpc_core::Value::String(
-                String::from_utf8(buffer).unwrap(),
-            ))
-        });
-
         let server = ServerBuilder::new(io)
             .start_http(&sidecar_url.clone().parse().unwrap())
             .expect("Unable to start server");
@@ -453,7 +445,32 @@ async fn main() -> Result<()> {
         Ok(())
     });
 
-    match tokio::try_join!(flatten(proof_gen_thread), flatten(json_rpc_server_thread)) {
+    let metrics_server_thread = tokio::spawn(async move {
+        tracing::info!("Starting metrics server on port 9100");
+        let server = MetricsServer::http(metrics_url).unwrap();
+        for request in server.incoming_requests() {
+            if request.url() == "/metrics" {
+                let encoder = prometheus::TextEncoder::new();
+                let metric_families = prometheus::gather();
+                let mut buffer = Vec::new();
+                encoder.encode(&metric_families, &mut buffer)?;
+    
+                let content_type = Header::from_bytes(
+                    &b"Content-Type"[..],
+                    &b"text/plain; version=0.0.4"[..],
+                ).map_err(|_| anyhow::anyhow!("Failed parsing header"))?;
+    
+                let response = Response::from_data(buffer).with_header(content_type);
+                let _ = request.respond(response);
+            } else {
+                let response = Response::from_string("Not Found").with_status_code(404);
+                let _ = request.respond(response);
+            }
+        }
+        Ok(())
+    });
+
+    match tokio::try_join!(flatten(proof_gen_thread), flatten(json_rpc_server_thread), flatten(metrics_server_thread)) {
         Ok(_) => {
             tracing::info!("Threads finished successfully");
         }
