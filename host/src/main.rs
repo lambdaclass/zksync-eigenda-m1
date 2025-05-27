@@ -297,7 +297,10 @@ async fn main() -> Result<()> {
                 }
             };
 
-            tracing::info!("Proof generation thread: retrieved request to prove: {}", blob_id);
+            tracing::info!(
+                "Proof generation thread: retrieved request to prove: {}",
+                blob_id
+            );
 
             let timer = PROOF_GEN_TIME_HISTOGRAM
                 .with_label_values(&[&blob_id])
@@ -323,7 +326,8 @@ async fn main() -> Result<()> {
                 Err(e) => {
                     tracing::error!(
                         "Proof gen thread: error generating proof for Blob Id: {}, error: {}",
-                        blob_id, e
+                        blob_id,
+                        e
                     );
                     // Mark the proof request as invalid in the database
                     mark_blob_proof_request_failed(db_pool.clone(), blob_id.clone()).await?;
@@ -423,7 +427,10 @@ async fn main() -> Result<()> {
 
                         match proof {
                             None => {
-                                tracing::debug!("Proof for Blob ID {} not found (still queued)", blob_id);
+                                tracing::debug!(
+                                    "Proof for Blob ID {} not found (still queued)",
+                                    blob_id
+                                );
                                 Err(jsonrpc_core::Error::internal_error())
                             }
                             Some(proof) => Ok(jsonrpc_core::Value::String(proof)),
