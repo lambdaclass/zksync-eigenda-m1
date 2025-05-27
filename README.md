@@ -47,6 +47,7 @@ export BLOB_VERSION=0 #Blob version used by EigenDA
 export EIGENDA_RELAY_REGISTRY_ADDR=<your_relay_registry_addr> #Address of the EigenDA relay registry
 export RELAY_CLIENT_KEYS=<your_relay_client_keys> #Keys of the relay client, separated by commas ("0,1,2")
 export SIDECAR_URL=<your_sidecar_url> #URL you want this sidecar to run on
+export DATABASE_URL=<proof_database_url> #URL of the database where the proofs will be stored
 ```
 
 Deploy the contracts:
@@ -66,6 +67,7 @@ export RISC_ZERO_VERIFIER_ADDR=<you_address>
 ### Run the sidecar (On this repo)
 
 ```bash
+make database # Creates the database that the sidecar uses to store proofs
 RUST_LOG=info cargo run --release
 ```
 
@@ -99,22 +101,38 @@ Modify `etc/env/file_based/overrides/validium.yaml`:
 
 ```yaml
 da_client:
-  eigenv2m1:
-    disperser_rpc: <your_disperser_rpc> #Under DISPERSER_RPC env variable
-    eigenda_eth_rpc: <your_eth_rpc> #Under RPC_URL env variable
-    authenticated: true
-    cert_verifier_addr: <your_cert_verifier_address> #Under CERT_VERIFIER_ADDRESS env variable
-    blob_version: <your_blob_version> #Under BLOB_VERSION env variable
-    polynomial_form: <your_polynomial_form> #Either COEFF or EVAL
-    eigenda_sidecar_rpc: <your_sidecar_rpc> #Under SIDECAR_URL env variable
+  client: EigenDAV2Secure
+  version: V2Secure
+  disperser_rpc: <your_disperser_rpc> #Under DISPERSER_RPC env variable
+  eigenda_eth_rpc: <your_eth_rpc> #Under RPC_URL env variable
+  authenticated: true
+  settlement_layer_confirmation_depth: 0 #Value needed for V1 compatibility, you can leave this one
+  eigenda_svc_manager_address: 0xD4A7E1Bd8015057293f0D0A557088c286942e84b #Value needed for V1 compatibility, you can leave this one
+  wait_for_finalization: false #Value needed for V1 compatibility, you can leave this one
+  points: #Value needed for V1 compatibility, you can leave this one
+    source: Url
+    g1_url: https://github.com/Layr-Labs/eigenda-proxy/raw/2fd70b99ef5bf137d7bbca3461cf9e1f2c899451/resources/g1.point
+    g2_url: https://github.com/Layr-Labs/eigenda-proxy/raw/2fd70b99ef5bf137d7bbca3461cf9e1f2c899451/resources/g2.point.powerOf2
+  cert_verifier_addr: <your_cert_verifier_address> #Under CERT_VERIFIER_ADDRESS env variable
+  blob_version: <your_blob_version> #Under BLOB_VERSION env variable
+  polynomial_form: <your_polynomial_form> #Either coeff or eval
+  eigenda_sidecar_rpc: <your_sidecar_rpc> #Under SIDECAR_URL env variable
 ```
 
 Modify `etc/env/file_based/secrets.yaml`:
 
 ```yaml
 da:
-  eigenv2m1:
-    private_key: <your_private_key> #The private key you want to use with the eigenda disperser
+  client: EigenDA
+  private_key: <your_private_key> #The private key you want to use with the eigenda disperser
+```
+
+Modify `etc/env/file_based/general.yaml`:
+
+```yaml
+eth:
+  sender:
+    gas_limit_mode: MAXIMUM
 ```
 
 Run replacing with your l1 rpc:
@@ -167,13 +185,21 @@ On the sidecar you should see blobs being verified:
 ```
 Running JSON RPC server
 Running proof gen thread
-Proof gen thread: received request to prove: bdfef9b13ccd6648534267b80bea88b1b6c75ecfef4468299d32fd646c47c7b9
-2025-05-19T15:45:28.038452Z  INFO risc0_steel::host::builder: Environment initialized with block 3861957 (0x2283aafccd1976c63f9dced04f03106629a7b76baccc519c2f6d4bb61ae4b59c)    
-2025-05-19T15:45:28.038505Z  INFO risc0_steel::contract::host: Executing preflight calling 'verifyDACertV2((bytes32,uint32),(((uint16,bytes,((uint256,uint256),(uint256[2],uint256[2]),(uint256[2],uint256[2]),uint32),bytes32),bytes,uint32[]),uint32,bytes),(uint32[],(uint256,uint256)[],(uint256,uint256)[],(uint256[2],uint256[2]),(uint256,uint256),uint32[],uint32[],uint32[][]),bytes)' on 0x18c7De1E82513c3F48dFcCa85c64056C637104fb    
+Proof gen thread: retrieved request to prove: bdfef9b13ccd6648534267b80bea88b1b6c75ecfef4468299d32fd646c47c7b9
+2025-05-19T15:45:28.038452Z  INFO risc0_steel::host::builder: Environment initialized with block 3861957 (0x2283aafccd1976c63f9dced04f03106629a7b76baccc519c2f6d4bb61ae4b59c)
+2025-05-19T15:45:28.038505Z  INFO risc0_steel::contract::host: Executing preflight calling 'verifyDACertV2((bytes32,uint32),(((uint16,bytes,((uint256,uint256),(uint256[2],uint256[2]),(uint256[2],uint256[2]),uint32),bytes32),bytes,uint32[]),uint32,bytes),(uint32[],(uint256,uint256)[],(uint256,uint256)[],(uint256[2],uint256[2]),(uint256,uint256),uint32[],uint32[],uint32[][]),bytes)' on 0x18c7De1E82513c3F48dFcCa85c64056C637104fb
 Call verifyDACertV2((bytes32,uint32),(((uint16,bytes,((uint256,uint256),(uint256[2],uint256[2]),(uint256[2],uint256[2]),uint32),bytes32),bytes,uint32[]),uint32,bytes),(uint32[],(uint256,uint256)[],(uint256,uint256)[],(uint256[2],uint256[2]),(uint256,uint256),uint32[],uint32[],uint32[][]),bytes) Function on 0x18c7…04fb returns: true
 Running the guest with the constructed input...
 2025-05-19T15:46:27.505240Z  INFO risc0_zkvm::host::server::exec::executor: execution time: 17.890119705s
 Proof gen thread: finished generating proof for Blob Id bdfef9b13ccd6648534267b80bea88b1b6c75ecfef4468299d32fd646c47c7b9
+```
+
+### Clean the sidecar database
+
+If you want to clean the sidecar database over different executions (Mostly during development)
+
+```bash
+make clean
 ```
 
 ## Design
@@ -396,3 +422,51 @@ We then store this proof on the sidecar database.
 Then on zksync’s EigenDAL1Validator, we check the validity of this proof by verifying against the risc0verifier.
 
 The idea of this check is to make sure that the blob we verified on the guest is the same blob we dispersed on zksync.
+
+# Prometheus Metrics
+The JSON rpc server exposes Prometheus metrics at the `/metrics` endpoint, the returned metrics are returned in JSON format:
+
+```bash
+curl -X POST http://127.0.0.1:3030 -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"metrics","params":[],"id":1}'
+```
+
+The outputed metrics are in the Prometheus text format, you can use a crate like [`prometheus-parse`](https://crates.io/crates/prometheus-parse) to parse the output:
+
+```rs
+use serde_json::json;
+
+const SIDECAR_URL: &str = "http://127.0.0.1:3030";
+
+#[tokio::main]
+async fn main() {
+    let client = reqwest::Client::new();
+
+    let request_body = json!({
+        "jsonrpc": "2.0",
+        "method": "metrics",
+        "params": [],
+        "id": 1
+    });
+
+    let response_text = client
+        .post(SIDECAR_URL)
+        .header("Content-Type", "application/json")
+        .json(&request_body)
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
+
+    let parsed_json: serde_json::Value = serde_json::from_str(&response_text).unwrap();
+    let metrics_text = parsed_json["result"].as_str().unwrap_or_default();
+
+    let lines: Vec<_> = metrics_text.lines().map(|s| Ok(s.to_owned())).collect();
+    let scrape = prometheus_parse::Scrape::parse(lines.into_iter()).unwrap();
+    for sample in scrape.samples {
+        println!("{:?}", sample.metric);
+        println!("{:?}", sample.value);
+    }
+}
+```
