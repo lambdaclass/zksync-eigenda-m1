@@ -101,38 +101,22 @@ Modify `etc/env/file_based/overrides/validium.yaml`:
 
 ```yaml
 da_client:
-  client: EigenDAV2Secure
-  version: V2Secure
-  disperser_rpc: <your_disperser_rpc> #Under DISPERSER_RPC env variable
-  eigenda_eth_rpc: <your_eth_rpc> #Under RPC_URL env variable
-  authenticated: true
-  settlement_layer_confirmation_depth: 0 #Value needed for V1 compatibility, you can leave this one
-  eigenda_svc_manager_address: 0xD4A7E1Bd8015057293f0D0A557088c286942e84b #Value needed for V1 compatibility, you can leave this one
-  wait_for_finalization: false #Value needed for V1 compatibility, you can leave this one
-  points: #Value needed for V1 compatibility, you can leave this one
-    source: Url
-    g1_url: https://github.com/Layr-Labs/eigenda-proxy/raw/2fd70b99ef5bf137d7bbca3461cf9e1f2c899451/resources/g1.point
-    g2_url: https://github.com/Layr-Labs/eigenda-proxy/raw/2fd70b99ef5bf137d7bbca3461cf9e1f2c899451/resources/g2.point.powerOf2
-  cert_verifier_addr: <your_cert_verifier_address> #Under CERT_VERIFIER_ADDRESS env variable
-  blob_version: <your_blob_version> #Under BLOB_VERSION env variable
-  polynomial_form: <your_polynomial_form> #Either coeff or eval
-  eigenda_sidecar_rpc: <your_sidecar_rpc> #Under SIDECAR_URL env variable
+  eigenv2m1:
+    disperser_rpc: <your_disperser_rpc> #Under DISPERSER_RPC env variable
+    eigenda_eth_rpc: <your_eth_rpc> #Under RPC_URL env variable
+    authenticated: true
+    cert_verifier_addr: <your_cert_verifier_address> #Under CERT_VERIFIER_ADDRESS env variable
+    blob_version: <your_blob_version> #Under BLOB_VERSION env variable
+    polynomial_form: <your_polynomial_form> #Either COEFF or EVAL
+    eigenda_sidecar_rpc: <your_sidecar_rpc> #Under SIDECAR_URL env variable
 ```
 
 Modify `etc/env/file_based/secrets.yaml`:
 
 ```yaml
 da:
-  client: EigenDA
-  private_key: <your_private_key> #The private key you want to use with the eigenda disperser
-```
-
-Modify `etc/env/file_based/general.yaml`:
-
-```yaml
-eth:
-  sender:
-    gas_limit_mode: MAXIMUM
+  eigenv2m1:
+    private_key: <your_private_key> #The private key you want to use with the eigenda disperser
 ```
 
 Run replacing with your l1 rpc:
