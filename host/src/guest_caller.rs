@@ -71,7 +71,7 @@ pub async fn run_guest(
     let evaluation_challenge = compute_challenge(&blob, &cert_commitment)?;
 
     // Compute the proof that the commitment corresponds to the given blob
-    let proof = kzg.compute_proof(&poly_eval, &evaluation_challenge, &srs)?;
+    let proof = kzg.compute_proof(&poly_eval, &evaluation_challenge, srs)?;
 
     let serializable_proof = SerializableG1 { g1: proof };
 

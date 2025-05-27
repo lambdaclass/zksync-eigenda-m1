@@ -178,6 +178,14 @@ Running the guest with the constructed input...
 Proof gen thread: finished generating proof for Blob Id bdfef9b13ccd6648534267b80bea88b1b6c75ecfef4468299d32fd646c47c7b9
 ```
 
+### Clean the sidecar database
+
+If you want to clean the sidecar database over different executions (Mostly during development)
+
+```bash
+make clean
+```
+
 ## Design
 
 M1 consists of checking the inclusion of the blob and verifying that the data that is committed to is the correct one, this computations would be too heavy/costly to run directly on chain. An offchain implementation is needed in order to prevent this high costs. We resolve this by making a binary capable of running this checks in a provable way.
@@ -400,3 +408,51 @@ We then store this proof on the sidecar database.
 Then on zksync’s EigenDAL1Validator, we check the validity of this proof by verifying against the risc0verifier.
 
 The idea of this check is to make sure that the blob we verified on the guest is the same blob we dispersed on zksync.
+
+# Prometheus Metrics
+The JSON rpc server exposes Prometheus metrics at the `/metrics` endpoint, the returned metrics are returned in JSON format:
+
+```bash
+curl -X POST http://127.0.0.1:3030 -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"metrics","params":[],"id":1}'
+```
+
+The outputed metrics are in the Prometheus text format, you can use a crate like [`prometheus-parse`](https://crates.io/crates/prometheus-parse) to parse the output:
+
+```rs
+use serde_json::json;
+
+const SIDECAR_URL: &str = "http://127.0.0.1:3030";
+
+#[tokio::main]
+async fn main() {
+    let client = reqwest::Client::new();
+
+    let request_body = json!({
+        "jsonrpc": "2.0",
+        "method": "metrics",
+        "params": [],
+        "id": 1
+    });
+
+    let response_text = client
+        .post(SIDECAR_URL)
+        .header("Content-Type", "application/json")
+        .json(&request_body)
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
+
+    let parsed_json: serde_json::Value = serde_json::from_str(&response_text).unwrap();
+    let metrics_text = parsed_json["result"].as_str().unwrap_or_default();
+
+    let lines: Vec<_> = metrics_text.lines().map(|s| Ok(s.to_owned())).collect();
+    let scrape = prometheus_parse::Scrape::parse(lines.into_iter()).unwrap();
+    for sample in scrape.samples {
+        println!("{:?}", sample.metric);
+        println!("{:?}", sample.value);
+    }
+}
+```
