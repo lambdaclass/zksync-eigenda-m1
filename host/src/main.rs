@@ -23,7 +23,7 @@ use host::db::{
     mark_blob_proof_request_failed, proof_request_exists, retrieve_blob_id_proof,
     retrieve_next_pending_proof, store_blob_proof, store_blob_proof_request,
 };
-use jsonrpc_core::{IoHandler, Params};
+use jsonrpc_core::{ErrorCode, IoHandler, Params};
 use jsonrpc_http_server::ServerBuilder;
 use methods::GUEST_ELF;
 use risc0_zkvm::{compute_image_id, sha::Digestible};
@@ -112,6 +112,8 @@ struct Args {
 
 const SRS_ORDER: u32 = 268435456;
 const SRS_POINTS_TO_LOAD: u32 = 1024 * 1024 * 2 / 32;
+
+const PROOF_NOT_FOUND_ERROR: i64 = -32604;
 
 #[derive(Deserialize)]
 struct GenerateProofParams {
@@ -412,7 +414,7 @@ async fn main() -> Result<()> {
                 match retrieve_blob_id_proof(db_pool.clone(), blob_id.clone()).await {
                     Err(_) | Ok(None) => {
                         tracing::debug!("Proof for Blob ID {} not found", blob_id);
-                        Err(jsonrpc_core::Error::internal_error())
+                        Err(jsonrpc_core::Error{code: ErrorCode::ServerError(PROOF_NOT_FOUND_ERROR), message:"Proof not found".to_string(), data: None})
                     }
                     Ok(Some((proof, failed))) => {
                         if failed {
