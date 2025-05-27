@@ -15,18 +15,26 @@ tokio = { workspace = true, features = ["time"] }
 tracing-subscriber = { workspace = true }
 url = { workspace = true }
 ethabi = { workspace = true }
-hex = {workspace = true}
-chrono = {workspace = true}
+hex = { workspace = true }
+chrono = { workspace = true }
 rust-kzg-bn254-prover = { workspace = true }
-rust-kzg-bn254-primitives = {workspace = true}
-ark-bn254 = {workspace = true}
-num-bigint = {workspace = true}
-tonic = {workspace = true}
-prost = {workspace = true}
-common = {workspace = true}
-secrecy = {workspace = true}
-alloy = {workspace = true}
-rust-eigenda-client = {workspace = true}
+rust-kzg-bn254-primitives = { workspace = true }
+ark-bn254 = { workspace = true }
+num-bigint = { workspace = true }
+tonic = { workspace = true }
+prost = { workspace = true }
+common = { workspace = true }
+secrecy = { workspace = true }
+alloy = { workspace = true }
+rust-eigenda-v2-client = { workspace = true }
+rust-eigenda-v2-common = { workspace = true }
 async-trait = { workspace = true }
-reqwest = {workspace = true}
-serde_json = {workspace = true}
+reqwest = { workspace = true }
+serde_json = { workspace = true }
+serde = { workspace = true }
+jsonrpc-core = { workspace = true }
+jsonrpc-http-server = { workspace = true }
+sqlx = { workspace = true }
+tracing = { workspace = true }
+prometheus = { workspace = true }
+lazy_static = { workspace = true }
