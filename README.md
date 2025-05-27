@@ -115,7 +115,7 @@ da_client:
     g2_url: https://github.com/Layr-Labs/eigenda-proxy/raw/2fd70b99ef5bf137d7bbca3461cf9e1f2c899451/resources/g2.point.powerOf2
   cert_verifier_addr: <your_cert_verifier_address> #Under CERT_VERIFIER_ADDRESS env variable
   blob_version: <your_blob_version> #Under BLOB_VERSION env variable
-  polynomial_form: <your_polynomial_form> #Either COEFF or EVAL
+  polynomial_form: <your_polynomial_form> #Either coeff or eval
   eigenda_sidecar_rpc: <your_sidecar_rpc> #Under SIDECAR_URL env variable
 ```
 
