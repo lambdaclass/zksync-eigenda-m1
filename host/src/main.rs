@@ -113,7 +113,8 @@ struct Args {
 const SRS_ORDER: u32 = 268435456;
 const SRS_POINTS_TO_LOAD: u32 = 1024 * 1024 * 2 / 32;
 
-const PROOF_NOT_FOUND_ERROR: i64 = -32604;
+// The JSON RPC Specification defines for the Server error (Reserved for implementation-defined server-errors) the range of codes -32000 to -32099
+const PROOF_NOT_FOUND_ERROR: i64 = -32001;
 
 #[derive(Deserialize)]
 struct GenerateProofParams {
