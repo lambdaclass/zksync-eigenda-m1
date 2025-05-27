@@ -35,5 +35,6 @@ serde = { workspace = true }
 jsonrpc-core = { workspace = true }
 jsonrpc-http-server = { workspace = true }
 sqlx = { workspace = true }
+tracing = { workspace = true }
 prometheus = { workspace = true }
 lazy_static = { workspace = true }
