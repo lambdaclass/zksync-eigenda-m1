@@ -45,6 +45,33 @@ use tracing_subscriber::EnvFilter;
 use rust_kzg_bn254_prover::srs::SRS;
 use url::Url;
 
+use prometheus::{
+    self, register_histogram_vec, register_int_counter, Encoder, HistogramVec, IntCounter,
+    TextEncoder,
+};
+
+// Prometheus metrics
+lazy_static::lazy_static! {
+static ref PROOF_GEN_REQ_COUNTER: IntCounter =
+    register_int_counter!("proof_requests", "Number of proof generation requests received").unwrap();
+
+    static ref PROOF_GEN_SUCCESS_COUNTER: IntCounter =
+    register_int_counter!("proof_generations", "Number of successful proofs generated").unwrap();
+
+    static ref PROOF_GEN_FAILURE_COUNTER: IntCounter =
+    register_int_counter!("proof_generation_failures", "Number of failed proof generations").unwrap();
+
+    static ref PROOF_RET_REQ_COUNTER: IntCounter =
+    register_int_counter!("proof_retrievals", "Number of proof retrieval requests received").unwrap();
+
+    static ref PROOF_GEN_TIME_HISTOGRAM: HistogramVec =
+        register_histogram_vec!(
+            "proof_generation_seconds",
+            "Time taken to generate a proof in seconds",
+            &["blob_id"]
+        ).unwrap();
+    }
+
 #[derive(Parser, Debug)]
 #[command(about, long_about = None)]
 struct Args {
@@ -272,6 +299,10 @@ async fn main() -> Result<()> {
 
             println!("Proof gen thread: retrieved request to prove: {}", blob_id);
 
+            let timer = PROOF_GEN_TIME_HISTOGRAM
+                .with_label_values(&[&blob_id])
+                .start_timer();
+
             match generate_proof(
                 blob_id.clone(),
                 payload_disperser.clone(),
@@ -287,6 +318,7 @@ async fn main() -> Result<()> {
                     println!("Proof gen thread: generated proof for Blob Id {}", blob_id);
                     // Persist proof in database
                     store_blob_proof(db_pool.clone(), blob_id, hex::encode(proof)).await?;
+                    PROOF_GEN_SUCCESS_COUNTER.inc();
                 }
                 Err(e) => {
                     println!(
@@ -295,8 +327,11 @@ async fn main() -> Result<()> {
                     );
                     // Mark the proof request as invalid in the database
                     mark_blob_proof_request_failed(db_pool.clone(), blob_id.clone()).await?;
+                    PROOF_GEN_FAILURE_COUNTER.inc();
                 }
             };
+
+            timer.observe_duration();
         }
     });
 
@@ -308,6 +343,8 @@ async fn main() -> Result<()> {
             let db_pool = db_pool.clone();
             let payload_disperser = payload_disperser.clone();
             async move {
+                PROOF_GEN_REQ_COUNTER.inc();
+
                 let parsed: GenerateProofParams = params.parse().map_err(|_| {
                     jsonrpc_core::Error::invalid_params(
                         "Expected a single string parameter 'blob_id'",
@@ -359,6 +396,8 @@ async fn main() -> Result<()> {
 
         let db_pool = db_pool_clone.clone();
         io.add_method("get_proof", move |params: Params| {
+            PROOF_RET_REQ_COUNTER.inc();
+
             let db_pool = db_pool.clone();
             async move {
                 let parsed: GenerateProofParams = params.parse().map_err(|_| {
@@ -390,6 +429,18 @@ async fn main() -> Result<()> {
                     }
                 }
             }
+        });
+
+        io.add_method("metrics", async move |_| {
+            let mut buffer = Vec::new();
+            let encoder = TextEncoder::new();
+            let metric_families = prometheus::gather();
+            encoder
+                .encode(&metric_families, &mut buffer)
+                .map_err(|_| jsonrpc_core::Error::internal_error())?;
+            Ok(jsonrpc_core::Value::String(
+                String::from_utf8(buffer).unwrap(),
+            ))
         });
 
         let server = ServerBuilder::new(io)
