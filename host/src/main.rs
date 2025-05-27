@@ -414,7 +414,7 @@ async fn main() -> Result<()> {
                 match retrieve_blob_id_proof(db_pool.clone(), blob_id.clone()).await {
                     Err(_) | Ok(None) => {
                         tracing::debug!("Proof for Blob ID {} not found", blob_id);
-                        Err(jsonrpc_core::Error{code: ErrorCode::ServerError(PROOF_NOT_FOUND_ERROR), message:"Proof not found".to_string(), data: None})
+                        Err(jsonrpc_core::Error::internal_error())
                     }
                     Ok(Some((proof, failed))) => {
                         if failed {
@@ -426,7 +426,7 @@ async fn main() -> Result<()> {
                         match proof {
                             None => {
                                 tracing::debug!("Proof for Blob ID {} not found (still queued)", blob_id);
-                                Err(jsonrpc_core::Error::internal_error())
+                                Err(jsonrpc_core::Error{code: ErrorCode::ServerError(PROOF_NOT_FOUND_ERROR), message:"Proof not found (still queued)".to_string(), data: None})
                             }
                             Some(proof) => Ok(jsonrpc_core::Value::String(proof)),
                         }
