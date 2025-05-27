@@ -438,7 +438,7 @@ async fn main() -> Result<()> {
         });
 
         let server = ServerBuilder::new(io)
-            .start_http(&sidecar_url.clone().parse().unwrap())
+            .start_http(&sidecar_url.clone().parse()?)
             .expect("Unable to start server");
         tracing::info!("Running JSON RPC server");
         server.wait();
@@ -447,7 +447,7 @@ async fn main() -> Result<()> {
 
     let metrics_server_thread = tokio::spawn(async move {
         tracing::info!("Starting metrics server on port 9100");
-        let server = MetricsServer::http(metrics_url).unwrap();
+        let server = MetricsServer::http(metrics_url).map_err(|_| anyhow::anyhow!("Failed to start metrics server"))?;
         for request in server.incoming_requests() {
             if request.url() == "/metrics" {
                 let encoder = prometheus::TextEncoder::new();
