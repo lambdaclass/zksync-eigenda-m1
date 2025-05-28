@@ -1,17 +1,28 @@
 # This dockerfile first builds the Rust binary using cargo chef,
 # it then copies the compiled binary to the nvidia cuda image and runs it from there.
-# NOTE: Image is only compatible with amd64
+# NOTE: Dockerfile is only compatible with amd64
 
 # Use cargo-chef to speed up docker build
 # https://github.com/LukeMathWalker/cargo-chef
-FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
-WORKDIR /app
+FROM nvidia/cuda:12.8.0-devel-ubuntu24.04 AS chef
 
-FROM chef AS planner
-COPY . .
-RUN cargo chef prepare --recipe-path recipe.json
+# Install cuda
+# Use NVIDIA cuDNN 9.7.0 for CUDA 12.8 on Ubuntu 24.04
+# https://gitlab.com/nvidia/container-images/cuda/blob/master/dist/12.8.0/ubuntu2404/runtime/cudnn/Dockerfile
+ENV NV_CUDNN_VERSION 9.7.0.66-1
+ENV NV_CUDNN_PACKAGE_NAME libcudnn9-cuda-12
+ENV NV_CUDNN_PACKAGE libcudnn9-cuda-12=${NV_CUDNN_VERSION}
 
-FROM chef AS builder 
+# FROM chef-${TARGETARCH}
+ENV TARGETARCH=amd64
+
+LABEL maintainer "NVIDIA CORPORATION <cudatools@nvidia.com>"
+LABEL com.nvidia.cudnn.version="${NV_CUDNN_VERSION}"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ${NV_CUDNN_PACKAGE} \
+    && apt-mark hold ${NV_CUDNN_PACKAGE_NAME} \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install risc0 toolchain
 # https://github.com/risc0/risc0/blob/main/risc0/cargo-risczero/docker/Dockerfile.release
@@ -25,6 +36,17 @@ ENV PATH="/root/.risc0/bin:${PATH}"
 RUN rzup install cpp
 RUN rzup install rust ${RISC0_RUST_TOOLCHAIN_VERSION}
 
+# Install cargo chef
+RUN cargo install cargo-chef
+
+WORKDIR /app
+
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM chef AS builder
+
 COPY --from=planner /app/recipe.json recipe.json
 
 # Build dependencies - this is the caching Docker layer!
@@ -34,25 +56,9 @@ RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN cargo build --release --bin host
 
-# Use NVIDIA cuDNN 9.9.0 for CUDA 12.9 on Ubuntu 24.04
-# https://gitlab.com/nvidia/container-images/cuda/blob/master/dist/12.9.0/ubuntu2404/runtime/cudnn/Dockerfile
-FROM nvidia/cuda:12.9.0-cudnn-devel-ubuntu24.04 AS base
-
-FROM base AS base-amd64
-ENV NV_CUDNN_VERSION=9.9.0.52-1
-ENV NV_CUDNN_PACKAGE_NAME=libcudnn9-cuda-12
-ENV NV_CUDNN_PACKAGE=libcudnn9-cuda-12=${NV_CUDNN_VERSION}
-
-FROM base-${TARGETARCH}
-ARG TARGETARCH
-
-LABEL maintainer="NVIDIA CORPORATION <cudatools@nvidia.com>"
-LABEL com.nvidia.cudnn.version="${NV_CUDNN_VERSION}"
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ${NV_CUDNN_PACKAGE} \
-    && apt-mark hold ${NV_CUDNN_PACKAGE_NAME} \
-    && rm -rf /var/lib/apt/lists/*
+# TODO: Change base for this?
+# FROM nvidia/cuda:12.8.0-runtime-ubuntu24.04 AS base
+FROM builder as base
 
 WORKDIR /app
 COPY --from=builder /app/target/release/host /usr/local/bin

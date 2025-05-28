@@ -13,18 +13,18 @@ services:
   sidecar:
     platform: linux/amd64
     environment:
-      - PRIVATE_KEY=<PRIVATE_KEY>
-      - DISPERSER_PRIVATE_KEY=<PRIVATE_KEY>
-      - CERT_VERIFIER_ADDR=0xfe52fe1940858dcb6e12153e2104ad0fdfbe1162
-      - RPC_URL=https://rpc-holesky.rockx.com
-      - DISPERSER_RPC=https://disperser-testnet-holesky.eigenda.xyz
-      - PAYLOAD_FORM=coeff
-      - BLOB_VERSION=0
-      - EIGENDA_RELAY_REGISTRY_ADDR=0xac8c6c7ee7572975454e2f0b5c720f9e74989254
-      - RELAY_CLIENT_KEYS=0,1,2
-      - SIDECAR_URL=0.0.0.0:5180
-      - DATABASE_URL=postgresql://postgres:notsecurepassword@0.0.0.0:5435/postgres
-      - CERT_VERIFIER_WRAPPER_ADDR=0x18c7De1E82513c3F48dFcCa85c64056C637104fb
+      - PRIVATE_KEY=${PRIVATE_KEY}
+      - DISPERSER_PRIVATE_KEY=${DISPERSER_PRIVATE_KEY}
+      - CERT_VERIFIER_ADDR=${CERT_VERIFIER_ADDR}
+      - RPC_URL=${RPC_URL}
+      - DISPERSER_RPC=${DISPERSER_RPC}
+      - PAYLOAD_FORM=${PAYLOAD_FORM}
+      - BLOB_VERSION=${BLOB_VERSION}
+      - EIGENDA_RELAY_REGISTRY_ADDR=${EIGENDA_RELAY_REGISTRY_ADDR}
+      - RELAY_CLIENT_KEYS=${RELAY_CLIENT_KEYS}
+      - SIDECAR_URL=${SIDECAR_URL}
+      - DATABASE_URL=${DATABASE_URL}
+      - CERT_VERIFIER_WRAPPER_ADDR=${CERT_VERIFIER_WRAPPER_ADDR}
     build:
       context: .
       dockerfile: dockerfile.gpu
