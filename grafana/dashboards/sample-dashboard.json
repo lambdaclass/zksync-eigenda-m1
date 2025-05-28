@@ -112,9 +112,9 @@
           "expr": "proof_retrievals",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "__auto",
+          "legendFormat": "Proof retrievals",
           "range": true,
-          "refId": "A",
+          "refId": "Proof retrievals",
           "useBackend": false
         },
         {
@@ -129,9 +129,9 @@
           "hide": false,
           "includeNullMetadata": true,
           "instant": false,
-          "legendFormat": "__auto",
+          "legendFormat": "Proof requests",
           "range": true,
-          "refId": "B",
+          "refId": "Proof requests",
           "useBackend": false
         },
         {
@@ -146,9 +146,9 @@
           "hide": false,
           "includeNullMetadata": true,
           "instant": false,
-          "legendFormat": "__auto",
+          "legendFormat": "Proof generation seconds count",
           "range": true,
-          "refId": "C",
+          "refId": "Proof generation seconds count",
           "useBackend": false
         },
         {
@@ -163,13 +163,13 @@
           "hide": false,
           "includeNullMetadata": true,
           "instant": false,
-          "legendFormat": "__auto",
+          "legendFormat": "Proof generation seconds sum",
           "range": true,
-          "refId": "D",
+          "refId": "Proof generation seconds sum",
           "useBackend": false
         }
       ],
-      "title": "New panel",
+      "title": "Example panel",
       "type": "timeseries"
     }
   ],
