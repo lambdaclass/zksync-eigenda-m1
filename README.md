@@ -48,7 +48,7 @@ export EIGENDA_RELAY_REGISTRY_ADDR=<your_relay_registry_addr> #Address of the Ei
 export RELAY_CLIENT_KEYS=<your_relay_client_keys> #Keys of the relay client, separated by commas ("0,1,2")
 export SIDECAR_URL=<your_sidecar_url> #URL you want this sidecar to run on
 export DATABASE_URL=<proof_database_url> #URL of the database where the proofs will be stored
-export METRICS_URL=<your_metrics_url> #URL where you want the metrics to be exported
+export METRICS_URL=<your_metrics_url> #URL where you want the metrics to be exported, the example granafa expects it to be on port 9100
 ```
 
 Deploy the contracts:
