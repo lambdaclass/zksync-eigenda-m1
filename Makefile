@@ -2,9 +2,9 @@ BUILD_DIR=contracts
 
 .PHONY: all build_contracts
 
-all: build_contracts database
+all: build_contracts containers
 
-database:
+containers:
 	docker compose up -d
 
 build_contracts:
