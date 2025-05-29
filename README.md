@@ -10,6 +10,10 @@
 
 ## Prerequisites
 
+You can choose one of the following options
+
+### Running locally
+
 To get started, you need to have Rust installed.
 
 Next, you will also need to have the [`cargo-risczero`](https://dev.risczero.com/api/zkvm/install) tool installed.
@@ -22,6 +26,10 @@ Use the runfile (local) option, use the wget shown to download the script and ru
 ```bash
 sudo ./<file>.run
 ```
+
+### Running inside a docker container
+
+Follow instructions on how to install [the NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html), but instead of installing the latest cuda drivers, install [cuda version 12 with runfile](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Debian&target_version=12&target_type=runfile_local).
 
 ## Run the sidecar
 
@@ -66,10 +74,22 @@ export RISC_ZERO_VERIFIER_ADDR=<you_address>
 
 ### Run the sidecar (On this repo)
 
+Depending of what type of execution you chose, follow one of this
+
+### Local run
+
 ```bash
 make database # Creates the database that the sidecar uses to store proofs
 RUST_LOG=info cargo run --release
 ```
+
+### Dockerized run
+```bash
+make database # Creates the database that the sidecar uses to store proofs
+make sidecar # Runs the sidecar itself
+```
+
+> Note: the firts time the docker service for the sidecar is ran, it may take up to 3 hours to be set up completely.
 
 ### Run zksync-era (eigenda-v2-m1 branch on lambdaclass fork):
 
