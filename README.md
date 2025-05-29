@@ -29,7 +29,7 @@ sudo ./<file>.run
 
 ### Running inside a docker container
 
-Follow instructions on how to install [the NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html), but instead of installing the latest cuda driverrs, install [cuda version 12 with runfile](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Debian&target_version=12&target_type=runfile_local).
+Follow instructions on how to install [the NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html), but instead of installing the latest cuda drivers, install [cuda version 12 with runfile](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Debian&target_version=12&target_type=runfile_local).
 
 ## Run the sidecar
 

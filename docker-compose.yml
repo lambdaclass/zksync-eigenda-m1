@@ -12,7 +12,9 @@ services:
 
   sidecar:
     platform: linux/amd64
+    runtime: nvidia
     environment:
+      # Follow README to set up this variables
       - PRIVATE_KEY=${PRIVATE_KEY}
       - DISPERSER_PRIVATE_KEY=${DISPERSER_PRIVATE_KEY}
       - CERT_VERIFIER_ADDR=${CERT_VERIFIER_ADDR}
@@ -28,7 +30,9 @@ services:
     build:
       context: .
       dockerfile: dockerfile.gpu
-    # Comment code below to disable CUDA. This is useful for testing purposes only.
+    # Comment code below to disable CUDA. 
+    # This is useful for testing docker image generation only,
+    # the service may be built, but will fail to run without CUDA.
     deploy:
       resources:
         reservations:
@@ -36,3 +40,4 @@ services:
           - driver: nvidia
             count: 1
             capabilities: [gpu]
+    command: zksync-eigenda-m1-sidecar
