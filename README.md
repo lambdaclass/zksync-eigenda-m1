@@ -48,6 +48,7 @@ export EIGENDA_RELAY_REGISTRY_ADDR=<your_relay_registry_addr> #Address of the Ei
 export RELAY_CLIENT_KEYS=<your_relay_client_keys> #Keys of the relay client, separated by commas ("0,1,2")
 export SIDECAR_URL=<your_sidecar_url> #URL you want this sidecar to run on
 export DATABASE_URL=<proof_database_url> #URL of the database where the proofs will be stored
+export METRICS_URL=<your_metrics_url> #URL where you want the metrics to be exported, the example granafa expects it to be on port 9100
 ```
 
 Deploy the contracts:
@@ -67,7 +68,7 @@ export RISC_ZERO_VERIFIER_ADDR=<you_address>
 ### Run the sidecar (On this repo)
 
 ```bash
-make database # Creates the database that the sidecar uses to store proofs
+make containers # Creates the containers that the sidecar uses
 RUST_LOG=info cargo run --release
 ```
 
@@ -194,9 +195,9 @@ Running the guest with the constructed input...
 Proof gen thread: finished generating proof for Blob Id bdfef9b13ccd6648534267b80bea88b1b6c75ecfef4468299d32fd646c47c7b9
 ```
 
-### Clean the sidecar database
+### Clean the sidecar containers
 
-If you want to clean the sidecar database over different executions (Mostly during development)
+If you want to clean the sidecar containers over different executions (Mostly during development)
 
 ```bash
 make clean
