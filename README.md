@@ -1,6 +1,12 @@
-# ZKSYNC-EIGENDA M1
+# Zksync-EigenDA proving sidecar
 
-**A proof of concept where risc0-steel is used in order to generate a proof for the call of the VerifyBlobV1 function of EigenDA's BlobVerifier contract, which performs the necessary checks to make sure a given blob is present**
+**Warning: This sidecar only works on a x86 machine with cuda support**
+
+**The EigenDA sidecar where risc0-steel is used in order to generate a proof for the call of the VerifyDACertV2 function of EigenDA's CertVerifier contract, which performs the necessary checks to make sure a given blob is present.**
+**As well as performing the proof of equivalence verifying a proof that the EigenDA commitment commits to the given Blob.**
+**The sidecar consists of 2 Endpoints:**
+**generate_proof: Which given the blobKey begins the proof generation process**
+**get_proof: Which given the blobKey it returns the generated proof or an error in case it hasn't finished**
 
 ## Prerequisites
 
@@ -17,37 +23,56 @@ Use the runfile (local) option, use the wget shown to download the script and ru
 sudo ./<file>.run
 ```
 
+## Run the sidecar
 
+### Deployment steps (On this repo):
 
-## Run the example
-
-### First run the eigenda devnet:
-
-Install devnet: 
-
-Clone [avs-devnet](https://github.com/Layr-Labs/avs-devnet) repository and install the `avs-devnet` tool by running
+Compile the contracts
 
 ```bash
-make deps      # installs dependencies
-make install   # installs the project
+git submodule update --init --recursive
+make build_contracts
 ```
 
-Go to [Avs-Devnet repo](https://github.com/Layr-Labs/avs-devnet/blob/main/examples/eigenda.yaml) and follow the steps to run the EigenDA devnet, before running `avs-devnet start`, add the following line on `contracts/script/SetUpEigenDA.s.sol` on eigenda:
-
-Line 214: `vm.serializeAddress(output,"blobVerifier", address(eigenDABlobVerifier));`
-
-After runnning the devnet run
+Export the needed variables (rpcs should have http://, private keys and addresses should have 0x)
 
 ```bash
-avs-devnet get-ports
-avs-devnet get-address eigenda_addresses: 
+export PRIVATE_KEY=<your_private_key> #The private key you want to use to deploy contracts
+export DISPERSER_PRIVATE_KEY=<your_disperser_private_key> #The private key you want to use with the eigenda disperser
+export CERT_VERIFIER_ADDR=<your_cert_verifier_address> #Contract that has the VerifyDACertV2 function
+export RPC_URL=<your_rpc> #RPC URL of your node
+export DISPERSER_RPC=<your_rpc> #RPC of the eigenda disperser
+export PAYLOAD_FORM=<your_payload_form> #Either coeff or eval (On EigenDA Holesky use coeff)
+export BLOB_VERSION=0 #Blob version used by EigenDA
+export EIGENDA_RELAY_REGISTRY_ADDR=<your_relay_registry_addr> #Address of the EigenDA relay registry
+export RELAY_CLIENT_KEYS=<your_relay_client_keys> #Keys of the relay client, separated by commas ("0,1,2")
+export SIDECAR_URL=<your_sidecar_url> #URL you want this sidecar to run on
+export DATABASE_URL=<proof_database_url> #URL of the database where the proofs will be stored
+export METRICS_URL=<your_metrics_url> #URL where you want the metrics to be exported, the example granafa expects it to be on port 9100
 ```
 
-Save ports for `el-1-besu-lighthouse: rpc` and `disperser: grpc`
+Deploy the contracts:
 
-Save addresses of `blobVerifier` and `eigenDAServiceManager`
+```bash
+forge script contracts/script/ContractsDeployer.s.sol:ContractsDeployer --rpc-url $RPC_URL --broadcast -vvvv
+```
 
-### Run zksync-era (eigenda-m1-temporal branch on lambdaclass fork):
+Save the address under `EigenDACertVerifierWrapper deployed at: <address>`
+Save the address under `RiscZeroVerifier deployed at: <address>`
+
+```bash
+export CERT_VERIFIER_WRAPPER_ADDR=<your_address>
+export RISC_ZERO_VERIFIER_ADDR=<you_address>
+```
+
+### Run the sidecar (On this repo)
+
+```bash
+make containers # Creates the containers that the sidecar uses
+RUST_LOG=info cargo run --release
+```
+
+### Run zksync-era (eigenda-v2-m1 branch on lambdaclass fork):
 
 Install zkstack:
 
@@ -56,13 +81,17 @@ cd ./zkstack_cli/zkstackup
 ./install --local
 ```
 
+On `zksync-era/zkstack_cli/crates/types/src/l1_network.rs`
+
+Modify the address for `risc_zero_verifier` for your address (the one under `RISC_ZERO_VERIFIER_ADDR` env variable).
+
 Reload your terminal, and run on zksync-era root:
 
 ```bash
 zkstackup --local
 ```
 
-Install foundry-zksync 0.0.2:
+Install `foundry-zksync` `0.0.2`:
 
 ```
 curl -L https://raw.githubusercontent.com/matter-labs/foundry-zksync/main/install-foundry-zksync | bash
@@ -71,29 +100,43 @@ foundryup-zksync --commit 27360d4c8d12beddbb730dae07ad33a206b38f4b
 
 Modify `etc/env/file_based/overrides/validium.yaml`:
 
-```
+```yaml
 da_client:
-  eigen:
-    disperser_rpc: http://<disperser: grpc>
-    settlement_layer_confirmation_depth: 0
-    eigenda_eth_rpc: http://<el-1-besu-lighthouse: rpc>
-    eigenda_svc_manager_address: <eigenDAServiceManager>
-    wait_for_finalization: false
-    authenticated: false
-    points_source_path: ./resources
+  client: EigenDAV2Secure
+  version: V2Secure
+  disperser_rpc: <your_disperser_rpc> #Under DISPERSER_RPC env variable
+  eigenda_eth_rpc: <your_eth_rpc> #Under RPC_URL env variable
+  authenticated: true
+  settlement_layer_confirmation_depth: 0 #Value needed for V1 compatibility, you can leave this one
+  eigenda_svc_manager_address: 0xD4A7E1Bd8015057293f0D0A557088c286942e84b #Value needed for V1 compatibility, you can leave this one
+  wait_for_finalization: false #Value needed for V1 compatibility, you can leave this one
+  points: #Value needed for V1 compatibility, you can leave this one
+    source: Url
+    g1_url: https://github.com/Layr-Labs/eigenda-proxy/raw/2fd70b99ef5bf137d7bbca3461cf9e1f2c899451/resources/g1.point
+    g2_url: https://github.com/Layr-Labs/eigenda-proxy/raw/2fd70b99ef5bf137d7bbca3461cf9e1f2c899451/resources/g2.point.powerOf2
+  cert_verifier_addr: <your_cert_verifier_address> #Under CERT_VERIFIER_ADDRESS env variable
+  blob_version: <your_blob_version> #Under BLOB_VERSION env variable
+  polynomial_form: <your_polynomial_form> #Either coeff or eval
+  eigenda_sidecar_rpc: <your_sidecar_rpc> #Under SIDECAR_URL env variable
 ```
-
-Copy the resources folder inside eigenda to zksync-era root
 
 Modify `etc/env/file_based/secrets.yaml`:
 
-```
+```yaml
 da:
-  eigen:
-    private_key: <your_private_key>
+  client: EigenDA
+  private_key: <your_private_key> #The private key you want to use with the eigenda disperser
 ```
 
-Run
+Modify `etc/env/file_based/general.yaml`:
+
+```yaml
+eth:
+  sender:
+    gas_limit_mode: MAXIMUM
+```
+
+Run replacing with your l1 rpc:
 
 ```bash
 zkstack containers --observability true
@@ -113,7 +156,7 @@ zkstack ecosystem init \
           --deploy-paymaster true \
           --deploy-erc20 true \
           --deploy-ecosystem true \
-          --l1-rpc-url http://127.0.0.1:8545 \
+          --l1-rpc-url <your_l1_rpc> \
           --server-db-url=postgres://postgres:notsecurepassword@localhost:5432 \
           --server-db-name=zksync_server_localhost_eigenda \
           --chain eigenda \
@@ -121,61 +164,310 @@ zkstack ecosystem init \
 ```
 
 Then run
-```
+
+```bash
 zkstack server --chain eigenda
 ```
 
+On zksync-era you should see blobs being dispatched:
 
-### Run this example (back on this repo):
+```
+2025-03-27T18:20:05.383060Z  INFO zksync_da_dispatcher::da_dispatcher: Dispatched a DA for batch_number: 1, pubdata_size: 5312, dispatch_latency: 24.480322ms
 
-Compile the contracts
+2025-03-27T18:36:19.150242Z  INFO zksync_da_dispatcher::da_dispatcher: Received an inclusion data for a batch_number: 1, inclusion_latency_seconds: 973
+
+2025-03-27T18:36:23.535623Z  INFO EthTxManager::loop_iteration: zksync_eth_sender::eth_tx_manager: Checking tx id: 1, operator_nonce: OperatorNonce { finalized: Nonce(1), latest: Nonce(1) }, tx nonce: 0
+
+2025-03-27T18:36:23.540535Z  INFO EthTxManager::loop_iteration: zksync_eth_sender::eth_tx_manager: eth_tx 1 with hash 0xbe08cdd9ba138548f45c152e1a913784dd5cb2157e2d6323db9fe182aa067e2f for CommitBlocks is confirmed. Gas spent: 267395
+```
+
+On the sidecar you should see blobs being verified:
+
+```
+Running JSON RPC server
+Running proof gen thread
+Proof gen thread: retrieved request to prove: bdfef9b13ccd6648534267b80bea88b1b6c75ecfef4468299d32fd646c47c7b9
+2025-05-19T15:45:28.038452Z  INFO risc0_steel::host::builder: Environment initialized with block 3861957 (0x2283aafccd1976c63f9dced04f03106629a7b76baccc519c2f6d4bb61ae4b59c)
+2025-05-19T15:45:28.038505Z  INFO risc0_steel::contract::host: Executing preflight calling 'verifyDACertV2((bytes32,uint32),(((uint16,bytes,((uint256,uint256),(uint256[2],uint256[2]),(uint256[2],uint256[2]),uint32),bytes32),bytes,uint32[]),uint32,bytes),(uint32[],(uint256,uint256)[],(uint256,uint256)[],(uint256[2],uint256[2]),(uint256,uint256),uint32[],uint32[],uint32[][]),bytes)' on 0x18c7De1E82513c3F48dFcCa85c64056C637104fb
+Call verifyDACertV2((bytes32,uint32),(((uint16,bytes,((uint256,uint256),(uint256[2],uint256[2]),(uint256[2],uint256[2]),uint32),bytes32),bytes,uint32[]),uint32,bytes),(uint32[],(uint256,uint256)[],(uint256,uint256)[],(uint256[2],uint256[2]),(uint256,uint256),uint32[],uint32[],uint32[][]),bytes) Function on 0x18c7…04fb returns: true
+Running the guest with the constructed input...
+2025-05-19T15:46:27.505240Z  INFO risc0_zkvm::host::server::exec::executor: execution time: 17.890119705s
+Proof gen thread: finished generating proof for Blob Id bdfef9b13ccd6648534267b80bea88b1b6c75ecfef4468299d32fd646c47c7b9
+```
+
+### Clean the sidecar containers
+
+If you want to clean the sidecar containers over different executions (Mostly during development)
 
 ```bash
-git submodule update --init --recursive
-make build_contracts
+make clean
 ```
 
-Deploy the blobVerifierWrapper:
+## Design
+
+M1 consists of checking the inclusion of the blob and verifying that the data that is committed to is the correct one, this computations would be too heavy/costly to run directly on chain. An offchain implementation is needed in order to prevent this high costs. We resolve this by making a binary capable of running this checks in a provable way.
+
+### Integration
+
+The important components are marked in **bold**
+
+#### Step 1: Sequencer Dispersal and Inclusion data retrieval (Marked in Blue) & Sidecar Proof Generation (Marked in red)
+
+![Step 1](images/step1.png)
+
+1. Zksync's sequencer finishes a batch and wants to disperse its content (**Blob Data**).
+2. Zksync's sequencer sends the blob to be dispersed to EigenDA, EigenDA returns the **Blob Key**.
+3. Zksync's sequencer sends the **Blob key** to the Sidecar
+4. Zksync's sequencer stores the **Blob Key** in its database.
+5. Zksync’s sequencer asks for **Inlcusion Data** (encoded **EigenDACert**) to EigenDA
+6. Zksync’s sequencer starts waiting for Sidecar **Blob Key** proof to be generated.
+7. Sidecar asks EigenDA for **EigenDACert** and **Blob Data** (this step runs parallel to step 4)
+8. Sidecar executes Risc0, doing 3 things:
+
+   a. Call to VerifyDACertV2
+
+   b. Proof of Equivalence
+
+   c. Calculation of **EigenDAHash** (keccak of _BlobData_)
+
+   And generates a **Risc0 Proof** of those 3 things.
+
+9. Zksync’s sequencer finishes waiting for proof (step 6), storing the retrieved proof in its database. It then calls the Commit Batches function of Executor (zksync’s DiamondProxy implementation)on Ethereum.
+
+#### Step 2 Commit Batches (Marked in Green)
+
+![Step 2](images/step2.png)
+
+Everything here runs on Ethereum
+
+10. Executor starts commit batches function
+11. Executor calls the EigenDAL1Validator checkDA function with **l2DAValidatorOutputHash** and **operatorDAInput** as parameters
+
+    a. **l2DAValidatorOutputHash**: keccak(**stateDiffHash** + **EigenDAHash**)
+
+    b. **operatorDAInput**: **StateDiffHash** + **Inclusion Data** (seal + imageId + journalDigest + eigenDAHash)
+
+    - **stateDiffHash** is the hash of the states diffs, calculated on EigenDAL2Validator and sent to L1 through L2→L1 Logs
+
+12. EigenDAL1Validator calls risc0Verifier `verify` function with **inclusionData.seal**, **inclusionData.imageId**, **inclusionData.journalDigest** as parameters, which is expected to **not revert** upon succesful verification.
+13. EigenDAL1Validator checks if keccak(**stateDiffHash** + **inclusionData.EigenDAHash**) equals **l2DAValidatorOutputHash** (meaning that if not, **EigenDAHash** was not correctly calculated by the sidecar)
+
+### What does the Guest do?
+
+There are 3 things we want to achieve with the Risc0 guest. Each one of them is addressed in point 8.
+
+1. We want to check that the blob is available in EigenDA. 8.a
+2. We want to check that the commitment commits to that blob. 8.b
+3. We want to check that the blob is the same we dispersed on zksync. 8.c
+
+#### Call to verifyDACertV2 (8.a)
+
+On the host:
+
+Inputs: `rpc_url`, `cert_verifier_wrapper_addr`
+
+```rust
+    let call = IVerifyBlob::verifyDACertV2Call {
+        batchHeader: eigenda_cert.batch_header.clone().into(),
+        blobInclusionInfo: eigenda_cert.blob_inclusion_info.clone().into(),
+        nonSignerStakesAndSignature: eigenda_cert.non_signer_stakes_and_signature.clone().into(),
+        signedQuorumNumbers: eigenda_cert.signed_quorum_numbers.clone().into(),
+    };
+
+    // Create an EVM environment from an RPC endpoint defaulting to the latest block.
+    let mut env = EthEvmEnv::builder().rpc(rpc_url.clone()).build().await?;
+
+    // Preflight the call to prepare the input that is required to execute the function in
+    // the guest without RPC access. It also returns the result of the call.
+    // Risc0 steel creates an ethereum VM using revm, where it simulates the call to verifyDACertV2.
+    // So we need to make this preflight call to populate the VM environment with the current state of the chain
+    let mut contract = Contract::preflight(cert_verifier_wrapper_addr, &mut env);
+    let returns = contract.call_builder(&call).call().await?;
+
+    // Finally, construct the input from the environment.
+    let input = env.into_input().await?;
+```
+
+We make the preflight call to CertVerifierWrapper to populate the EvmEnv
+
+Output: input (EthEvmInput type)
+
+On the guest:
+
+Inputs: input
+
+```rust
+    // Read the input from the guest environment.
+    let input: EthEvmInput = env::read();
+
+    // Converts the input into a `EvmEnv` for execution.
+    let env = input.into_env();
+
+    // Execute the view call; it returns the result in the type generated by the `sol!` macro.
+    let contract = Contract::new(cert_verifier_wrapper_addr, &env);
+    let call = IVerifyBlob::verifyDACertV2Call {
+        batchHeader: eigenda_cert.batch_header.clone().into(),
+        blobInclusionInfo: eigenda_cert.blob_inclusion_info.clone().into(),
+        nonSignerStakesAndSignature: eigenda_cert.non_signer_stakes_and_signature.clone().into(),
+        signedQuorumNumbers: eigenda_cert.signed_quorum_numbers.clone().into(),
+    };
+    let returns = contract.call_builder(&call).call();
+    // Here we assert that the result of the verifyDACertV2 call is true, meaning it executed correctly
+    assert!(returns._0);
+```
+
+Here we make the call to verifyBlobV2 inside the risc0 steel VM.
+
+What risc0 steel does is, given the env it generates a revm VM with the given state of the chain.
+
+And it simulates the call to the contract.
+
+We then assert the result of that call being true.
+
+Outputs: **Risc0Proof**
+
+#### Proof Of Equivalence (8.b)
+
+On the host:
+
+Inputs: **EigenDACert, BlobData,** SRSPoints
+
+```rust
+    let blob = Blob::new(&encoded_data);
+
+    let mut kzg = KZG::new();
+
+    kzg.calculate_and_store_roots_of_unity(blob.len().try_into()?)?;
+
+    let cert_commitment = eigenda_cert
+        .blob_inclusion_info
+        .blob_certificate
+        .blob_header
+        .commitment
+        .commitment;
+```
+
+First we obtain the commitment from the EigenDACert’s blob header:
+
+```rust
+    // Calculate the polynomial in evaluation form
+    let poly_coeff = blob.to_polynomial_coeff_form();
+    let poly_eval = poly_coeff.to_eval_form()?;
+
+    let evaluation_challenge = compute_challenge(&blob, &cert_commitment)?;
+
+    // Compute the proof that the commitment corresponds to the given blob
+    let proof = kzg.compute_proof(&poly_eval, &evaluation_challenge, &srs)?;
+```
+
+We then calculate the eval polynomial, the evaluation challenge and the proof for that commitment
+
+Output: Proof
+
+Guest:
+
+Inputs: **BlobData**, Proof, EigenDACert (commitment)
+
+```rust
+    // Calculate the polynomial in evaluation form
+    let poly_coeff = blob.to_polynomial_coeff_form();
+    let poly_eval = poly_coeff.to_eval_form().unwrap();
+
+    // Get the commitment from eigenda cert
+    let cert_commitment = eigenda_cert.blob_inclusion_info.blob_certificate.blob_header.commitment.commitment;
+    // Compute evaluation challenge
+    let evaluation_challenge = compute_challenge(&blob, &cert_commitment).unwrap();
+
+    // Evaluate the polynomial at the evaluation challenge
+    let y = evaluate_polynomial_in_evaluation_form(&poly_eval, &evaluation_challenge).unwrap();
+
+    let evaled_y = eval(poly_coeff.coeffs(), evaluation_challenge);
+
+    // Assert that the evaluation of the polynomial at the evaluation challenge is equal to the y value
+    assert_eq!(y, evaled_y);
+
+    // Verification of the kzg proof for the given commitment, evaluation and evaluation challenge
+    let verified = verify_proof(cert_commitment, proof.g1, y, evaluation_challenge).unwrap();
+    assert!(verified);
+```
+
+We recalculate the evaluation polynomial, the cert commitment from the blob info and the evaluation challenge.
+Then we get the evaluation at the challenge point and compare it to the one we calculate using horner's rule.
+Then we verify the proof for the commitment at that challenge point
+
+Output: **Risc0Proof**
+
+#### EigenDAHash (8.c)
+
+In the guest we also calculate the eigenDAHash
+
+```rust
+    // Here we calculate the keccak hash of the data, which we will use on zksync's EigenDAL1Validator to compare it to the hashes there
+    let hash = keccak256(&data);
+
+    let mut proof_bytes = vec![];
+    proof.g1.serialize_compressed(&mut proof_bytes).unwrap();
+    // Public outputs of the guest, eigenDAHash, commitment to the risc0 steel environment, blob info and proof, they are embedded on the risc0 proof
+    let output = Output {
+        hash: hash.to_vec(),
+        env_commitment: env.commitment().abi_encode(),
+        inclusion_data: eigenda_cert.to_bytes().unwrap(),
+        proof: proof_bytes,
+    };
+```
+
+And return it as a public output.
+
+We then store this proof on the sidecar database.
+
+Then on zksync’s EigenDAL1Validator, we check the validity of this proof by verifying against the risc0verifier.
+
+The idea of this check is to make sure that the blob we verified on the guest is the same blob we dispersed on zksync.
+
+# Prometheus Metrics
+The JSON rpc server exposes Prometheus metrics at the `/metrics` endpoint, the returned metrics are returned in JSON format:
 
 ```bash
-PRIVATE_KEY=<your_private_key> BLOB_VERIFIER_ADDRESS=<your_blob_verifier_address> forge script contracts/script/BlobVerifierWrapperDeployer.s.sol:BlobVerifierWrapperDeployer --rpc-url <your_rpc_url> --broadcast -vvvv
+curl -X POST http://127.0.0.1:3030 -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"metrics","params":[],"id":1}'
 ```
 
-For testing purpouses on devnet you can use:
-```bash
-PRIVATE_KEY=0x3eb15da85647edd9a1159a4a13b9e7c56877c4eb33f614546d4db06a51868b1c BLOB_VERIFIER_ADDRESS=0x00CfaC4fF61D52771eF27d07c5b6f1263C2994A1 forge script contracts/script/BlobVerifierWrapperDeployer.s.sol:BlobVerifierWrapperDeployer --rpc-url http://127.0.0.1:<your_port> --broadcast -vvvv
+The outputed metrics are in the Prometheus text format, you can use a crate like [`prometheus-parse`](https://crates.io/crates/prometheus-parse) to parse the output:
+
+```rs
+use serde_json::json;
+
+const SIDECAR_URL: &str = "http://127.0.0.1:3030";
+
+#[tokio::main]
+async fn main() {
+    let client = reqwest::Client::new();
+
+    let request_body = json!({
+        "jsonrpc": "2.0",
+        "method": "metrics",
+        "params": [],
+        "id": 1
+    });
+
+    let response_text = client
+        .post(SIDECAR_URL)
+        .header("Content-Type", "application/json")
+        .json(&request_body)
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
+
+    let parsed_json: serde_json::Value = serde_json::from_str(&response_text).unwrap();
+    let metrics_text = parsed_json["result"].as_str().unwrap_or_default();
+
+    let lines: Vec<_> = metrics_text.lines().map(|s| Ok(s.to_owned())).collect();
+    let scrape = prometheus_parse::Scrape::parse(lines.into_iter()).unwrap();
+    for sample in scrape.samples {
+        println!("{:?}", sample.metric);
+        println!("{:?}", sample.value);
+    }
+}
 ```
-
-Update the BLOB_VERIFIER_WRAPPER_CONTRACT address on ```host/src/verify_blob.rs``` and ```methods/guest/src/main.rs``` for the one just deployed if needed.
-
-The address on CALLER is a known address from zksync, it should be changed to the needed one in the real use case.
-
-Deploy the `RiscZeroGroth16Verifier`:
-```bash
-ETH_WALLET_PRIVATE_KEY=<your_sk> forge script contracts/script/DeployRiscZeroGroth16Verifier.s.sol:DeployRiscZeroGroth16Verifier --rpc-url <your_rpc> --broadcast -vvvv
-```
-
-Save the address under `Contract Address: <address>`
-
-Deploy the `Risc0ProofVerifierWrapper`:
-
-```bash
-PRIVATE_KEY=<your_sk> RISC0_VERIFIER_ADDRESS=<your_address> forge script contracts/script/Risc0ProofVerifierWrapperDeployer.s.sol:Risc0ProofVerifierWrapperDeployer --rpc-url <your_rpc> --broadcast -vvvv
-```
-
-Keep the contract address at hand for the next command.
-
-To run the example execute the following command:
-
-```bash
-RPC_URL=<your_rpc> PRIVATE_KEY=<your_private_key> RISC0_VERIFIER_WRAPPER=<your_risc0_verifier_address> API_URL=<your_url> START_BATCH=1 RUST_LOG=info cargo run --release
-```
-
-For a local server, you can get your api url under `chains/<your_chain>/configs/general.yaml` on the `zksync-era` repository
-
-```
-api:
-  web3_json_rpc:
-    http_url:
-```
-
