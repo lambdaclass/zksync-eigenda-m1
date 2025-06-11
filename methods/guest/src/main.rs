@@ -90,7 +90,7 @@ fn main() {
     };
     let returns = contract.call_builder(&call).call();
     // Here we assert that the result of the verifyDACertV2 call is true, meaning it executed correctly
-    assert!(returns._0);
+    assert!(returns);
 
     // Calculate the polynomial in evaluation form
     let poly_coeff = blob.to_polynomial_coeff_form();
