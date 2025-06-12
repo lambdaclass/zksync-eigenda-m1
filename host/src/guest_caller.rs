@@ -5,7 +5,7 @@ use common::polynomial_form::PolynomialForm;
 use common::serializable_g1::SerializableG1;
 use common::verify_blob::IVerifyBlob;
 use methods::GUEST_ELF;
-use risc0_steel::{ethereum::EthEvmEnv, Contract};
+use risc0_steel::{ethereum::{EthEvmEnv,ETH_HOLESKY_CHAIN_SPEC}, Contract};
 use risc0_zkvm::ProveInfo;
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
 use rust_eigenda_v2_common::{EigenDACert, Payload, PayloadForm};
@@ -31,7 +31,7 @@ pub async fn run_guest(
     };
 
     // Create an EVM environment from an RPC endpoint defaulting to the latest block.
-    let mut env = EthEvmEnv::builder().rpc(rpc_url.clone()).build().await?;
+    let mut env = EthEvmEnv::builder().rpc(rpc_url.clone()).chain_spec(&ETH_HOLESKY_CHAIN_SPEC).build().await?;
 
     // Preflight the call to prepare the input that is required to execute the function in
     // the guest without RPC access. It also returns the result of the call.
@@ -43,7 +43,7 @@ pub async fn run_guest(
         "Call {} Function on {:#} returns: {}",
         IVerifyBlob::verifyDACertV2Call::SIGNATURE,
         cert_verifier_wrapper_addr,
-        returns._0
+        returns
     );
 
     // Finally, construct the input from the environment.
