@@ -16,18 +16,24 @@
 #![no_main]
 
 use alloy_primitives::Address;
-use common::output::Output;
-use common::serializable_g1::SerializableG1;
-use common::verify_blob::IVerifyBlob;
-use common::polynomial_form::PolynomialForm;
-use risc0_steel::{ethereum::{EthEvmInput,ETH_HOLESKY_CHAIN_SPEC}, Contract};
-use risc0_zkvm::guest::env;
-use rust_kzg_bn254_primitives::{blob::Blob, helpers::{compute_challenge, evaluate_polynomial_in_evaluation_form}};
-use rust_kzg_bn254_verifier::verify::verify_proof;
-use tiny_keccak::{Hasher, Keccak};
 use ark_bn254::Fr;
 use ark_serialize::CanonicalSerialize;
-use rust_eigenda_v2_common::{EigenDACert, Payload, PayloadForm, CheckDACertStatus};
+use common::output::Output;
+use common::polynomial_form::PolynomialForm;
+use common::serializable_g1::SerializableG1;
+use common::verify_blob::IVerifyBlob;
+use risc0_steel::{
+    ethereum::{EthEvmInput, ETH_HOLESKY_CHAIN_SPEC},
+    Contract,
+};
+use risc0_zkvm::guest::env;
+use rust_eigenda_v2_common::{CheckDACertStatus, EigenDACert, Payload, PayloadForm};
+use rust_kzg_bn254_primitives::{
+    blob::Blob,
+    helpers::{compute_challenge, evaluate_polynomial_in_evaluation_form},
+};
+use rust_kzg_bn254_verifier::verify::verify_proof;
+use tiny_keccak::{Hasher, Keccak};
 
 risc0_zkvm::guest::entry!(main);
 
@@ -68,7 +74,7 @@ fn main() {
     let cert_verifier_router_addr: Address = env::read();
 
     let polynomial_form: PolynomialForm = env::read();
-    
+
     let payload_form = match polynomial_form {
         PolynomialForm::Coeff => PayloadForm::Coeff,
         PolynomialForm::Eval => PayloadForm::Eval,
@@ -89,14 +95,23 @@ fn main() {
     // Here we assert that the result of the checkDACert call is succesfull
     let status = CheckDACertStatus::try_from(returns).unwrap();
 
-    assert_eq!(status, CheckDACertStatus::Success, "CheckDACert call failed");
-    
+    assert_eq!(
+        status,
+        CheckDACertStatus::Success,
+        "CheckDACert call failed"
+    );
+
     // Calculate the polynomial in evaluation form
     let poly_coeff = blob.to_polynomial_coeff_form();
     let poly_eval = poly_coeff.to_eval_form().unwrap();
 
     // Get the commitment from eigenda cert
-    let cert_commitment = eigenda_cert.blob_inclusion_info.blob_certificate.blob_header.commitment.commitment;
+    let cert_commitment = eigenda_cert
+        .blob_inclusion_info
+        .blob_certificate
+        .blob_header
+        .commitment
+        .commitment;
     // Compute evaluation challenge
     let evaluation_challenge = compute_challenge(&blob, &cert_commitment).unwrap();
 
