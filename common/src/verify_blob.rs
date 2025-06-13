@@ -83,14 +83,11 @@ sol! {
         uint32[][] nonSignerStakeIndices;
     }
 
-    /// VerifyBlobV1 function signature.
+    /// checkDACert function signature.
     /// This must match the signature in the guest.
     interface IVerifyBlob {
-        function verifyDACertV2(BatchHeaderV2 calldata batchHeader,
-            BlobInclusionInfo calldata blobInclusionInfo,
-            NonSignerStakesAndSignature calldata nonSignerStakesAndSignature,
-            bytes memory signedQuorumNumbers)
-        external view returns (bool);
+        function checkDACert(bytes calldata eigendacert)
+        external view returns (uint8);
     }
 }
 

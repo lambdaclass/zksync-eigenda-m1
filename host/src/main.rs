@@ -18,7 +18,7 @@ use alloy_primitives::Address;
 use anyhow::Result;
 use clap::Parser;
 use common::{output::Output, polynomial_form::PolynomialForm};
-use ethabi::{ethereum_types::H160, Token};
+use ethabi::Token;
 use host::db::{
     mark_blob_proof_request_failed, proof_request_exists, retrieve_blob_id_proof,
     retrieve_next_pending_proof, store_blob_proof, store_blob_proof_request,
@@ -39,9 +39,9 @@ use rust_eigenda_v2_common::{EigenDACert, Payload, PayloadForm};
 use secrecy::{ExposeSecret, Secret};
 use serde::Deserialize;
 use sqlx::PgPool;
+use tiny_http::{Header, Response, Server as MetricsServer};
 use tokio::{sync::Mutex, task::JoinHandle};
 use tracing_subscriber::EnvFilter;
-use tiny_http::{Header, Response, Server as MetricsServer};
 
 use rust_kzg_bn254_prover::srs::SRS;
 use url::Url;
@@ -84,21 +84,18 @@ struct Args {
     /// Rpc of the eigenda Disperser
     #[arg(short, long, env = "DISPERSER_RPC")]
     disperser_rpc: String,
-    /// Blob Verifier Wrapper Contract Address
-    #[arg(short, long, env = "CERT_VERIFIER_WRAPPER_ADDR")]
-    cert_verifier_wrapper_addr: Address,
     /// Payload Form of the dispersed blobs
     #[arg(value_enum, env = "PAYLOAD_FORM")]
     payload_form: PolynomialForm,
     /// Blob Version
     #[arg(short, long, env = "BLOB_VERSION")]
     blob_version: u16,
-    /// Address of the EigenDA Cert Verifier
-    #[arg(short, long, env = "CERT_VERIFIER_ADDR")]
-    eigenda_cert_verifier_addr: H160,
+    /// Address of the EigenDA Cert Verifier Router
+    #[arg(short, long, env = "CERT_VERIFIER_ROUTER_ADDR")]
+    eigenda_cert_verifier_router_addr: Address,
     /// Address of the EigenDA Relay Registry
     #[arg(short, long, env = "EIGENDA_RELAY_REGISTRY_ADDR")]
-    eigenda_relay_registry_addr: H160,
+    eigenda_relay_registry_addr: Address,
     /// Keys of the relay client
     #[arg(short, long, env = "RELAY_CLIENT_KEYS", value_delimiter = ',')]
     relay_client_keys: Vec<u32>,
@@ -111,6 +108,12 @@ struct Args {
     /// URL where the metrics server should run
     #[arg(short, long, env = "METRICS_URL")]
     metrics_url: String,
+    /// Address of the Eigen Registry Coordinator
+    #[arg(short, long, env = "REGISTRY_COORDINATOR_ADDR")]
+    registry_coordinator_addr: String,
+    /// Address of the Eigen Operator State Retriever
+    #[arg(short, long, env = "OPERATOR_STATE_RETRIEVER_ADDR")]
+    operator_state_retriever_addr: String,
 }
 
 const SRS_ORDER: u32 = 268435456;
@@ -140,13 +143,13 @@ async fn generate_proof(
     retriever: Arc<Mutex<RelayPayloadRetriever>>,
     srs: &SRS,
     rpc_url: Url,
-    cert_verifier_wrapper_addr: Address,
+    cert_verifier_router_addr: Address,
     payload_form: PayloadForm,
 ) -> Result<Vec<u8>> {
     let eigenda_cert: EigenDACert;
     loop {
         let blob_key = BlobKey::from_hex(&blob_id)?;
-        let opt_eigenda_cert = payload_disperser.get_inclusion_data(&blob_key).await?;
+        let opt_eigenda_cert = payload_disperser.get_cert(&blob_key).await?;
         if let Some(opt_eigenda_cert) = opt_eigenda_cert {
             eigenda_cert = opt_eigenda_cert;
             break;
@@ -168,7 +171,7 @@ async fn generate_proof(
         srs,
         blob_data,
         rpc_url,
-        cert_verifier_wrapper_addr,
+        cert_verifier_router_addr,
         payload_form,
     )
     .await?;
@@ -236,10 +239,12 @@ async fn main() -> Result<()> {
     let payload_disperser_config = PayloadDisperserConfig {
         polynomial_form: payload_form,
         blob_version: args.blob_version,
-        cert_verifier_address: args.eigenda_cert_verifier_addr,
+        cert_verifier_router_address: args.eigenda_cert_verifier_router_addr.to_string(),
         eth_rpc_url: SecretUrl::new(args.rpc_url.clone()),
         disperser_rpc: args.disperser_rpc,
         use_secure_grpc_flag: true,
+        registry_coordinator_addr: args.registry_coordinator_addr,
+        operator_state_retriever_addr: args.operator_state_retriever_addr,
     };
     let private_key = args
         .disperser_private_key
@@ -278,7 +283,7 @@ async fn main() -> Result<()> {
             eth_rpc_url: SecretUrl::new(args.rpc_url.clone()),
         };
 
-        let relay_client = RelayClient::new(relay_client_config, signer).await?;
+        let relay_client = RelayClient::new(relay_client_config).await?;
         let retriever = Arc::new(Mutex::new(RelayPayloadRetriever::new(
             retriever_config,
             srs_config,
@@ -286,7 +291,7 @@ async fn main() -> Result<()> {
         )?));
 
         let rpc_url = args.rpc_url.clone();
-        let cert_verifier_wrapper_addr = args.cert_verifier_wrapper_addr;
+        let cert_verifier_router_addr = args.eigenda_cert_verifier_router_addr;
 
         let db_pool = db_pool.clone();
         loop {
@@ -304,7 +309,10 @@ async fn main() -> Result<()> {
                 }
             };
 
-            tracing::info!("Proof generation thread: retrieved request to prove: {}", blob_id);
+            tracing::info!(
+                "Proof generation thread: retrieved request to prove: {}",
+                blob_id
+            );
 
             let timer = PROOF_GEN_TIME_HISTOGRAM
                 .with_label_values(&[&blob_id])
@@ -316,7 +324,7 @@ async fn main() -> Result<()> {
                 retriever.clone(),
                 &srs,
                 rpc_url.clone(),
-                cert_verifier_wrapper_addr,
+                cert_verifier_router_addr,
                 payload_form,
             )
             .await
@@ -330,7 +338,8 @@ async fn main() -> Result<()> {
                 Err(e) => {
                     tracing::error!(
                         "Proof gen thread: error generating proof for Blob Id: {}, error: {}",
-                        blob_id, e
+                        blob_id,
+                        e
                     );
                     // Mark the proof request as invalid in the database
                     mark_blob_proof_request_failed(db_pool.clone(), blob_id.clone()).await?;
@@ -362,11 +371,7 @@ async fn main() -> Result<()> {
 
                 let blob_key = BlobKey::from_hex(&blob_id)
                     .map_err(|_| jsonrpc_core::Error::invalid_params("Invalid blob ID"))?;
-                if payload_disperser
-                    .get_inclusion_data(&blob_key)
-                    .await
-                    .is_err()
-                {
+                if payload_disperser.get_cert(&blob_key).await.is_err() {
                     return Err(jsonrpc_core::Error::invalid_params(
                         "Blob ID not found in EigenDA",
                     ));
@@ -430,8 +435,15 @@ async fn main() -> Result<()> {
 
                         match proof {
                             None => {
-                                tracing::debug!("Proof for Blob ID {} not found (still queued)", blob_id);
-                                Err(jsonrpc_core::Error{code: ErrorCode::ServerError(PROOF_NOT_FOUND_ERROR), message:"Proof not found (still queued)".to_string(), data: None})
+                                tracing::debug!(
+                                    "Proof for Blob ID {} not found (still queued)",
+                                    blob_id
+                                );
+                                Err(jsonrpc_core::Error {
+                                    code: ErrorCode::ServerError(PROOF_NOT_FOUND_ERROR),
+                                    message: "Proof not found (still queued)".to_string(),
+                                    data: None,
+                                })
                             }
                             Some(proof) => Ok(jsonrpc_core::Value::String(proof)),
                         }
@@ -450,19 +462,19 @@ async fn main() -> Result<()> {
 
     let metrics_server_thread = tokio::spawn(async move {
         tracing::info!("Starting metrics server on port 9100");
-        let server = MetricsServer::http(metrics_url).map_err(|_| anyhow::anyhow!("Failed to start metrics server"))?;
+        let server = MetricsServer::http(metrics_url)
+            .map_err(|_| anyhow::anyhow!("Failed to start metrics server"))?;
         for request in server.incoming_requests() {
             if request.url() == "/metrics" {
                 let encoder = prometheus::TextEncoder::new();
                 let metric_families = prometheus::gather();
                 let mut buffer = Vec::new();
                 encoder.encode(&metric_families, &mut buffer)?;
-    
-                let content_type = Header::from_bytes(
-                    &b"Content-Type"[..],
-                    &b"text/plain; version=0.0.4"[..],
-                ).map_err(|_| anyhow::anyhow!("Failed parsing header"))?;
-    
+
+                let content_type =
+                    Header::from_bytes(&b"Content-Type"[..], &b"text/plain; version=0.0.4"[..])
+                        .map_err(|_| anyhow::anyhow!("Failed parsing header"))?;
+
                 let response = Response::from_data(buffer).with_header(content_type);
                 let _ = request.respond(response);
             } else {
@@ -473,7 +485,11 @@ async fn main() -> Result<()> {
         Ok(())
     });
 
-    match tokio::try_join!(flatten(proof_gen_thread), flatten(json_rpc_server_thread), flatten(metrics_server_thread)) {
+    match tokio::try_join!(
+        flatten(proof_gen_thread),
+        flatten(json_rpc_server_thread),
+        flatten(metrics_server_thread)
+    ) {
         Ok(_) => {
             tracing::info!("Threads finished successfully");
         }
