@@ -18,7 +18,7 @@ use alloy_primitives::Address;
 use anyhow::Result;
 use clap::Parser;
 use common::{output::Output, polynomial_form::PolynomialForm};
-use ethabi::{ethereum_types::H160, Token};
+use ethabi::Token;
 use host::db::{
     mark_blob_proof_request_failed, proof_request_exists, retrieve_blob_id_proof,
     retrieve_next_pending_proof, store_blob_proof, store_blob_proof_request,
@@ -93,12 +93,12 @@ struct Args {
     /// Blob Version
     #[arg(short, long, env = "BLOB_VERSION")]
     blob_version: u16,
-    /// Address of the EigenDA Cert Verifier
-    #[arg(short, long, env = "CERT_VERIFIER_ADDR")]
-    eigenda_cert_verifier_addr: H160,
+    /// Address of the EigenDA Cert Verifier Router
+    #[arg(short, long, env = "CERT_VERIFIER_ROUTER_ADDR")]
+    eigenda_cert_verifier_router_addr: String,
     /// Address of the EigenDA Relay Registry
     #[arg(short, long, env = "EIGENDA_RELAY_REGISTRY_ADDR")]
-    eigenda_relay_registry_addr: H160,
+    eigenda_relay_registry_addr: Address,
     /// Keys of the relay client
     #[arg(short, long, env = "RELAY_CLIENT_KEYS", value_delimiter = ',')]
     relay_client_keys: Vec<u32>,
@@ -111,6 +111,12 @@ struct Args {
     /// URL where the metrics server should run
     #[arg(short, long, env = "METRICS_URL")]
     metrics_url: String,
+    /// Address of the Eigen Registry Coordinator
+    #[arg(short, long, env = "REGISTRY_COORDINATOR_ADDR")]
+    registry_coordinator_addr: String,
+    /// Address of the Eigen Operator State Retriever
+    #[arg(short, long, env = "OPERATOR_STATE_RETRIEVER_ADDR")]
+    operator_state_retriever_addr: String,
 }
 
 const SRS_ORDER: u32 = 268435456;
@@ -146,7 +152,7 @@ async fn generate_proof(
     let eigenda_cert: EigenDACert;
     loop {
         let blob_key = BlobKey::from_hex(&blob_id)?;
-        let opt_eigenda_cert = payload_disperser.get_inclusion_data(&blob_key).await?;
+        let opt_eigenda_cert = payload_disperser.get_cert(&blob_key).await?;
         if let Some(opt_eigenda_cert) = opt_eigenda_cert {
             eigenda_cert = opt_eigenda_cert;
             break;
@@ -236,10 +242,12 @@ async fn main() -> Result<()> {
     let payload_disperser_config = PayloadDisperserConfig {
         polynomial_form: payload_form,
         blob_version: args.blob_version,
-        cert_verifier_address: args.eigenda_cert_verifier_addr,
+        cert_verifier_router_address: args.eigenda_cert_verifier_router_addr,
         eth_rpc_url: SecretUrl::new(args.rpc_url.clone()),
         disperser_rpc: args.disperser_rpc,
         use_secure_grpc_flag: true,
+        registry_coordinator_addr: args.registry_coordinator_addr,
+        operator_state_retriever_addr: args.operator_state_retriever_addr
     };
     let private_key = args
         .disperser_private_key
@@ -278,7 +286,7 @@ async fn main() -> Result<()> {
             eth_rpc_url: SecretUrl::new(args.rpc_url.clone()),
         };
 
-        let relay_client = RelayClient::new(relay_client_config, signer).await?;
+        let relay_client = RelayClient::new(relay_client_config).await?;
         let retriever = Arc::new(Mutex::new(RelayPayloadRetriever::new(
             retriever_config,
             srs_config,
@@ -363,7 +371,7 @@ async fn main() -> Result<()> {
                 let blob_key = BlobKey::from_hex(&blob_id)
                     .map_err(|_| jsonrpc_core::Error::invalid_params("Invalid blob ID"))?;
                 if payload_disperser
-                    .get_inclusion_data(&blob_key)
+                    .get_cert(&blob_key)
                     .await
                     .is_err()
                 {
