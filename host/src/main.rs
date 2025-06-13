@@ -39,9 +39,9 @@ use rust_eigenda_v2_common::{EigenDACert, Payload, PayloadForm};
 use secrecy::{ExposeSecret, Secret};
 use serde::Deserialize;
 use sqlx::PgPool;
+use tiny_http::{Header, Response, Server as MetricsServer};
 use tokio::{sync::Mutex, task::JoinHandle};
 use tracing_subscriber::EnvFilter;
-use tiny_http::{Header, Response, Server as MetricsServer};
 
 use rust_kzg_bn254_prover::srs::SRS;
 use url::Url;
@@ -244,7 +244,7 @@ async fn main() -> Result<()> {
         disperser_rpc: args.disperser_rpc,
         use_secure_grpc_flag: true,
         registry_coordinator_addr: args.registry_coordinator_addr,
-        operator_state_retriever_addr: args.operator_state_retriever_addr
+        operator_state_retriever_addr: args.operator_state_retriever_addr,
     };
     let private_key = args
         .disperser_private_key
@@ -309,7 +309,10 @@ async fn main() -> Result<()> {
                 }
             };
 
-            tracing::info!("Proof generation thread: retrieved request to prove: {}", blob_id);
+            tracing::info!(
+                "Proof generation thread: retrieved request to prove: {}",
+                blob_id
+            );
 
             let timer = PROOF_GEN_TIME_HISTOGRAM
                 .with_label_values(&[&blob_id])
@@ -335,7 +338,8 @@ async fn main() -> Result<()> {
                 Err(e) => {
                     tracing::error!(
                         "Proof gen thread: error generating proof for Blob Id: {}, error: {}",
-                        blob_id, e
+                        blob_id,
+                        e
                     );
                     // Mark the proof request as invalid in the database
                     mark_blob_proof_request_failed(db_pool.clone(), blob_id.clone()).await?;
@@ -367,11 +371,7 @@ async fn main() -> Result<()> {
 
                 let blob_key = BlobKey::from_hex(&blob_id)
                     .map_err(|_| jsonrpc_core::Error::invalid_params("Invalid blob ID"))?;
-                if payload_disperser
-                    .get_cert(&blob_key)
-                    .await
-                    .is_err()
-                {
+                if payload_disperser.get_cert(&blob_key).await.is_err() {
                     return Err(jsonrpc_core::Error::invalid_params(
                         "Blob ID not found in EigenDA",
                     ));
@@ -435,8 +435,15 @@ async fn main() -> Result<()> {
 
                         match proof {
                             None => {
-                                tracing::debug!("Proof for Blob ID {} not found (still queued)", blob_id);
-                                Err(jsonrpc_core::Error{code: ErrorCode::ServerError(PROOF_NOT_FOUND_ERROR), message:"Proof not found (still queued)".to_string(), data: None})
+                                tracing::debug!(
+                                    "Proof for Blob ID {} not found (still queued)",
+                                    blob_id
+                                );
+                                Err(jsonrpc_core::Error {
+                                    code: ErrorCode::ServerError(PROOF_NOT_FOUND_ERROR),
+                                    message: "Proof not found (still queued)".to_string(),
+                                    data: None,
+                                })
                             }
                             Some(proof) => Ok(jsonrpc_core::Value::String(proof)),
                         }
@@ -455,19 +462,19 @@ async fn main() -> Result<()> {
 
     let metrics_server_thread = tokio::spawn(async move {
         tracing::info!("Starting metrics server on port 9100");
-        let server = MetricsServer::http(metrics_url).map_err(|_| anyhow::anyhow!("Failed to start metrics server"))?;
+        let server = MetricsServer::http(metrics_url)
+            .map_err(|_| anyhow::anyhow!("Failed to start metrics server"))?;
         for request in server.incoming_requests() {
             if request.url() == "/metrics" {
                 let encoder = prometheus::TextEncoder::new();
                 let metric_families = prometheus::gather();
                 let mut buffer = Vec::new();
                 encoder.encode(&metric_families, &mut buffer)?;
-    
-                let content_type = Header::from_bytes(
-                    &b"Content-Type"[..],
-                    &b"text/plain; version=0.0.4"[..],
-                ).map_err(|_| anyhow::anyhow!("Failed parsing header"))?;
-    
+
+                let content_type =
+                    Header::from_bytes(&b"Content-Type"[..], &b"text/plain; version=0.0.4"[..])
+                        .map_err(|_| anyhow::anyhow!("Failed parsing header"))?;
+
                 let response = Response::from_data(buffer).with_header(content_type);
                 let _ = request.respond(response);
             } else {
@@ -478,7 +485,11 @@ async fn main() -> Result<()> {
         Ok(())
     });
 
-    match tokio::try_join!(flatten(proof_gen_thread), flatten(json_rpc_server_thread), flatten(metrics_server_thread)) {
+    match tokio::try_join!(
+        flatten(proof_gen_thread),
+        flatten(json_rpc_server_thread),
+        flatten(metrics_server_thread)
+    ) {
         Ok(_) => {
             tracing::info!("Threads finished successfully");
         }
