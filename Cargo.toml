@@ -34,8 +34,9 @@ common = { path = "common" }
 secrecy = "0.8.0"
 alloy = "1.0"
 ark-ff = "0.5"
-rust-eigenda-v2-client = "0.1.0"
-rust-eigenda-v2-common = "0.1.0"
+rust-eigenda-v2-client = {git = "https://github.com/lambdaclass/eigenda-client-rs", branch="use_alloy_1.0"}
+rust-eigenda-v2-common = "0.1.2"
+rust-eigenda-signers = "0.1.6"
 async-trait = "0.1"
 reqwest = "0.12"
 serde_json = "1.0"
