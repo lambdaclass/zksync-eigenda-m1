@@ -84,9 +84,6 @@ struct Args {
     /// Rpc of the eigenda Disperser
     #[arg(short, long, env = "DISPERSER_RPC")]
     disperser_rpc: String,
-    /// Blob Verifier Wrapper Contract Address
-    #[arg(short, long, env = "CERT_VERIFIER_WRAPPER_ADDR")]
-    cert_verifier_wrapper_addr: Address,
     /// Payload Form of the dispersed blobs
     #[arg(value_enum, env = "PAYLOAD_FORM")]
     payload_form: PolynomialForm,
@@ -95,7 +92,7 @@ struct Args {
     blob_version: u16,
     /// Address of the EigenDA Cert Verifier Router
     #[arg(short, long, env = "CERT_VERIFIER_ROUTER_ADDR")]
-    eigenda_cert_verifier_router_addr: String,
+    eigenda_cert_verifier_router_addr: Address,
     /// Address of the EigenDA Relay Registry
     #[arg(short, long, env = "EIGENDA_RELAY_REGISTRY_ADDR")]
     eigenda_relay_registry_addr: Address,
@@ -146,7 +143,7 @@ async fn generate_proof(
     retriever: Arc<Mutex<RelayPayloadRetriever>>,
     srs: &SRS,
     rpc_url: Url,
-    cert_verifier_wrapper_addr: Address,
+    cert_verifier_router_addr: Address,
     payload_form: PayloadForm,
 ) -> Result<Vec<u8>> {
     let eigenda_cert: EigenDACert;
@@ -174,7 +171,7 @@ async fn generate_proof(
         srs,
         blob_data,
         rpc_url,
-        cert_verifier_wrapper_addr,
+        cert_verifier_router_addr,
         payload_form,
     )
     .await?;
@@ -242,7 +239,7 @@ async fn main() -> Result<()> {
     let payload_disperser_config = PayloadDisperserConfig {
         polynomial_form: payload_form,
         blob_version: args.blob_version,
-        cert_verifier_router_address: args.eigenda_cert_verifier_router_addr,
+        cert_verifier_router_address: args.eigenda_cert_verifier_router_addr.to_string(),
         eth_rpc_url: SecretUrl::new(args.rpc_url.clone()),
         disperser_rpc: args.disperser_rpc,
         use_secure_grpc_flag: true,
@@ -294,7 +291,7 @@ async fn main() -> Result<()> {
         )?));
 
         let rpc_url = args.rpc_url.clone();
-        let cert_verifier_wrapper_addr = args.cert_verifier_wrapper_addr;
+        let cert_verifier_router_addr = args.eigenda_cert_verifier_router_addr;
 
         let db_pool = db_pool.clone();
         loop {
@@ -324,7 +321,7 @@ async fn main() -> Result<()> {
                 retriever.clone(),
                 &srs,
                 rpc_url.clone(),
-                cert_verifier_wrapper_addr,
+                cert_verifier_router_addr,
                 payload_form,
             )
             .await

@@ -2,7 +2,7 @@
 
 **Warning: This sidecar only works on a x86 machine with cuda support**
 
-**The EigenDA sidecar where risc0-steel is used in order to generate a proof for the call of the VerifyDACertV2 function of EigenDA's CertVerifier contract, which performs the necessary checks to make sure a given blob is present.**
+**The EigenDA sidecar where risc0-steel is used in order to generate a proof for the call of the checkDACert function of EigenDA's CertVerifier contract, which performs the necessary checks to make sure a given blob is present.**
 **As well as performing the proof of equivalence verifying a proof that the EigenDA commitment commits to the given Blob.**
 **The sidecar consists of 2 Endpoints:**
 **generate_proof: Which given the blobKey begins the proof generation process**
@@ -27,11 +27,10 @@ sudo ./<file>.run
 
 ### Deployment steps (On this repo):
 
-Compile the contracts
+Update the submodules
 
 ```bash
 git submodule update --init --recursive
-make build_contracts
 ```
 
 Export the needed variables (rpcs should have http://, private keys and addresses should have 0x)
@@ -39,7 +38,7 @@ Export the needed variables (rpcs should have http://, private keys and addresse
 ```bash
 export PRIVATE_KEY=<your_private_key> #The private key you want to use to deploy contracts
 export DISPERSER_PRIVATE_KEY=<your_disperser_private_key> #The private key you want to use with the eigenda disperser
-export CERT_VERIFIER_ADDR=<your_cert_verifier_address> #Contract that has the VerifyDACertV2 function
+export CERT_VERIFIER_ROUTER_ADDR=<your_cert_verifier_router_address> #Contract that has the checkDACdert function
 export RPC_URL=<your_rpc> #RPC URL of your node
 export DISPERSER_RPC=<your_rpc> #RPC of the eigenda disperser
 export PAYLOAD_FORM=<your_payload_form> #Either coeff or eval (On EigenDA Holesky use coeff)
@@ -49,6 +48,8 @@ export RELAY_CLIENT_KEYS=<your_relay_client_keys> #Keys of the relay client, sep
 export SIDECAR_URL=<your_sidecar_url> #URL you want this sidecar to run on
 export DATABASE_URL=<proof_database_url> #URL of the database where the proofs will be stored
 export METRICS_URL=<your_metrics_url> #URL where you want the metrics to be exported, the example granafa expects it to be on port 9100
+export REGISTRY_COORDINATOR_ADDR=your_registry_coordinator_address> #Address of the Reigstry Coordinator contract of Eigen
+export OPERATOR_STATE_RETRIEVER_ADDR=your_operator_state_retriever_address> #Address of the Operator State Retriever contract of Eigen
 ```
 
 Deploy the contracts:
@@ -57,11 +58,9 @@ Deploy the contracts:
 forge script contracts/script/ContractsDeployer.s.sol:ContractsDeployer --rpc-url $RPC_URL --broadcast -vvvv
 ```
 
-Save the address under `EigenDACertVerifierWrapper deployed at: <address>`
 Save the address under `RiscZeroVerifier deployed at: <address>`
 
 ```bash
-export CERT_VERIFIER_WRAPPER_ADDR=<your_address>
 export RISC_ZERO_VERIFIER_ADDR=<you_address>
 ```
 

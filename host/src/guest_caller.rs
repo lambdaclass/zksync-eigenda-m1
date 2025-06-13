@@ -20,14 +20,11 @@ pub async fn run_guest(
     srs: &SRS,
     data: Vec<u8>,
     rpc_url: Url,
-    cert_verifier_wrapper_addr: Address,
+    cert_verifier_router_addr: Address,
     payload_form: PayloadForm,
 ) -> anyhow::Result<ProveInfo> {
-    let call = IVerifyBlob::verifyDACertV2Call {
-        batchHeader: eigenda_cert.batch_header.clone().into(),
-        blobInclusionInfo: eigenda_cert.blob_inclusion_info.clone().into(),
-        nonSignerStakesAndSignature: eigenda_cert.non_signer_stakes_and_signature.clone().into(),
-        signedQuorumNumbers: eigenda_cert.signed_quorum_numbers.clone().into(),
+    let call = IVerifyBlob::checkDACertCall {
+        eigendacert: eigenda_cert.to_abi_encoded()?.into()
     };
 
     // Create an EVM environment from an RPC endpoint defaulting to the latest block.
@@ -35,14 +32,14 @@ pub async fn run_guest(
 
     // Preflight the call to prepare the input that is required to execute the function in
     // the guest without RPC access. It also returns the result of the call.
-    // Risc0 steel creates an ethereum VM using revm, where it simulates the call to verifyDACertV2.
+    // Risc0 steel creates an ethereum VM using revm, where it simulates the call to checkDACert.
     // So we need to make this preflight call to populate the VM environment with the current state of the chain
-    let mut contract = Contract::preflight(cert_verifier_wrapper_addr, &mut env);
+    let mut contract = Contract::preflight(cert_verifier_router_addr, &mut env);
     let returns = contract.call_builder(&call).call().await?;
     tracing::info!(
         "Call {} Function on {:#} returns: {}",
-        IVerifyBlob::verifyDACertV2Call::SIGNATURE,
-        cert_verifier_wrapper_addr,
+        IVerifyBlob::checkDACertCall::SIGNATURE,
+        cert_verifier_router_addr,
         returns
     );
 
@@ -87,7 +84,7 @@ pub async fn run_guest(
             .write(&eigenda_cert)?
             .write(&data)?
             .write(&serializable_proof)?
-            .write(&cert_verifier_wrapper_addr)?
+            .write(&cert_verifier_router_addr)?
             .write(&polynomial_form)?
             .build()?;
         let exec = default_prover();
