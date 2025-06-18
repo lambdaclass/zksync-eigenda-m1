@@ -54,6 +54,8 @@ export OPERATOR_STATE_RETRIEVER_ADDR=your_operator_state_retriever_address> #Add
 
 Deploy the contracts:
 
+Note: Make sure the parameters passed to the risc zero verifier are up to date, you can find the most recent ones on https://github.com/risc0/risc0-ethereum/blob/main/contracts/src/groth16/ControlID.sol (You shouldn't need to change them if the RiscZero version is not changed here, but if you use a pre-deployed verifier it could be a source of errors)
+
 ```bash
 forge script contracts/script/ContractsDeployer.s.sol:ContractsDeployer --rpc-url $RPC_URL --broadcast -vvvv
 ```

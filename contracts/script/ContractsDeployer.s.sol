@@ -14,8 +14,8 @@ contract ContractsDeployer is Script {
         // Broadcast deployment transaction
         vm.startBroadcast(deployerPrivateKey);
         vm.txGasPrice( 0.000000002  gwei);
-
-        IRiscZeroVerifier verifier = new RiscZeroGroth16Verifier(hex"8cdad9242664be3112aba377c5425a4df735eb1c6966472b561d2855932c0469", ControlID.BN254_CONTROL_ID);
+        
+        IRiscZeroVerifier verifier = new RiscZeroGroth16Verifier(hex"884389273e128b32475b334dec75ee619b77cb33d41c332021fe7e44c746ee60", hex"04446e66d300eb7fb45c9726bb53c793dda407a62e9601618bb43c5c14657ac0");
         
         console.log("RiscZeroVerifier deployed at:", address(verifier));
         
