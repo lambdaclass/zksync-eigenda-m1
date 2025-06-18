@@ -1,8 +1,8 @@
 In this [PR](https://github.com/matter-labs/era-contracts/pull/1405) the following contracts are added to zksync:
 
-# [<span style="color:pink">EigenDAL1DAValidator.sol</span>](https://github.com/matter-labs/era-contracts/pull/1405/files#diff-c8ffe58186030899035f2943942d2a933d6d90566917a34e74495335c085cad6)
+# [EigenDAL1DAValidator.sol](https://github.com/matter-labs/era-contracts/pull/1405/files#diff-c8ffe58186030899035f2943942d2a933d6d90566917a34e74495335c085cad6)
 
-Implements the <span style="color:pink">checkDA</span> function, where it receives the <span style="color:pink">operatorDAInput</span> containing the EigenDA Inclusion Data. This is conformed by the risc zero proof (seal, imageID and journalDigest) plus the hash of the data dispersed to eigenda, calculated on the sidecar.
+Implements the `checkDA` function, where it receives the `operatorDAInput` containing the EigenDA Inclusion Data. This is conformed by the risc zero proof (seal, imageID and journalDigest) plus the hash of the data dispersed to eigenda, calculated on the sidecar.
 
 ```solidity
 struct EigenDAInclusionData {
@@ -23,7 +23,7 @@ function checkDA(
 ) external override returns (L1DAValidatorOutput memory output)
 ```
 
-This contract checks against a <span style="color:pink">RiscZeroVerifier</span> if the Risc Zero Proof is correct.
+This contract checks against a `RiscZeroVerifier` if the Risc Zero Proof is correct.
 
 ```solidity
 // Decode the inclusion data from the operatorDAInput
@@ -41,16 +41,16 @@ if (l2DAValidatorOutputHash != keccak256(abi.encodePacked(stateDiffHash, inclusi
     revert InvalidValidatorOutputHash();
 ```
 
-Todo: We also need to check the Steel Commitment, this is contained in the <span style="color:pink">journalDigest</span>.
+Todo: We also need to check the Steel Commitment, this is contained in the `journalDigest`.
 
-It is basically a comparison between the commitment  and the <span style="color:pink">blockHash</span> .
+It is basically a comparison between the commitment  and the `blockHash` .
 
 You can find more info [here](https://docs.beboundless.xyz/developers/steel/commitments#validation-of-steel-commitments).
 
-# [<span style="color:pink">EigenDAL2DAValidator.sol</span>](https://github.com/matter-labs/era-contracts/pull/1405/files#diff-41149852d9965ba83ff78ea4f039ca5e74ec542cb5aead78166720895c2e184a)
+# [EigenDAL2DAValidator.sol](https://github.com/matter-labs/era-contracts/pull/1405/files#diff-41149852d9965ba83ff78ea4f039ca5e74ec542cb5aead78166720895c2e184a)
 
 
-Implements the <span style="color:pink">validatePubdata</span> function which calculates the <span style="color:pink">fullPubdataHash</span> which is then passed through L2→L1 Logs, and used to compare it against the sidecar generated hash on the <span style="color:pink">EigenDAL1DAValidator</span>
+Implements the `validatePubdata` function which calculates the `fullPubdataHash` which is then passed through L2→L1 Logs, and used to compare it against the sidecar generated hash on the `EigenDAL1DAValidator`
 
 ```solidity
 /// EigenDA L2 DA validator. It will create a commitment to the pubdata that can later be verified during settlement.
