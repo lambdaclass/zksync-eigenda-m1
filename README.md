@@ -2,7 +2,7 @@
 
 **Warning: This sidecar only works on a x86 machine with cuda support**
 
-**The EigenDA sidecar where risc0-steel is used in order to generate a proof for the call of the VerifyDACertV2 function of EigenDA's CertVerifier contract, which performs the necessary checks to make sure a given blob is present.**
+**The EigenDA sidecar where risc0-steel is used in order to generate a proof for the call of the checkDACert function of EigenDA's CertVerifier contract, which performs the necessary checks to make sure a given blob is present.**
 **As well as performing the proof of equivalence verifying a proof that the EigenDA commitment commits to the given Blob.**
 **The sidecar consists of 2 Endpoints:**
 **generate_proof: Which given the blobKey begins the proof generation process**
@@ -27,11 +27,10 @@ sudo ./<file>.run
 
 ### Deployment steps (On this repo):
 
-Compile the contracts
+Update the submodules
 
 ```bash
 git submodule update --init --recursive
-make build_contracts
 ```
 
 Export the needed variables (rpcs should have http://, private keys and addresses should have 0x)
@@ -39,7 +38,7 @@ Export the needed variables (rpcs should have http://, private keys and addresse
 ```bash
 export PRIVATE_KEY=<your_private_key> #The private key you want to use to deploy contracts
 export DISPERSER_PRIVATE_KEY=<your_disperser_private_key> #The private key you want to use with the eigenda disperser
-export CERT_VERIFIER_ADDR=<your_cert_verifier_address> #Contract that has the VerifyDACertV2 function
+export CERT_VERIFIER_ROUTER_ADDR=<your_cert_verifier_router_address> #Contract that has the checkDACdert function
 export RPC_URL=<your_rpc> #RPC URL of your node
 export DISPERSER_RPC=<your_rpc> #RPC of the eigenda disperser
 export PAYLOAD_FORM=<your_payload_form> #Either coeff or eval (On EigenDA Holesky use coeff)
@@ -49,19 +48,21 @@ export RELAY_CLIENT_KEYS=<your_relay_client_keys> #Keys of the relay client, sep
 export SIDECAR_URL=<your_sidecar_url> #URL you want this sidecar to run on
 export DATABASE_URL=<proof_database_url> #URL of the database where the proofs will be stored
 export METRICS_URL=<your_metrics_url> #URL where you want the metrics to be exported, the example granafa expects it to be on port 9100
+export REGISTRY_COORDINATOR_ADDR=your_registry_coordinator_address> #Address of the Reigstry Coordinator contract of Eigen
+export OPERATOR_STATE_RETRIEVER_ADDR=your_operator_state_retriever_address> #Address of the Operator State Retriever contract of Eigen
 ```
 
 Deploy the contracts:
+
+Note: Make sure the parameters passed to the risc zero verifier are up to date, you can find the most recent ones on https://github.com/risc0/risc0-ethereum/blob/main/contracts/src/groth16/ControlID.sol (You shouldn't need to change them if the RiscZero version is not changed here, but if you use a pre-deployed verifier it could be a source of errors)
 
 ```bash
 forge script contracts/script/ContractsDeployer.s.sol:ContractsDeployer --rpc-url $RPC_URL --broadcast -vvvv
 ```
 
-Save the address under `EigenDACertVerifierWrapper deployed at: <address>`
 Save the address under `RiscZeroVerifier deployed at: <address>`
 
 ```bash
-export CERT_VERIFIER_WRAPPER_ADDR=<your_address>
 export RISC_ZERO_VERIFIER_ADDR=<you_address>
 ```
 
@@ -102,29 +103,24 @@ Modify `etc/env/file_based/overrides/validium.yaml`:
 
 ```yaml
 da_client:
-  client: EigenDAV2Secure
-  version: V2Secure
+  client: Eigen
   disperser_rpc: <your_disperser_rpc> #Under DISPERSER_RPC env variable
   eigenda_eth_rpc: <your_eth_rpc> #Under RPC_URL env variable
   authenticated: true
-  settlement_layer_confirmation_depth: 0 #Value needed for V1 compatibility, you can leave this one
-  eigenda_svc_manager_address: 0xD4A7E1Bd8015057293f0D0A557088c286942e84b #Value needed for V1 compatibility, you can leave this one
-  wait_for_finalization: false #Value needed for V1 compatibility, you can leave this one
-  points: #Value needed for V1 compatibility, you can leave this one
-    source: Url
-    g1_url: https://github.com/Layr-Labs/eigenda-proxy/raw/2fd70b99ef5bf137d7bbca3461cf9e1f2c899451/resources/g1.point
-    g2_url: https://github.com/Layr-Labs/eigenda-proxy/raw/2fd70b99ef5bf137d7bbca3461cf9e1f2c899451/resources/g2.point.powerOf2
-  cert_verifier_addr: <your_cert_verifier_address> #Under CERT_VERIFIER_ADDRESS env variable
+  cert_verifier_router_addr: <your_cert_verifier_address> #Under CERT_VERIFIER_ROUTER_ADDRESS env variable
+  operator_state_retriever_addr: <your_operator_state_retriever_addr>
+  registry_coordinator_addr: <your_registry_coordinator_addr>
   blob_version: <your_blob_version> #Under BLOB_VERSION env variable
   polynomial_form: <your_polynomial_form> #Either coeff or eval
   eigenda_sidecar_rpc: <your_sidecar_rpc> #Under SIDECAR_URL env variable
+  version: V2Secure
 ```
 
 Modify `etc/env/file_based/secrets.yaml`:
 
 ```yaml
 da:
-  client: EigenDA
+  client: Eigen
   private_key: <your_private_key> #The private key you want to use with the eigenda disperser
 ```
 
