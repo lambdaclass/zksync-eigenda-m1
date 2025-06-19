@@ -43,9 +43,9 @@ Everything here runs on Ethereum
 
 There are 3 things we want to achieve with the Risc0 guest. Each one of them is addressed in point 8.
 
-1. We want to check that the blob is available in EigenDA. 8.a
-2. We want to check that the commitment commits to that blob. 8.b
-3. We want to check that the blob is the same we dispersed on zksync. 8.c
+1. Check that the blob is available in EigenDA. 8.a
+2. Check that the commitment commits to that blob. 8.b
+3. Check that the blob is the same we dispersed on zksync. 8.c
 
 ## Call to checkDACert (8.a)
 
