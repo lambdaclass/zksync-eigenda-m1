@@ -16,7 +16,7 @@ This endpoint is called from the `zksync-era` sequencer, it receives a `blob_id`
 2. The `blob_id` belongs to `EigenDA` (it has an associated certificate).
 3. The proof request hasn't already been submitted.
 
-If the requests passes all this checks, then the proof request is stored in the postgres database as a pending proof, to be then picked up by the [Proof generator](https://www.notion.so/M1-Development-Docs-215b946247138079b1c0d51bf0039669?pvs=21).
+If the requests passes all this checks, then the proof request is stored in the postgres database as a pending proof, to be then picked up by the [Proof generator](../proof-generator/proof-generator.md).
 
 **Sample request:**
 

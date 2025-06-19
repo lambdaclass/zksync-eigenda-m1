@@ -10,8 +10,8 @@ The metrics endpoint exposes `prometheus` metrics, that can be used to plot with
 
 The metrics availabe are:
 
-- **proof_requests:** number of [proof generation requests](https://www.notion.so/M1-Development-Docs-215b946247138079b1c0d51bf0039669?pvs=21) received.
+- **proof_requests:** number of [proof generation requests](../proof-request-receiver/proof-request-receiver.md#generate_proof) received.
 - **proof_generations:** number of successful proofs generated.
 - **proof_generation_failures:** number of failed proof generations.
-- **proof_retrievals:** number of [proof retrieval requests](https://www.notion.so/M1-Development-Docs-215b946247138079b1c0d51bf0039669?pvs=21) received.
+- **proof_retrievals:** number of [proof retrieval requests](../proof-request-receiver/proof-request-receiver.md#get_proof) received.
 - **proof_generation_seconds:** average time taken to generate a proof in seconds.
