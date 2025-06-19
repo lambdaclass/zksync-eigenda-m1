@@ -1,3 +1,5 @@
+# GUEST
+
 In the guest we first perform the call to `checkDACert` and check that it returned sucessfully:
 
 ```rust

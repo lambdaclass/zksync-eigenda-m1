@@ -1,4 +1,4 @@
-# Integration
+# COMPONENTS INTEGRATION
 
 The important components are marked in **bold**
 

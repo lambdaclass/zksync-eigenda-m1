@@ -1,3 +1,5 @@
+# ZKSYNC-ERA
+
 Current [PR](https://github.com/lambdaclass/zksync-era/pull/414)
 
 This PR adds a new `PubdataType` (`EigenDAV2Secure`) due to the need of selecting the EigenDA L1 and L2 Validator contracts:

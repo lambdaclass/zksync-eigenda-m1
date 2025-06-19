@@ -1,3 +1,5 @@
+# PROOF GENERATOR
+
 Instantiation:
 
 ```rust

@@ -1,3 +1,5 @@
+# HOST
+
 In order to generate the `RiscZero Groth16 Proof`, we first make the preflight call to `checkDACert` on the host.
 
 ```rust
