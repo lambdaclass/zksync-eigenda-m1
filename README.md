@@ -8,6 +8,8 @@
 **generate_proof: Which given the blobKey begins the proof generation process**
 **get_proof: Which given the blobKey it returns the generated proof or an error in case it hasn't finished**
 
+Note: This sidecar requires using an ethereum rpc, if this rpc fails (for example on an `eth_getProof`), the whole proving generation for that specific blob will fail. You should choose an rpc that's not prone to failing. Public rpc's often fail.
+
 ## Prerequisites
 
 To get started, you need to have Rust installed.
