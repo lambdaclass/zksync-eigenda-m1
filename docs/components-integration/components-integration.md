@@ -191,7 +191,7 @@ Inputs: **BlobData**, Proof, EigenDACert (commitment)
 ```
 
 We recalculate the evaluation polynomial, the cert commitment from the blob info and the evaluation challenge.
-Then we get the evaluation at the challenge point and compare it to the one we calculate using horner's rule.
+Then we get the evaluation at the challenge point and compare it to the one we calculate using [horner's rule](https://en.wikipedia.org/wiki/Horner%27s_method).
 Then we verify the proof for the commitment at that challenge point
 
 Output: **Risc0Proof**
