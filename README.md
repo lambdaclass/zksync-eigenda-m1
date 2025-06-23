@@ -174,27 +174,27 @@ zkstack server --chain eigenda
 On zksync-era you should see blobs being dispatched:
 
 ```
-2025-03-27T18:20:05.383060Z  INFO zksync_da_dispatcher::da_dispatcher: Dispatched a DA for batch_number: 1, pubdata_size: 5312, dispatch_latency: 24.480322ms
-
-2025-03-27T18:36:19.150242Z  INFO zksync_da_dispatcher::da_dispatcher: Received an inclusion data for a batch_number: 1, inclusion_latency_seconds: 973
-
-2025-03-27T18:36:23.535623Z  INFO EthTxManager::loop_iteration: zksync_eth_sender::eth_tx_manager: Checking tx id: 1, operator_nonce: OperatorNonce { finalized: Nonce(1), latest: Nonce(1) }, tx nonce: 0
-
-2025-03-27T18:36:23.540535Z  INFO EthTxManager::loop_iteration: zksync_eth_sender::eth_tx_manager: eth_tx 1 with hash 0xbe08cdd9ba138548f45c152e1a913784dd5cb2157e2d6323db9fe182aa067e2f for CommitBlocks is confirmed. Gas spent: 267395
+2025-06-23T19:42:05.370222Z  INFO zksync_da_dispatcher::da_dispatcher: Dispatched a DA for batch_number: 1, pubdata_size: 5312, dispatch_latency: 1.245608661s
+2025-06-23T19:42:10.866138Z  INFO zksync_da_dispatcher::da_dispatcher: Finality check for a batch_number: 1 is successful
+2025-06-23T19:57:23.619783Z  INFO zksync_da_dispatcher::da_dispatcher: Received an inclusion data for a batch_number: 1, inclusion_latency_seconds: 918
+2025-06-23T19:57:24.666505Z  INFO NamedFuture{name="eth_tx_manager"}:EthTxManager::loop_iteration: zksync_eth_sender::eth_tx_manager: Checking tx id: 1, operator_nonce: OperatorNonce { finalized: Nonce(1), latest: Nonce(1), fast_finality: Nonce(1) }, tx nonce: 1
+2025-06-23T19:57:25.676224Z  INFO NamedFuture{name="eth_tx_manager"}:EthTxManager::loop_iteration: zksync_eth_sender::eth_tx_manager: eth_tx 1 with hash 0xde1c0716058369b15190ec07a791b65d1565168f4ae88429e2f14652bb6f8918 for CommitBlocks is Finalized. Gas spent: 495881
 ```
 
 On the sidecar you should see blobs being verified:
 
 ```
-Running JSON RPC server
-Running proof gen thread
-Proof gen thread: retrieved request to prove: bdfef9b13ccd6648534267b80bea88b1b6c75ecfef4468299d32fd646c47c7b9
-2025-05-19T15:45:28.038452Z  INFO risc0_steel::host::builder: Environment initialized with block 3861957 (0x2283aafccd1976c63f9dced04f03106629a7b76baccc519c2f6d4bb61ae4b59c)
-2025-05-19T15:45:28.038505Z  INFO risc0_steel::contract::host: Executing preflight calling 'verifyDACertV2((bytes32,uint32),(((uint16,bytes,((uint256,uint256),(uint256[2],uint256[2]),(uint256[2],uint256[2]),uint32),bytes32),bytes,uint32[]),uint32,bytes),(uint32[],(uint256,uint256)[],(uint256,uint256)[],(uint256[2],uint256[2]),(uint256,uint256),uint32[],uint32[],uint32[][]),bytes)' on 0x18c7De1E82513c3F48dFcCa85c64056C637104fb
-Call verifyDACertV2((bytes32,uint32),(((uint16,bytes,((uint256,uint256),(uint256[2],uint256[2]),(uint256[2],uint256[2]),uint32),bytes32),bytes,uint32[]),uint32,bytes),(uint32[],(uint256,uint256)[],(uint256,uint256)[],(uint256[2],uint256[2]),(uint256,uint256),uint32[],uint32[],uint32[][]),bytes) Function on 0x18c7…04fb returns: true
-Running the guest with the constructed input...
-2025-05-19T15:46:27.505240Z  INFO risc0_zkvm::host::server::exec::executor: execution time: 17.890119705s
-Proof gen thread: finished generating proof for Blob Id bdfef9b13ccd6648534267b80bea88b1b6c75ecfef4468299d32fd646c47c7b9
+2025-06-23T18:23:55.862758Z  INFO host: Starting EigenDA Sidecar
+2025-06-23T18:23:56.611650Z  INFO host: Starting metrics server on port 9100
+2025-06-23T18:23:56.611818Z  INFO host: Running JSON RPC server
+2025-06-23T18:41:47.425199Z  INFO host: Received request to generate proof for Blob Id cf61a127c3604b6f9cf6a04b16902c682b134ec52097a588172edd181038c871
+2025-06-23T18:41:49.409353Z  INFO host: Proof generation thread: retrieved request to prove: cf61a127c3604b6f9cf6a04b16902c682b134ec52097a588172edd181038c871
+2025-06-23T18:41:57.585907Z  INFO risc0_steel::host::builder: Environment initialized with block 4052233 (0x4dddcf0064ca55f9a6bcdd4fc9cf739e34306e94225cf8ac57af9471945e5d9a)    
+2025-06-23T18:41:57.585959Z  INFO risc0_steel::contract::host: Executing preflight calling 'checkDACert(bytes)'    
+2025-06-23T18:42:25.370682Z  INFO host::guest_caller: Call checkDACert(bytes) Function on 0xDD73…Ffbd returns: 1
+2025-06-23T18:42:33.637261Z  INFO host::guest_caller: Running the guest with the constructed input...
+2025-06-23T18:42:43.248916Z  INFO risc0_zkvm::host::server::exec::syscall::verify2: SYS_VERIFY_INTEGRITY2: (af7ebdeb4a22996426538a857fc4e9d61f71504845afbba17918b5c1700b81b9, abd93866a6878528f29ffc6ea6d9e428cc9ad020a540dd11f1d45e5e9bb6db71)
+2025-06-23T18:42:43.298544Z  INFO risc0_zkvm::host::server::exec::executor: execution time: 9.168113797s
 ```
 
 ### Clean the sidecar containers
