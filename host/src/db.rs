@@ -94,7 +94,7 @@ pub async fn store_blob_proof(
 /// - `Some((proof, failed))` if the proof exists
 ///   where proof is an optional `String`, existing only if the proof was generated,
 ///   and failed is a boolean indicating if the proof generation failed.
-/// 
+///
 /// In case the query fails, it returns an `Err`.
 pub async fn retrieve_blob_id_proof(
     db_pool: Arc<Mutex<Pool<Postgres>>>,
