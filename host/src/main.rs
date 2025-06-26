@@ -176,15 +176,13 @@ async fn generate_proof(
     )
     .await?;
 
-    let output: Output = result.receipt.journal.decode()?;
-
     let image_id = compute_image_id(GUEST_ELF)?;
     let image_id: risc0_zkvm::sha::Digest = image_id;
     let image_id = image_id.as_bytes().to_vec();
 
     let block_proof = match result.receipt.inner.groth16() {
         Ok(inner) => {
-            // The SELECTOR is used to perform an extra check inside the groth16 verifier contract.
+            // The SELECTOR is used to perfxorm an extra check inside the groth16 verifier contract.
             let mut selector = hex::encode(
                 inner
                     .verifier_parameters
@@ -202,7 +200,7 @@ async fn generate_proof(
     let proof = ethabi::encode(&[Token::Tuple(vec![
         Token::Bytes(block_proof),
         Token::FixedBytes(image_id),
-        Token::Bytes(result.receipt.journal),
+        Token::Bytes(result.receipt.journal.bytes),
     ])]);
 
     Ok(proof)
