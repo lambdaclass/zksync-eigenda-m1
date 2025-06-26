@@ -199,15 +199,10 @@ async fn generate_proof(
         Err(_) => vec![0u8; 4],
     };
 
-    let journal_digest = Digestible::digest(&result.receipt.journal)
-        .as_bytes()
-        .to_vec();
-
     let proof = ethabi::encode(&[Token::Tuple(vec![
         Token::Bytes(block_proof),
         Token::FixedBytes(image_id),
-        Token::FixedBytes(journal_digest),
-        Token::FixedBytes(output.hash),
+        Token::Bytes(result.receipt.journal),
     ])]);
 
     Ok(proof)

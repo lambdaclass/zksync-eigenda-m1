@@ -140,5 +140,5 @@ fn main() {
         proof: proof_bytes,
     };
 
-    env::commit(&output);
+    env::commit_slice(output.abi_encode());
 }

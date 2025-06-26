@@ -14,3 +14,4 @@ anyhow = { workspace = true }
 rust-kzg-bn254-primitives = { workspace = true }
 rust-eigenda-v2-common = { workspace = true }
 clap = { workspace = true }
+ethabi = { workspace = true }
