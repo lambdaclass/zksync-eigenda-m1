@@ -17,7 +17,7 @@ use std::{sync::Arc, time::Duration};
 use alloy_primitives::Address;
 use anyhow::Result;
 use clap::Parser;
-use common::{output::Output, polynomial_form::PolynomialForm};
+use common::polynomial_form::PolynomialForm;
 use ethabi::Token;
 use host::db::{
     mark_blob_proof_request_failed, proof_request_exists, retrieve_blob_id_proof,
@@ -26,7 +26,7 @@ use host::db::{
 use jsonrpc_core::{ErrorCode, IoHandler, Params};
 use jsonrpc_http_server::ServerBuilder;
 use methods::GUEST_ELF;
-use risc0_zkvm::{compute_image_id, sha::Digestible};
+use risc0_zkvm::compute_image_id;
 use rust_eigenda_v2_client::{
     core::BlobKey,
     payload_disperser::{PayloadDisperser, PayloadDisperserConfig},
