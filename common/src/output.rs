@@ -10,11 +10,13 @@ pub struct Output {
 
 impl Output {
     pub fn abi_encode(self) -> Vec<u8> {
-        ethabi::encode(&[
-            Token::FixedBytes(self.hash),
-            Token::Bytes(self.env_commitment),
-            Token::Bytes(self.inclusion_data),
-            Token::Bytes(self.proof)
-        ])
+        ethabi::encode(&[Token::Tuple(
+            vec![
+                Token::FixedBytes(self.hash),
+                Token::Bytes(self.env_commitment),
+                Token::Bytes(self.inclusion_data),
+                Token::Bytes(self.proof)
+            ]
+        )])
     }
 }
