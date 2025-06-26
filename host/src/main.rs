@@ -182,7 +182,7 @@ async fn generate_proof(
 
     let block_proof = match result.receipt.inner.groth16() {
         Ok(inner) => {
-            // The SELECTOR is used to perfxorm an extra check inside the groth16 verifier contract.
+            // The SELECTOR is used to perform an extra check inside the groth16 verifier contract.
             let mut selector = hex::encode(
                 inner
                     .verifier_parameters
