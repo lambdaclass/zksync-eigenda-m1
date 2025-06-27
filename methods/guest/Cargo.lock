@@ -1160,12 +1160,12 @@ version = "0.1.0"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-types",
- "anyhow",
  "ark-bn254",
  "ark-ff 0.5.0",
  "ark-serialize 0.5.0",
  "clap",
- "rust-eigenda-v2-common",
+ "ethabi",
+ "rust-eigenda-v2-common 0.1.3",
  "rust-kzg-bn254-primitives",
  "serde",
 ]
@@ -1761,7 +1761,7 @@ dependencies = [
  "risc0-steel",
  "risc0-zkvm",
  "risc0-zkvm-platform",
- "rust-eigenda-v2-common",
+ "rust-eigenda-v2-common 0.1.2",
  "rust-kzg-bn254-primitives",
  "rust-kzg-bn254-verifier",
  "tiny-keccak",
@@ -3184,6 +3184,26 @@ checksum = "48fd7bd8a6377e15ad9d42a8ec25371b94ddc67abe7c8b9127bec79bebaaae18"
 name = "rust-eigenda-v2-common"
 version = "0.1.2"
 source = "git+https://github.com/lambdaclass/eigenda-client-rs?branch=relocate_eigenda_cert_encoding#044b94bfaadf4a95a41ddc50378aab99f99851b5"
+dependencies = [
+ "alloy-primitives",
+ "alloy-sol-types",
+ "ark-bn254",
+ "ark-ff 0.5.0",
+ "ark-poly",
+ "ark-serialize 0.5.0",
+ "bincode",
+ "ethabi",
+ "rust-kzg-bn254-primitives",
+ "serde",
+ "thiserror 1.0.69",
+ "tiny-keccak",
+]
+
+[[package]]
+name = "rust-eigenda-v2-common"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7ed3a4520c365197ca700008f6566d03d50b098c009aaaa9677b90de9fc1700"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-types",
