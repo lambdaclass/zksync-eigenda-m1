@@ -132,13 +132,12 @@ fn main() {
 
     let mut proof_bytes = vec![];
     proof.g1.serialize_compressed(&mut proof_bytes).unwrap();
-    // Public outputs of the guest, eigenDAHash, commitment to the risc0 steel environment, blob info and proof, they are embedded on the risc0 proof
+    // Public outputs of the guest, eigenDAHash, commitment to the risc0 steel environment and proof, they are embedded on the risc0 proof
     let output = Output {
         hash: hash.to_vec(),
         env_commitment: env.commitment().abi_encode(),
-        inclusion_data: eigenda_cert.to_bytes().unwrap(),
         proof: proof_bytes,
     };
 
-    env::commit(&output);
+    env::commit_slice(&output.abi_encode());
 }
