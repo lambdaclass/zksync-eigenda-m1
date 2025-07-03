@@ -2,61 +2,41 @@
 
 Current [PR](https://github.com/lambdaclass/zksync-era/pull/414)
 
-This PR adds a new `PubdataType` (`EigenDAV2Secure`) due to the need of selecting the EigenDA L1 and L2 Validator contracts:
+It adds `eigenda_prover_service_rpc`, a new parameter to the config, which is the rpc used to communicate with the prover service.
 
 ```rust
-pub enum PubdataType {
-    Celestia,
-    Eigen,
-    ObjectStore,
-    EigenDAV2Secure,
-}
-
-impl FromStr for PubdataType {
-    "Avail" => Ok(Self::Avail),
-    "Celestia" => Ok(Self::Celestia),
-    "Eigen" => Ok(Self::Eigen),
-    "EigenDAV2Secure" => Ok(Self::EigenDAV2Secure),
-    "ObjectStore" => Ok(Self::ObjectStore),
-    _ => Err("Incorrect DA client type; expected one of `Rollup`, `NoDA`, `Avail`, `Celestia`, `Eigen`, `EigenDAV2Secure`, `ObjectStore`"),
+pub struct EigenConfig {
+    /// URL of the Disperser RPC server
+    pub disperser_rpc: String,
+    /// URL of the Ethereum RPC server
+    #[config(secret, with = Optional(Serde![str]))]
+    pub eigenda_eth_rpc: Option<SensitiveUrl>,
+    /// Address of the EigenDA cert verifier router
+    pub cert_verifier_router_addr: String,
+    /// Blob version
+    pub blob_version: u16,
+    /// Address of the operator state retriever
+    pub operator_state_retriever_addr: String,
+    /// Address of the registry coordinator
+    pub registry_coordinator_addr: String,
+    /// URL of the EigenDA Prover Service RPC server
+    /// This is used for EigenDA V2 Secure integration,
+    /// so if its either `None` or `Some` defines whether we are using EigenDA V2 Secure or not.
+    pub eigenda_prover_service_rpc: Option<String>,
 }
 ```
 
-It adds `eigenda_sidecar_rpc`, a new parameter to the config, which is the rpc used to communicate with the sidecar and `version` which specifies whether it uses Insecure or Secure V2:
-
-```rust
-pub struct EigenDAConfig {
-    /// Custom quorum numbers
-    #[config(default, with = Delimited(","))]
-    pub custom_quorum_numbers: Vec<u8>,
-    // V2 and V2Secure specific fields
-    //
-    /// Address of the EigenDA cert verifier
-    pub cert_verifier_addr: Address,
-    /// Polynomial form to disperse the blobs
-    #[serde(default)]
-    pub polynomial_form: PolynomialForm,
-    /// Version of the EigenDA client
-    pub version: Version,
-    // V2Secure specific fields
-    //
-    /// URL of the EigenDA Sidecar RPC server
-    pub eigenda_sidecar_rpc: String,
-}
-```
-
-The client is modified for the secure integration, it adds the `send_blob_key` and `get_proof` functions, used to communicate with the sidecar:
+The client is modified for the secure integration, it adds the `send_blob_key` and `get_proof` functions, used to communicate with the prover service:
 
 ```rust
 pub struct EigenDAClient {
     client: PayloadDisperser,
-    sidecar_client: Client,
-    sidecar_rpc: String,
-    secure: bool,
+    prover_service_client: Client,
+    eigenda_prover_service_rpc: Option<String>,
 }
 ```
 
-The first one calls the `generate_proof` endpoint on the sidecar, to start generating the proof once the blob is dispersed:
+The first one calls the `generate_proof` endpoint on the prover service, to start generating the proof once the blob is dispersed:
 
 ```rust
 impl EigenDAClient {
@@ -68,8 +48,12 @@ impl EigenDAClient {
             "id": 1
         });
         let response = self
-            .sidecar_client
-            .post(&self.sidecar_rpc)
+            .prover_service_client
+            .post(
+                self.eigenda_prover_service_rpc
+                    .clone()
+                    .ok_or(anyhow::anyhow!("Failed to get proving service rpc"))?,
+            )
             .json(&body)
             .send()
             .await
@@ -100,8 +84,12 @@ async fn get_proof(&self, blob_key: &str) -> anyhow::Result<Option<Vec<u8>>> {
         "id": 1
     });
     let response = self
-        .sidecar_client
-        .post(&self.sidecar_rpc)
+        .prover_service_client
+        .post(
+            self.eigenda_prover_service_rpc
+                .clone()
+                .ok_or(anyhow::anyhow!("Failed to get proving service rpc"))?,
+        )
         .json(&body)
         .send()
         .await
@@ -135,8 +123,9 @@ async fn get_proof(&self, blob_key: &str) -> anyhow::Result<Option<Vec<u8>>> {
 The `send_blob_key` function is called after dispersing the blob to EigenDA:
 
 ```rust
-if self.secure {
-    // In V2Secure, we need to send the blob key to the sidecar for proof generation
+// Prover service RPC being set means we are using EigenDA V2 Secure
+if self.eigenda_prover_service_rpc.is_some() {
+    // In V2Secure, we need to send the blob key to the prover service for proof generation
     self.send_blob_key(blob_key.to_hex())
         .await
         .map_err(to_retriable_da_error)?;
@@ -146,15 +135,18 @@ if self.secure {
 The `get_proof` function is called on `get_inclusion_data`:
 
 ```rust
-if self.secure {
-    if let Some(proof) = self
-        .get_proof(blob_id)
-        .await
-        .map_err(to_non_retriable_da_error)?
-    {
-        Ok(Some(InclusionData { data: proof }))
-    } else {
-        Ok(None)
+if let Some(eigenda_cert) = eigenda_cert {
+    // Prover Service RPC being set means we are using EigenDA V2 Secure
+    if self.eigenda_prover_service_rpc.is_some() {
+        if let Some(proof) = self
+            .get_proof(blob_id)
+            .await
+            .map_err(to_non_retriable_da_error)?
+        {
+            Ok(Some(InclusionData { data: proof }))
+        } else {
+            Ok(None)
+        }
     }
 }
 ```
