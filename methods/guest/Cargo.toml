@@ -1,19 +1,28 @@
 [package]
-name = "blob-verification-guest"
+name = "guest"
 version = "0.1.0"
 edition = "2021"
 
 [workspace]
 
 [dependencies]
-alloy-primitives = { version = "0.8" }
-alloy-sol-types = { version = "0.8" }
-risc0-steel = { git = "https://github.com/risc0/risc0-ethereum", tag = "v1.2.0" }
-risc0-zkvm = { version = "1.2.0", default-features = false, features = ["std"] }
+alloy-primitives = { version = "1.0" }
+alloy-sol-types = { version = "1.0" }
+risc0-steel = { git = "https://github.com/risc0/risc0-ethereum", tag = "v2.2.0" }
+risc0-zkvm = { version = "2.1", default-features = false, features = ["std", "unstable"] }
+risc0-zkvm-platform = {version = "2.0.2", features=["sys-getenv"]}
 common = {path = "../../common"}
+rust-kzg-bn254-primitives = "0.1.1"
+rust-kzg-bn254-verifier = "0.1.1"
+tiny-keccak = { version = "2.0", features = ["keccak"] }
+num-bigint = "0.4.6"
+ark-bn254 = "0.5"
+ark-serialize = "0.5"
+rust-eigenda-v2-common = {git= "https://github.com/lambdaclass/eigenda-client-rs", branch="relocate_eigenda_cert_encoding"}
 
 [patch.crates-io]
 # use optimized risc0 circuit
 crypto-bigint = { git = "https://github.com/risc0/RustCrypto-crypto-bigint", tag = "v0.5.5-risczero.0" }
-k256 = { git = "https://github.com/risc0/RustCrypto-elliptic-curves", tag = "k256/v0.13.3-risczero.0" }
+k256 = { git = "https://github.com/risc0/RustCrypto-elliptic-curves", tag = "k256/v0.13.4-risczero.1" }
 sha2 = { git = "https://github.com/risc0/RustCrypto-hashes", tag = "sha2-v0.10.8-risczero.0" }
+tiny-keccak = { git = "https://github.com/risc0/tiny-keccak", tag = "tiny-keccak/v2.0.2-risczero.0" }

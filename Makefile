@@ -1,8 +1,11 @@
 BUILD_DIR=contracts
 
-.PHONY: all build_contracts
+.PHONY: all
 
-all: build_contracts
+all: containers
 
-build_contracts:
-	cd $(BUILD_DIR) && forge build
+containers:
+	docker compose up -d
+
+clean:
+	docker compose down

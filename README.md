@@ -1,6 +1,14 @@
-# ZKSYNC-EIGENDA M1
+# Zksync-EigenDA proving service
 
-**A proof of concept where risc0-steel is used in order to generate a proof for the call of the VerifyBlobV1 function of EigenDA's BlobVerifier contract, which performs the necessary checks to make sure a given blob is present**
+**Warning: This Proving service only works on a x86 machine with cuda support**
+
+**The EigenDA Proving service where risc0-steel is used in order to generate a proof for the call of the checkDACert function of EigenDA's CertVerifier contract, which performs the necessary checks to make sure a given blob is present.**
+**As well as performing the proof of equivalence verifying a proof that the EigenDA commitment commits to the given Blob.**
+**The Proving service consists of 2 Endpoints:**
+**generate_proof: Which given the blobKey begins the proof generation process**
+**get_proof: Which given the blobKey it returns the generated proof or an error in case it hasn't finished**
+
+Note: This Proving service requires using an ethereum rpc, if this rpc fails (for example on an `eth_getProof`), the whole proving generation for that specific blob will fail. You should choose an rpc that's not prone to failing. Public rpc's often fail.
 
 ## Prerequisites
 
@@ -17,37 +25,57 @@ Use the runfile (local) option, use the wget shown to download the script and ru
 sudo ./<file>.run
 ```
 
+## Run the Proving service
 
+### Deployment steps (On this repo):
 
-## Run the example
-
-### First run the eigenda devnet:
-
-Install devnet: 
-
-Clone [avs-devnet](https://github.com/Layr-Labs/avs-devnet) repository and install the `avs-devnet` tool by running
+Update the submodules
 
 ```bash
-make deps      # installs dependencies
-make install   # installs the project
+git submodule update --init --recursive
 ```
 
-Go to [Avs-Devnet repo](https://github.com/Layr-Labs/avs-devnet/blob/main/examples/eigenda.yaml) and follow the steps to run the EigenDA devnet, before running `avs-devnet start`, add the following line on `contracts/script/SetUpEigenDA.s.sol` on eigenda:
-
-Line 214: `vm.serializeAddress(output,"blobVerifier", address(eigenDABlobVerifier));`
-
-After runnning the devnet run
+Export the needed variables (rpcs should have http://, private keys and addresses should have 0x)
 
 ```bash
-avs-devnet get-ports
-avs-devnet get-address eigenda_addresses: 
+export PRIVATE_KEY=<your_private_key> #The private key you want to use to deploy contracts
+export DISPERSER_PRIVATE_KEY=<your_disperser_private_key> #The private key you want to use with the eigenda disperser
+export CERT_VERIFIER_ROUTER_ADDR=<your_cert_verifier_router_address> #Contract that has the checkDACdert function
+export RPC_URL=<your_rpc> #RPC URL of your node
+export DISPERSER_RPC=<your_rpc> #RPC of the eigenda disperser
+export PAYLOAD_FORM=<your_payload_form> #Either coeff or eval (On EigenDA Holesky use coeff)
+export BLOB_VERSION=0 #Blob version used by EigenDA
+export EIGENDA_RELAY_REGISTRY_ADDR=<your_relay_registry_addr> #Address of the EigenDA relay registry
+export RELAY_CLIENT_KEYS=<your_relay_client_keys> #Keys of the relay client, separated by commas ("0,1,2")
+export PROVING_SERVICE_URL=<your_proving_service_url> #URL you want this proving service to run on
+export DATABASE_URL=<proof_database_url> #URL of the database where the proofs will be stored
+export METRICS_URL=<your_metrics_url> #URL where you want the metrics to be exported, the example granafa expects it to be on port 9100
+export REGISTRY_COORDINATOR_ADDR=your_registry_coordinator_address> #Address of the Reigstry Coordinator contract of Eigen
+export OPERATOR_STATE_RETRIEVER_ADDR=your_operator_state_retriever_address> #Address of the Operator State Retriever contract of Eigen
 ```
 
-Save ports for `el-1-besu-lighthouse: rpc` and `disperser: grpc`
+Deploy the contracts:
 
-Save addresses of `blobVerifier` and `eigenDAServiceManager`
+Note: Make sure the parameters passed to the risc zero verifier are up to date, you can find the most recent ones on https://github.com/risc0/risc0-ethereum/blob/main/contracts/src/groth16/ControlID.sol (You shouldn't need to change them if the RiscZero version is not changed here, but if you use a pre-deployed verifier it could be a source of errors)
 
-### Run zksync-era (eigenda-m1-temporal branch on lambdaclass fork):
+```bash
+forge script contracts/script/ContractsDeployer.s.sol:ContractsDeployer --rpc-url $RPC_URL --broadcast -vvvv
+```
+
+Save the address under `RiscZeroVerifier deployed at: <address>`
+
+```bash
+export RISC_ZERO_VERIFIER_ADDR=<you_address>
+```
+
+### Run the Proving service (On this repo)
+
+```bash
+make containers # Creates the containers that the Proving service uses
+RUST_LOG=info cargo run --release
+```
+
+### Run zksync-era (eigenda-v2-m1 branch on lambdaclass fork):
 
 Install zkstack:
 
@@ -56,13 +84,17 @@ cd ./zkstack_cli/zkstackup
 ./install --local
 ```
 
+On `zksync-era/zkstack_cli/crates/types/src/l1_network.rs`
+
+Modify the address for `risc_zero_verifier` for your address (the one under `RISC_ZERO_VERIFIER_ADDR` env variable).
+
 Reload your terminal, and run on zksync-era root:
 
 ```bash
 zkstackup --local
 ```
 
-Install foundry-zksync 0.0.2:
+Install `foundry-zksync` `0.0.2`:
 
 ```
 curl -L https://raw.githubusercontent.com/matter-labs/foundry-zksync/main/install-foundry-zksync | bash
@@ -71,29 +103,35 @@ foundryup-zksync --commit 27360d4c8d12beddbb730dae07ad33a206b38f4b
 
 Modify `etc/env/file_based/overrides/validium.yaml`:
 
-```
+```yaml
 da_client:
-  eigen:
-    disperser_rpc: http://<disperser: grpc>
-    settlement_layer_confirmation_depth: 0
-    eigenda_eth_rpc: http://<el-1-besu-lighthouse: rpc>
-    eigenda_svc_manager_address: <eigenDAServiceManager>
-    wait_for_finalization: false
-    authenticated: false
-    points_source_path: ./resources
+  client: Eigen
+  disperser_rpc: <your_disperser_rpc> #Under DISPERSER_RPC env variable
+  eigenda_eth_rpc: <your_eth_rpc> #Under RPC_URL env variable
+  cert_verifier_router_addr: <your_cert_verifier_address> #Under CERT_VERIFIER_ROUTER_ADDRESS env variable
+  operator_state_retriever_addr: <your_operator_state_retriever_addr>
+  registry_coordinator_addr: <your_registry_coordinator_addr>
+  blob_version: <your_blob_version> #Under BLOB_VERSION env variable
+  eigenda_proving_service_rpc: <your_proving_service_rpc> #Under PROVING_SERVICE_URL env variable
 ```
-
-Copy the resources folder inside eigenda to zksync-era root
 
 Modify `etc/env/file_based/secrets.yaml`:
 
-```
+```yaml
 da:
-  eigen:
-    private_key: <your_private_key>
+  client: Eigen
+  private_key: <your_private_key> #The private key you want to use with the eigenda disperser
 ```
 
-Run
+Modify `etc/env/file_based/general.yaml`:
+
+```yaml
+eth:
+  sender:
+    gas_limit_mode: MAXIMUM
+```
+
+Run replacing with your l1 rpc:
 
 ```bash
 zkstack containers --observability true
@@ -113,7 +151,7 @@ zkstack ecosystem init \
           --deploy-paymaster true \
           --deploy-erc20 true \
           --deploy-ecosystem true \
-          --l1-rpc-url http://127.0.0.1:8545 \
+          --l1-rpc-url <your_l1_rpc> \
           --server-db-url=postgres://postgres:notsecurepassword@localhost:5432 \
           --server-db-name=zksync_server_localhost_eigenda \
           --chain eigenda \
@@ -121,61 +159,42 @@ zkstack ecosystem init \
 ```
 
 Then run
-```
+
+```bash
 zkstack server --chain eigenda
 ```
 
+On zksync-era you should see blobs being dispatched:
 
-### Run this example (back on this repo):
+```
+2025-06-23T19:42:05.370222Z  INFO zksync_da_dispatcher::da_dispatcher: Dispatched a DA for batch_number: 1, pubdata_size: 5312, dispatch_latency: 1.245608661s
+2025-06-23T19:42:10.866138Z  INFO zksync_da_dispatcher::da_dispatcher: Finality check for a batch_number: 1 is successful
+2025-06-23T19:57:23.619783Z  INFO zksync_da_dispatcher::da_dispatcher: Received an inclusion data for a batch_number: 1, inclusion_latency_seconds: 918
+2025-06-23T19:57:24.666505Z  INFO NamedFuture{name="eth_tx_manager"}:EthTxManager::loop_iteration: zksync_eth_sender::eth_tx_manager: Checking tx id: 1, operator_nonce: OperatorNonce { finalized: Nonce(1), latest: Nonce(1), fast_finality: Nonce(1) }, tx nonce: 1
+2025-06-23T19:57:25.676224Z  INFO NamedFuture{name="eth_tx_manager"}:EthTxManager::loop_iteration: zksync_eth_sender::eth_tx_manager: eth_tx 1 with hash 0xde1c0716058369b15190ec07a791b65d1565168f4ae88429e2f14652bb6f8918 for CommitBlocks is Finalized. Gas spent: 495881
+```
 
-Compile the contracts
+On the proving service you should see blobs being verified:
+
+```
+2025-06-23T18:23:55.862758Z  INFO host: Starting EigenDA Proving Service
+2025-06-23T18:23:56.611650Z  INFO host: Starting metrics server on port 9100
+2025-06-23T18:23:56.611818Z  INFO host: Running JSON RPC server
+2025-06-23T18:41:47.425199Z  INFO host: Received request to generate proof for Blob Id cf61a127c3604b6f9cf6a04b16902c682b134ec52097a588172edd181038c871
+2025-06-23T18:41:49.409353Z  INFO host: Proof generation thread: retrieved request to prove: cf61a127c3604b6f9cf6a04b16902c682b134ec52097a588172edd181038c871
+2025-06-23T18:41:57.585907Z  INFO risc0_steel::host::builder: Environment initialized with block 4052233 (0x4dddcf0064ca55f9a6bcdd4fc9cf739e34306e94225cf8ac57af9471945e5d9a)    
+2025-06-23T18:41:57.585959Z  INFO risc0_steel::contract::host: Executing preflight calling 'checkDACert(bytes)'    
+2025-06-23T18:42:25.370682Z  INFO host::guest_caller: Call checkDACert(bytes) Function on 0xDD73…Ffbd returns: 1
+2025-06-23T18:42:33.637261Z  INFO host::guest_caller: Running the guest with the constructed input...
+2025-06-23T18:42:43.248916Z  INFO risc0_zkvm::host::server::exec::syscall::verify2: SYS_VERIFY_INTEGRITY2: (af7ebdeb4a22996426538a857fc4e9d61f71504845afbba17918b5c1700b81b9, abd93866a6878528f29ffc6ea6d9e428cc9ad020a540dd11f1d45e5e9bb6db71)
+2025-06-23T18:42:43.298544Z  INFO risc0_zkvm::host::server::exec::executor: execution time: 9.168113797s
+```
+
+### Clean the proving service containers
+
+If you want to clean the proving service containers over different executions (Mostly during development)
 
 ```bash
-git submodule update --init --recursive
-make build_contracts
-```
-
-Deploy the blobVerifierWrapper:
-
-```bash
-PRIVATE_KEY=<your_private_key> BLOB_VERIFIER_ADDRESS=<your_blob_verifier_address> forge script contracts/script/BlobVerifierWrapperDeployer.s.sol:BlobVerifierWrapperDeployer --rpc-url <your_rpc_url> --broadcast -vvvv
-```
-
-For testing purpouses on devnet you can use:
-```bash
-PRIVATE_KEY=0x3eb15da85647edd9a1159a4a13b9e7c56877c4eb33f614546d4db06a51868b1c BLOB_VERIFIER_ADDRESS=0x00CfaC4fF61D52771eF27d07c5b6f1263C2994A1 forge script contracts/script/BlobVerifierWrapperDeployer.s.sol:BlobVerifierWrapperDeployer --rpc-url http://127.0.0.1:<your_port> --broadcast -vvvv
-```
-
-Update the BLOB_VERIFIER_WRAPPER_CONTRACT address on ```host/src/verify_blob.rs``` and ```methods/guest/src/main.rs``` for the one just deployed if needed.
-
-The address on CALLER is a known address from zksync, it should be changed to the needed one in the real use case.
-
-Deploy the `RiscZeroGroth16Verifier`:
-```bash
-ETH_WALLET_PRIVATE_KEY=<your_sk> forge script contracts/script/DeployRiscZeroGroth16Verifier.s.sol:DeployRiscZeroGroth16Verifier --rpc-url <your_rpc> --broadcast -vvvv
-```
-
-Save the address under `Contract Address: <address>`
-
-Deploy the `Risc0ProofVerifierWrapper`:
-
-```bash
-PRIVATE_KEY=<your_sk> RISC0_VERIFIER_ADDRESS=<your_address> forge script contracts/script/Risc0ProofVerifierWrapperDeployer.s.sol:Risc0ProofVerifierWrapperDeployer --rpc-url <your_rpc> --broadcast -vvvv
-```
-
-Keep the contract address at hand for the next command.
-
-To run the example execute the following command:
-
-```bash
-RPC_URL=<your_rpc> PRIVATE_KEY=<your_private_key> RISC0_VERIFIER_WRAPPER=<your_risc0_verifier_address> API_URL=<your_url> START_BATCH=1 RUST_LOG=info cargo run --release
-```
-
-For a local server, you can get your api url under `chains/<your_chain>/configs/general.yaml` on the `zksync-era` repository
-
-```
-api:
-  web3_json_rpc:
-    http_url:
+make clean
 ```
 

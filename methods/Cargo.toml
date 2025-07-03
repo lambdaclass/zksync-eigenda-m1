@@ -1,10 +1,11 @@
 [package]
-name = "blob-verification-methods"
+name = "methods"
+description = "This contains the guest program that is compiled to run inside the zkvm"
 version = "0.1.0"
 edition = "2021"
 
 [build-dependencies]
-risc0-build = { workspace = true }
+risc0-build = { workspace = true, features = ["unstable"] }
 
 [package.metadata.risc0]
 methods = ["guest"]
