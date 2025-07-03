@@ -1,14 +1,14 @@
-# Zksync-EigenDA proving sidecar
+# Zksync-EigenDA proving service
 
-**Warning: This sidecar only works on a x86 machine with cuda support**
+**Warning: This Proving service only works on a x86 machine with cuda support**
 
-**The EigenDA sidecar where risc0-steel is used in order to generate a proof for the call of the checkDACert function of EigenDA's CertVerifier contract, which performs the necessary checks to make sure a given blob is present.**
+**The EigenDA Proving service where risc0-steel is used in order to generate a proof for the call of the checkDACert function of EigenDA's CertVerifier contract, which performs the necessary checks to make sure a given blob is present.**
 **As well as performing the proof of equivalence verifying a proof that the EigenDA commitment commits to the given Blob.**
-**The sidecar consists of 2 Endpoints:**
+**The Proving service consists of 2 Endpoints:**
 **generate_proof: Which given the blobKey begins the proof generation process**
 **get_proof: Which given the blobKey it returns the generated proof or an error in case it hasn't finished**
 
-Note: This sidecar requires using an ethereum rpc, if this rpc fails (for example on an `eth_getProof`), the whole proving generation for that specific blob will fail. You should choose an rpc that's not prone to failing. Public rpc's often fail.
+Note: This Proving service requires using an ethereum rpc, if this rpc fails (for example on an `eth_getProof`), the whole proving generation for that specific blob will fail. You should choose an rpc that's not prone to failing. Public rpc's often fail.
 
 ## Prerequisites
 
@@ -25,7 +25,7 @@ Use the runfile (local) option, use the wget shown to download the script and ru
 sudo ./<file>.run
 ```
 
-## Run the sidecar
+## Run the Proving service
 
 ### Deployment steps (On this repo):
 
@@ -47,7 +47,7 @@ export PAYLOAD_FORM=<your_payload_form> #Either coeff or eval (On EigenDA Holesk
 export BLOB_VERSION=0 #Blob version used by EigenDA
 export EIGENDA_RELAY_REGISTRY_ADDR=<your_relay_registry_addr> #Address of the EigenDA relay registry
 export RELAY_CLIENT_KEYS=<your_relay_client_keys> #Keys of the relay client, separated by commas ("0,1,2")
-export SIDECAR_URL=<your_sidecar_url> #URL you want this sidecar to run on
+export PROVING_SERVICE_URL=<your_proving_service_url> #URL you want this proving service to run on
 export DATABASE_URL=<proof_database_url> #URL of the database where the proofs will be stored
 export METRICS_URL=<your_metrics_url> #URL where you want the metrics to be exported, the example granafa expects it to be on port 9100
 export REGISTRY_COORDINATOR_ADDR=your_registry_coordinator_address> #Address of the Reigstry Coordinator contract of Eigen
@@ -68,10 +68,10 @@ Save the address under `RiscZeroVerifier deployed at: <address>`
 export RISC_ZERO_VERIFIER_ADDR=<you_address>
 ```
 
-### Run the sidecar (On this repo)
+### Run the Proving service (On this repo)
 
 ```bash
-make containers # Creates the containers that the sidecar uses
+make containers # Creates the containers that the Proving service uses
 RUST_LOG=info cargo run --release
 ```
 
@@ -108,14 +108,11 @@ da_client:
   client: Eigen
   disperser_rpc: <your_disperser_rpc> #Under DISPERSER_RPC env variable
   eigenda_eth_rpc: <your_eth_rpc> #Under RPC_URL env variable
-  authenticated: true
   cert_verifier_router_addr: <your_cert_verifier_address> #Under CERT_VERIFIER_ROUTER_ADDRESS env variable
   operator_state_retriever_addr: <your_operator_state_retriever_addr>
   registry_coordinator_addr: <your_registry_coordinator_addr>
   blob_version: <your_blob_version> #Under BLOB_VERSION env variable
-  polynomial_form: <your_polynomial_form> #Either coeff or eval
-  eigenda_sidecar_rpc: <your_sidecar_rpc> #Under SIDECAR_URL env variable
-  version: V2Secure
+  eigenda_proving_service_rpc: <your_proving_service_rpc> #Under PROVING_SERVICE_URL env variable
 ```
 
 Modify `etc/env/file_based/secrets.yaml`:
@@ -177,10 +174,10 @@ On zksync-era you should see blobs being dispatched:
 2025-06-23T19:57:25.676224Z  INFO NamedFuture{name="eth_tx_manager"}:EthTxManager::loop_iteration: zksync_eth_sender::eth_tx_manager: eth_tx 1 with hash 0xde1c0716058369b15190ec07a791b65d1565168f4ae88429e2f14652bb6f8918 for CommitBlocks is Finalized. Gas spent: 495881
 ```
 
-On the sidecar you should see blobs being verified:
+On the proving service you should see blobs being verified:
 
 ```
-2025-06-23T18:23:55.862758Z  INFO host: Starting EigenDA Sidecar
+2025-06-23T18:23:55.862758Z  INFO host: Starting EigenDA Proving Service
 2025-06-23T18:23:56.611650Z  INFO host: Starting metrics server on port 9100
 2025-06-23T18:23:56.611818Z  INFO host: Running JSON RPC server
 2025-06-23T18:41:47.425199Z  INFO host: Received request to generate proof for Blob Id cf61a127c3604b6f9cf6a04b16902c682b134ec52097a588172edd181038c871
@@ -193,9 +190,9 @@ On the sidecar you should see blobs being verified:
 2025-06-23T18:42:43.298544Z  INFO risc0_zkvm::host::server::exec::executor: execution time: 9.168113797s
 ```
 
-### Clean the sidecar containers
+### Clean the proving service containers
 
-If you want to clean the sidecar containers over different executions (Mostly during development)
+If you want to clean the proving service containers over different executions (Mostly during development)
 
 ```bash
 make clean

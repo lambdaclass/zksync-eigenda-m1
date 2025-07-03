@@ -4,14 +4,13 @@ In this [PR](https://github.com/matter-labs/era-contracts/pull/1405) the followi
 
 # [EigenDAL1DAValidator.sol](https://github.com/matter-labs/era-contracts/pull/1405/files#diff-c8ffe58186030899035f2943942d2a933d6d90566917a34e74495335c085cad6)
 
-Implements the `checkDA` function, where it receives the `operatorDAInput` containing the EigenDA Inclusion Data. This is conformed by the risc zero proof (seal, imageID and journalDigest) plus the hash of the data dispersed to eigenda, calculated on the sidecar.
+Implements the `checkDA` function, where it receives the `operatorDAInput` containing the EigenDA Inclusion Data. This is conformed by the risc zero proof (seal, imageID and journalDigest).
 
 ```solidity
 struct EigenDAInclusionData {
     bytes seal;
     bytes32 imageId;
-    bytes32 journalDigest;
-    bytes32 eigenDAHash;
+    bytes journalDigest;
 }
 ```
 
@@ -32,14 +31,24 @@ This contract checks against a `RiscZeroVerifier` if the Risc Zero Proof is corr
 EigenDAInclusionData memory inclusionData = abi.decode(operatorDAInput[32:], (EigenDAInclusionData));
 
 // Verify the risczero proof
-risc0Verifier.verify(inclusionData.seal, inclusionData.imageId, inclusionData.journalDigest);
+risc0Verifier.verify(inclusionData.seal, inclusionData.imageId, sha256(inclusionData.journal));
 ```
 
-It also checks that the hash calculated on the sidecar is correct.
+The journal contains the `eigenDAHash` calculated on the proving service
+
+```solidity
+struct Journal {
+    bytes32 eigenDAHash; // The hash of the EigenDA data calculated by the Risc0 guest
+    bytes env_commitment; // The abi-encoded steel commitment
+    bytes proof; // The KZG Proof for proof of equivalence
+}
+```
+
+This contract also checks that the hash calculated on the proving service is correct.
 
 ```solidity
 // Check that the eigenDAHash from the Inclusion Data (originally calculated on Risc0 guest) is correct
-if (l2DAValidatorOutputHash != keccak256(abi.encodePacked(stateDiffHash, inclusionData.eigenDAHash)))
+if (l2DAValidatorOutputHash != keccak256(abi.encodePacked(output.stateDiffHash, journal.eigenDAHash)))
     revert InvalidValidatorOutputHash();
 ```
 
@@ -52,7 +61,7 @@ You can find more info [here](https://docs.beboundless.xyz/developers/steel/comm
 # [EigenDAL2DAValidator.sol](https://github.com/matter-labs/era-contracts/pull/1405/files#diff-41149852d9965ba83ff78ea4f039ca5e74ec542cb5aead78166720895c2e184a)
 
 
-Implements the `validatePubdata` function which calculates the `fullPubdataHash` which is then passed through L2→L1 Logs, and used to compare it against the sidecar generated hash on the `EigenDAL1DAValidator`
+Implements the `validatePubdata` function which calculates the `fullPubdataHash` which is then passed through L2→L1 Logs, and used to compare it against the proving service generated hash on the `EigenDAL1DAValidator`
 
 ```solidity
 /// EigenDA L2 DA validator. It will create a commitment to the pubdata that can later be verified during settlement.
@@ -81,4 +90,4 @@ contract EigenDAL2DAValidator is IL2DAValidator, StateDiffL2DAValidator {
 }
 ```
 
-The rest of the changes on that PR are changes needed to deploy this new contracts.
+The rest of the changes on that PR are changes needed to deploy this new contract.

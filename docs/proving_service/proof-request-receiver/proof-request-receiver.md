@@ -23,7 +23,7 @@ If the requests passes all this checks, then the proof request is stored in the 
 **Sample request:**
 
 ```bash
-curl -X POST "$SIDECAR_RPC_URL" -H "Content-Type: application/json" -d \
+curl -X POST "$PROVING_SERVICE_URL" -H "Content-Type: application/json" -d \
 '{"jsonrpc":"2.0","method":"generate_proof","params": { "blob_id": "b2ce5a5d0e9b9c699de14aa2924336afa0645b0a5920afd9aff077d831d1299e" },"id":1}'
 ```
 
@@ -39,6 +39,6 @@ The other endpoint that the server listens to is used to retrieve proofs once th
 **Sample request:**
 
 ```bash
-curl -X POST "$SIDECAR_RPC_URL" -H "Content-Type: application/json" -d \
+curl -X POST "$PROVING_SERVICE_URL" -H "Content-Type: application/json" -d \
 '{"jsonrpc":"2.0","method":"get_proof","params": { "blob_id": "b2ce5a5d0e9b9c699de14aa2924336afa0645b0a5920afd9aff077d831d1299e" },"id":1}'
 ```

@@ -99,9 +99,9 @@ struct Args {
     /// Keys of the relay client
     #[arg(short, long, env = "RELAY_CLIENT_KEYS", value_delimiter = ',')]
     relay_client_keys: Vec<u32>,
-    /// URL where this sidecar should run
-    #[arg(short, long, env = "SIDECAR_URL")]
-    sidecar_url: String,
+    /// URL where this proving service should run
+    #[arg(short, long, env = "PROVING_SERVICE_URL")]
+    proving_service_url: String,
     /// URL of the database
     #[arg(short, long, env = "DATABASE_URL")]
     database_url: String,
@@ -211,9 +211,9 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
-    tracing::info!("Starting EigenDA Sidecar");
+    tracing::info!("Starting EigenDA Proving service");
     let args = Args::parse();
-    let sidecar_url = args.sidecar_url.clone();
+    let proving_service_url = args.proving_service_url.clone();
     let database_url = args.database_url.clone();
     let metrics_url = args.metrics_url.clone();
 
@@ -446,7 +446,7 @@ async fn main() -> Result<()> {
         });
 
         let server = ServerBuilder::new(io)
-            .start_http(&sidecar_url.clone().parse()?)
+            .start_http(&proving_service_url.clone().parse()?)
             .expect("Unable to start server");
         tracing::info!("Running JSON RPC server");
         server.wait();
