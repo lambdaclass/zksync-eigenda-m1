@@ -1,0 +1,25 @@
+# mise.toml - Development environment for Zksync-EigenDA proving service
+
+[tools]
+# Core development tools
+rust = "1.85.1"
+
+# Forge Dependencies
+forge = "v1.2.3"
+cast = "v1.2.3"
+anvil = "v1.2.3"
+
+# Doesn't seem to be available on mise, so we install these via a task
+[tasks.install-rust-tools]
+run = [
+    "cargo install cargo-risczero",
+    "curl -L https://raw.githubusercontent.com/matter-labs/foundry-zksync/main/install-foundry-zksync | bash",
+    # TODO: this won't work until https://github.com/matter-labs/zksync-era/pull/4232 gets merged.
+    # In the meantime, prob best to just follow the README steps manually.
+    # "curl -L https://raw.githubusercontent.com/matter-labs/zksync-era/main/zkstack_cli/zkstackup/install | bash",
+]
+
+[alias]
+forge = "ubi:foundry-rs/foundry[exe=forge]"
+cast = "ubi:foundry-rs/foundry[exe=cast]"
+anvil = "ubi:foundry-rs/foundry[exe=anvil]"

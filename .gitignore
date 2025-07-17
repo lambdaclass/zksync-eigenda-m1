@@ -5,3 +5,4 @@ target/
 /out
 /contracts/broadcast/*
 /contracts/lib
+.env

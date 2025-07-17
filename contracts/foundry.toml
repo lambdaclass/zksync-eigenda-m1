@@ -1,12 +1,12 @@
 [profile.default]
 src = "src"
 out = "out"
-libs = ["../lib"]
+libs = ["lib"]
 
 remappings = [
-    "risc0-ethereum/=../lib/risc0-ethereum/contracts/src/",
-    "openzeppelin/=../lib/openzeppelin-contracts/",
-    "forge-std/=../lib/forge-std/src/",
-    "openzeppelin-contracts-upgradeable/=../lib/openzeppelin-contracts-upgradeable/",
+    "risc0-ethereum/=lib/risc0-ethereum/contracts/src/",
+    "openzeppelin/=lib/openzeppelin-contracts/",
+    "forge-std/=lib/forge-std/src/",
+    "openzeppelin-contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/",
 ]
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
