@@ -8,15 +8,11 @@
 **generate_proof: Which given the blobKey begins the proof generation process**
 **get_proof: Which given the blobKey it returns the generated proof or an error in case it hasn't finished**
 
-Note: This Proving service requires using an ethereum rpc, if this rpc fails (for example on an `eth_getProof`), the whole proving generation for that specific blob will fail. You should choose an rpc that's not prone to failing. Public rpc's often fail.
+## Deployment
 
-## Prerequisites
+### Hardware requirements
 
-To get started, you need to have Rust installed.
-
-Next, you will also need to have the [`cargo-risczero`](https://dev.risczero.com/api/zkvm/install) tool installed.
-
-Next we need to install cuda 12.6
+You will need cuda 12.6 installed to run the prover service.
 
 Install [cuda](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Debian&target_version=12&target_type=runfile_local).
 Use the runfile (local) option, use the wget shown to download the script and run it as:
@@ -25,54 +21,63 @@ Use the runfile (local) option, use the wget shown to download the script and ru
 sudo ./<file>.run
 ```
 
-## Run the Proving service
+### Dependencies
 
-### Deployment steps (On this repo):
+Note: This Proving service requires using an Ethereum RPC, if this RPC fails (for example on an `eth_getProof`), the whole proving generation for that specific blob will fail. You should choose an RPC that's not prone to failing. Public RPC's often fail.
 
-Update the submodules
+### Run the Proving service locally
+
+Copy the example env file to `.env` and fill in the needed variables (RPCs should include http://, private keys and addresses should start with 0x)
 
 ```bash
-git submodule update --init --recursive
+cp .env.example .env
 ```
 
-Export the needed variables (rpcs should have http://, private keys and addresses should have 0x)
-
 ```bash
-export PRIVATE_KEY=<your_private_key> #The private key you want to use to deploy contracts
-export DISPERSER_PRIVATE_KEY=<your_disperser_private_key> #The private key you want to use with the eigenda disperser
-export CERT_VERIFIER_ROUTER_ADDR=<your_cert_verifier_router_address> #Contract that has the checkDACdert function
-export RPC_URL=<your_rpc> #RPC URL of your node
-export DISPERSER_RPC=<your_rpc> #RPC of the eigenda disperser
-export PAYLOAD_FORM=<your_payload_form> #Either coeff or eval (On EigenDA Holesky use coeff)
-export BLOB_VERSION=0 #Blob version used by EigenDA
-export EIGENDA_RELAY_REGISTRY_ADDR=<your_relay_registry_addr> #Address of the EigenDA relay registry
-export RELAY_CLIENT_KEYS=<your_relay_client_keys> #Keys of the relay client, separated by commas ("0,1,2")
-export PROVING_SERVICE_URL=<your_proving_service_url> #URL you want this proving service to run on
-export DATABASE_URL=<proof_database_url> #URL of the database where the proofs will be stored
-export METRICS_URL=<your_metrics_url> #URL where you want the metrics to be exported, the example granafa expects it to be on port 9100
-export REGISTRY_COORDINATOR_ADDR=your_registry_coordinator_address> #Address of the Reigstry Coordinator contract of Eigen
-export OPERATOR_STATE_RETRIEVER_ADDR=your_operator_state_retriever_address> #Address of the Operator State Retriever contract of Eigen
-```
-
-Deploy the contracts:
-
-Note: Make sure the parameters passed to the risc zero verifier are up to date, you can find the most recent ones on https://github.com/risc0/risc0-ethereum/blob/main/contracts/src/groth16/ControlID.sol (You shouldn't need to change them if the RiscZero version is not changed here, but if you use a pre-deployed verifier it could be a source of errors)
-
-```bash
-forge script contracts/script/ContractsDeployer.s.sol:ContractsDeployer --rpc-url $RPC_URL --broadcast -vvvv
-```
-
-Save the address under `RiscZeroVerifier deployed at: <address>`
-
-```bash
-export RISC_ZERO_VERIFIER_ADDR=<you_address>
-```
-
-### Run the Proving service (On this repo)
-
-```bash
-make containers # Creates the containers that the Proving service uses
+make start-deps # Starts the containers that the Proving service uses
 RUST_LOG=info cargo run --release
+```
+
+Use `make stop-deps` to stop the dependency containers.
+
+### Deploy the Proving service via Docker
+
+TODO
+
+
+
+
+## Local development
+
+Make sure to `git clone` recursively or `git submodule update --init --recursive` if already cloned to get the contracts submodules.
+
+### Dev dependencies
+
+Install [mise](https://mise.jdx.dev/getting-started.html) and follow getting-started instructions to activate it for your shell. Then simply run:
+```
+mise install
+mise run install-rust-tools
+```
+Some rust tools are not easily available on mise, so we install them via a mise task. See [mise.toml](mise.toml) for more details.
+
+#### Risc0 Contracts and Tooling
+
+Make sure the parameters passed to the risc zero verifier are up to date, you can find the most recent ones on https://github.com/risc0/risc0-ethereum/blob/main/contracts/src/groth16/ControlID.sol (You shouldn't need to change them if the RiscZero version is not changed here, but if you use a pre-deployed verifier it could be a source of errors)
+
+### Hardware requirements
+
+Use RISC0_DEV_MODE=true to skip risc0 GPU proof generation and instead execute the code on your cpu.
+TODO: does this actually work?
+
+### Start dependencies
+
+```bash
+anvil
+make deploy-risc0-verifier-contract-anvil
+# Write the deployed risc0 verifier address to your .env file
+export RISC_ZERO_VERIFIER_ADDR=<DEPLOYED_ADDRESS>
+make start-deps # start other containers
+cargo run
 ```
 
 ### Run zksync-era (eigenda-v2-m1 branch on lambdaclass fork):
@@ -188,13 +193,5 @@ On the proving service you should see blobs being verified:
 2025-06-23T18:42:33.637261Z  INFO host::guest_caller: Running the guest with the constructed input...
 2025-06-23T18:42:43.248916Z  INFO risc0_zkvm::host::server::exec::syscall::verify2: SYS_VERIFY_INTEGRITY2: (af7ebdeb4a22996426538a857fc4e9d61f71504845afbba17918b5c1700b81b9, abd93866a6878528f29ffc6ea6d9e428cc9ad020a540dd11f1d45e5e9bb6db71)
 2025-06-23T18:42:43.298544Z  INFO risc0_zkvm::host::server::exec::executor: execution time: 9.168113797s
-```
-
-### Clean the proving service containers
-
-If you want to clean the proving service containers over different executions (Mostly during development)
-
-```bash
-make clean
 ```
 
