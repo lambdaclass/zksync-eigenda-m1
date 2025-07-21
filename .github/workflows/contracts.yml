@@ -25,7 +25,7 @@ jobs:
           submodules: recursive
 
       - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@e499156d7d918eb5c652fdf7cb8b1023a17a67bf # v1.2.0
+        uses: foundry-rs/foundry-toolchain@82dee4ba654bd2146511f85f0d013af94670c4de # v1.4.0
 
       - name: Install dependencies
         working-directory: contracts
@@ -62,7 +62,7 @@ jobs:
           submodules: recursive
 
       - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@e499156d7d918eb5c652fdf7cb8b1023a17a67bf # v1.2.0  
+        uses: foundry-rs/foundry-toolchain@82dee4ba654bd2146511f85f0d013af94670c4de # v1.4.0  
 
       - name: Install dependencies
         working-directory: contracts
