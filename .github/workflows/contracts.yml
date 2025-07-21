@@ -44,7 +44,7 @@ jobs:
         run: forge test -vvv
 
       - name: Upload contract artifacts
-        uses: actions/upload-artifact@ea165f8b9001e6fbc7e86f076d54ee3ca8816bec # v4.6.2
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: contract-artifacts
           path: |
