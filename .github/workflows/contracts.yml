@@ -34,10 +34,11 @@ jobs:
       - name: Build contracts
         working-directory: contracts
         run: forge build
-
-      - name: Run tests
-        working-directory: contracts
-        run: forge test -vvv
+      
+      # TODO: Add tests back in when there's tests
+      # - name: Run tests
+      #   working-directory: contracts
+      #   run: forge test -vvv
 
       - name: Upload contract artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
