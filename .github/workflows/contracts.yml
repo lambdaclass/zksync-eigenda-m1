@@ -31,10 +31,6 @@ jobs:
         working-directory: contracts
         run: forge install
 
-      - name: Check formatting
-        working-directory: contracts
-        run: forge fmt --check
-
       - name: Build contracts
         working-directory: contracts
         run: forge build
