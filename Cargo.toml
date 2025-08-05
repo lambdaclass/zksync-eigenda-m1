@@ -8,7 +8,7 @@ risc0-steel = { git = "https://github.com/risc0/risc0-ethereum", branch = "relea
 
 # risc0 monorepo dependencies.
 risc0-build = { version = "2.1" }
-risc0-zkvm = { version = "2.1"}
+risc0-zkvm = { version = "2.3"}
 risc0-zkp = { version = "2.0", default-features = false }
 
 alloy-primitives = { version = "1.0" }
