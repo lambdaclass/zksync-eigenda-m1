@@ -1,12 +1,20 @@
-# Zksync-EigenDA proving service
+# Zksync-EigenDA Proving Service
 
-**Warning: This Proving service only works on a x86 machine with cuda support**
+> **Warning**: Only works on x86 machines with cuda support.
 
-**The EigenDA Proving service where risc0-steel is used in order to generate a proof for the call of the checkDACert function of EigenDA's CertVerifier contract, which performs the necessary checks to make sure a given blob is present.**
-**As well as performing the proof of equivalence verifying a proof that the EigenDA commitment commits to the given Blob.**
-**The Proving service consists of 2 Endpoints:**
-**generate_proof: Which given the blobKey begins the proof generation process**
-**get_proof: Which given the blobKey it returns the generated proof or an error in case it hasn't finished**
+This Proving Service is meant to be used by ZkSync-stack validium rollups that use EigenDA.
+
+It consists of 2 json-rpc endpoints:
+- generate_proof(blobKey): begins the proof generation process
+- get_proof(blobKey): returns the generated proof or an error if it hasn't finished
+
+The generated proof proves inclusion of a blob in EigenDA:
+- It uses risc0's steel library to prove an eth-call to EigenDACertVerifier.checkDACert function.
+- It also proves equivalence between the EigenDA commitment and the one computed by the ZKSync sequencer.
+- TODO: complete this with more accurate details of exactly what is proven.
+
+See our [docs](./docs/) for technical details.
+
 
 ## Deployment
 
@@ -43,8 +51,6 @@ Use `make stop-deps` to stop the dependency containers.
 ### Deploy the Proving service via Docker
 
 TODO
-
-
 
 
 ## Local development
