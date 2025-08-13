@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["host", "common", "methods"]
+default-members = ["host"]
 
 [workspace.dependencies]
 # Intra-workspace dependencies
@@ -8,7 +9,7 @@ risc0-steel = { git = "https://github.com/risc0/risc0-ethereum", branch = "relea
 
 # risc0 monorepo dependencies.
 risc0-build = { version = "2.1" }
-risc0-zkvm = { version = "2.1"}
+risc0-zkvm = { version = "2.1" }
 risc0-zkp = { version = "2.0", default-features = false }
 
 alloy-primitives = { version = "1.0" }
@@ -48,13 +49,7 @@ prometheus = "0.14.0"
 lazy_static = "1.5.0"
 tiny_http = "0.12"
 
-# Always optimize; building and running the guest takes much longer without optimization.
-[profile.dev]
-opt-level = 3
-
-[profile.dev.build-override]
-opt-level = 3
-
+# Guest should be built with max optimizations to reduce zk proving instructions/time.
 [profile.release]
 debug = 1
 lto = true
